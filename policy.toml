@@ -1,0 +1,35 @@
+policy_version = 1
+product_language = "rust"
+rust_toolchain = "1.95.0"
+canonical_format = "json"
+canonical_format_version = 1
+unsafe_code = "forbid"
+network_runtime = false
+telemetry = false
+
+[authority]
+canonical_root = ".research-run"
+promotion_record = "human_review_decision"
+derived_outputs_can_promote = false
+evidence_links_can_promote = false
+retry_can_promote = false
+
+[budgets]
+max_record_bytes = 1048576
+max_records_per_kind = 10000
+max_text_bytes = 65536
+max_list_items = 256
+max_artifact_pointers = 128
+
+[effects]
+parse_before_write = true
+workspace_confined = true
+reject_symlinks = true
+atomic_publication = true
+idempotent_identical_retry = true
+conflicting_identity = "fail_closed"
+
+[proof]
+distinct = ["source", "package", "install", "runtime", "journey", "github", "release", "real_use"]
+withheld = ["scientific_truth", "real_world_usefulness", "scientific_impact"]
+

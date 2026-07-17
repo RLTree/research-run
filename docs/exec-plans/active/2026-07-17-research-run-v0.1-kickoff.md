@@ -104,3 +104,15 @@ stale, or supported only by a self-authored review.
 Continue through ordinary implementation and review failures. Stop for a
 destructive action, unauthorized external write, missing required access, exposed
 sensitive material, or a material product decision with no safe default.
+
+## Living progress
+
+- 2026-07-17: Durable goal created; implementation is running on
+  `codex/research-run-v0.1-build` from the grounded kickoff commit.
+- 2026-07-17: Tree superseded the initial uncommitted Python decision with the
+  layered-core plus Rust-overlay gold stack. Python files and caches created by
+  the implementation attempt were removed before commit. The behavioral journey
+  and retry scenarios were retained as Rust acceptance tests.
+- Current claim ceiling: governance and test scenarios are present but product
+  implementation, package, install, runtime journey, GitHub PR, release, and
+  real-use claims remain unproven.
