@@ -1,0 +1,13 @@
+{
+  "artifact": null,
+  "authorship": "human",
+  "claim_id": "claim-binding",
+  "experiment_id": "experiment-repeat",
+  "id": "evidence-repeat",
+  "kind": "evidence",
+  "schema_version": 1,
+  "source_id": null,
+  "specific_evidence": "The repeat was negative under the recorded conditions.",
+  "stance": "contradicts"
+}
+

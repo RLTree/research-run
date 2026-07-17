@@ -1,0 +1,10 @@
+{
+  "authorship": "human",
+  "id": "claim-binding",
+  "kind": "claim",
+  "owner": "Example Researcher",
+  "schema_version": 1,
+  "scope": "Synthetic in-vitro assay only",
+  "text": "The synthetic construct binds the target in this assay."
+}
+

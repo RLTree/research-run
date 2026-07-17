@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RLTree/research-run/schemas/v1/experiment.schema.json",
+  "title": "Research Run ExperimentReceipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "question", "method_ref", "observations", "interpretation", "limitations", "outcome", "next_move", "artifacts"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "experiment" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "question": { "$ref": "types.schema.json#/$defs/text" },
+    "method_ref": { "$ref": "types.schema.json#/$defs/text" },
+    "observations": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "types.schema.json#/$defs/text" } },
+    "interpretation": { "$ref": "types.schema.json#/$defs/text" },
+    "limitations": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "types.schema.json#/$defs/text" } },
+    "outcome": { "enum": ["positive", "negative", "ambiguous", "inconclusive"] },
+    "next_move": { "$ref": "types.schema.json#/$defs/text" },
+    "artifacts": { "type": "array", "maxItems": 128, "items": { "$ref": "types.schema.json#/$defs/artifactPointer" } }
+  }
+}
+

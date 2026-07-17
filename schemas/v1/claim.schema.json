@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RLTree/research-run/schemas/v1/claim.schema.json",
+  "title": "Research Run ClaimRecord v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "text", "scope", "owner", "authorship"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "claim" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "text": { "$ref": "types.schema.json#/$defs/text" },
+    "scope": { "$ref": "types.schema.json#/$defs/text" },
+    "owner": { "$ref": "types.schema.json#/$defs/text" },
+    "authorship": { "$ref": "types.schema.json#/$defs/authorship" }
+  }
+}
+

@@ -334,6 +334,9 @@ fn execute(cli: Cli) -> Result<()> {
             let validation = workspace.validate();
             if output.json {
                 print_json(&validation)?;
+                if !validation.valid {
+                    return Err(Error::invalid("workspace", "validation failed"));
+                }
             } else if validation.valid {
                 println!("Workspace is valid.");
                 println!(

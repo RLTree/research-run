@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RLTree/research-run/schemas/v1/project-manifest.schema.json",
+  "title": "Research Run ProjectManifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "project_id", "name", "declared_roots"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "project-manifest" },
+    "project_id": { "$ref": "types.schema.json#/$defs/id" },
+    "name": { "$ref": "types.schema.json#/$defs/text" },
+    "declared_roots": { "const": ["."] }
+  }
+}
+

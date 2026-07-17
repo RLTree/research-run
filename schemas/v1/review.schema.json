@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RLTree/research-run/schemas/v1/review.schema.json",
+  "title": "Research Run ReviewDecision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "claim_id", "decision", "rationale", "reviewer"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "review" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "claim_id": { "$ref": "types.schema.json#/$defs/id" },
+    "decision": { "enum": ["unsupported", "limited", "supported", "contradicted"] },
+    "rationale": { "$ref": "types.schema.json#/$defs/text" },
+    "reviewer": { "$ref": "types.schema.json#/$defs/text" }
+  }
+}
+

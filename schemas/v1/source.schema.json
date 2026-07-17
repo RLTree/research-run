@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RLTree/research-run/schemas/v1/source.schema.json",
+  "title": "Research Run SourceRecord v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "citation", "locator", "provenance", "notes"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "source" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "citation": { "$ref": "types.schema.json#/$defs/text" },
+    "locator": { "$ref": "types.schema.json#/$defs/text" },
+    "provenance": { "enum": ["human", "imported", "ai"] },
+    "notes": { "type": "string", "maxLength": 65536 }
+  }
+}
+
