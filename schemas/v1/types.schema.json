@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/RLTree/research-run/schemas/v1/types.schema.json",
+  "$id": "types.schema.json",
   "title": "Research Run shared v1 types",
   "$defs": {
     "id": {
@@ -30,4 +30,3 @@
     }
   }
 }
-

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/RLTree/research-run/schemas/v1/claim.schema.json",
+  "$id": "claim.schema.json",
   "title": "Research Run ClaimRecord v1",
   "type": "object",
   "additionalProperties": false,
@@ -15,4 +15,3 @@
     "authorship": { "$ref": "types.schema.json#/$defs/authorship" }
   }
 }
-

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/RLTree/research-run/schemas/v1/source.schema.json",
+  "$id": "source.schema.json",
   "title": "Research Run SourceRecord v1",
   "type": "object",
   "additionalProperties": false,
@@ -15,4 +15,3 @@
     "notes": { "type": "string", "maxLength": 65536 }
   }
 }
-

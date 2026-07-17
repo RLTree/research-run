@@ -23,7 +23,7 @@ fn every_versioned_schema_is_well_formed_json() {
             schemas.push(path);
         }
     }
-    assert_eq!(schemas.len(), 7, "expected all v1 schema documents");
+    assert_eq!(schemas.len(), 9, "expected all v1 schema documents");
 }
 
 #[test]

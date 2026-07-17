@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/RLTree/research-run/schemas/v1/experiment.schema.json",
+  "$id": "experiment.schema.json",
   "title": "Research Run ExperimentReceipt v1",
   "type": "object",
   "additionalProperties": false,
@@ -19,4 +19,3 @@
     "artifacts": { "type": "array", "maxItems": 128, "items": { "$ref": "types.schema.json#/$defs/artifactPointer" } }
   }
 }
-

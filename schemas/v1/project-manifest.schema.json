@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/RLTree/research-run/schemas/v1/project-manifest.schema.json",
+  "$id": "project-manifest.schema.json",
   "title": "Research Run ProjectManifest v1",
   "type": "object",
   "additionalProperties": false,
@@ -13,4 +13,3 @@
     "declared_roots": { "const": ["."] }
   }
 }
-

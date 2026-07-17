@@ -111,6 +111,13 @@ fn ai_drafts_evidence_and_retry_cannot_promote_a_claim() {
     let status: Value = serde_json::from_slice(&succeeds(&project.0, &["status", "--json"]).stdout)
         .expect("status JSON");
     assert_eq!(status["claims"][0]["assessment"], "unreviewed");
+    assert_eq!(
+        status["unreviewed_ai_drafts"]
+            .as_array()
+            .expect("AI drafts")
+            .len(),
+        3
+    );
 
     succeeds(
         &project.0,
@@ -133,6 +140,12 @@ fn ai_drafts_evidence_and_retry_cannot_promote_a_claim() {
         serde_json::from_slice(&succeeds(&project.0, &["status", "--json"]).stdout)
             .expect("reviewed status JSON");
     assert_eq!(reviewed["claims"][0]["assessment"], "supported");
+    assert!(
+        reviewed["unreviewed_ai_drafts"]
+            .as_array()
+            .expect("AI drafts")
+            .is_empty()
+    );
     assert!(
         reviewed["claim_ceiling"]
             .as_str()
@@ -281,6 +294,83 @@ fn interrupted_publication_requires_explicit_validated_recovery() {
             .exists()
     );
     succeeds(&project.0, &["validate", "--json"]);
+}
+
+#[test]
+fn recovery_rejects_pending_records_with_unknown_references() {
+    let project = workspace("recovery-reference");
+    let pending = project
+        .0
+        .join(".research-run/evidence/.evidence-invalid.json.999.0.tmp");
+    fs::write(
+        &pending,
+        r#"{
+  "schema_version": 1,
+  "kind": "evidence",
+  "id": "evidence-invalid",
+  "claim_id": "missing-claim",
+  "source_id": "missing-source",
+  "experiment_id": null,
+  "artifact": null,
+  "stance": "supports",
+  "specific_evidence": "This must not publish.",
+  "authorship": "human"
+}
+"#,
+    )
+    .expect("write invalid pending fixture");
+    let output = cli(&project.0, &["recover", "--json"]);
+    assert!(!output.status.success());
+    assert!(pending.exists());
+    assert!(
+        !project
+            .0
+            .join(".research-run/evidence/evidence-invalid.json")
+            .exists()
+    );
+}
+
+#[test]
+fn recovery_preflights_conflicting_pending_content_before_any_publication() {
+    let project = workspace("recovery-conflict");
+    let directory = project.0.join(".research-run/sources");
+    for (sequence, citation) in [("0", "First content"), ("1", "Conflicting content")] {
+        fs::write(
+            directory.join(format!(".source-conflict.json.999.{sequence}.tmp")),
+            format!(
+                "{{\n  \"schema_version\": 1,\n  \"kind\": \"source\",\n  \"id\": \"source-conflict\",\n  \"citation\": \"{citation}\",\n  \"locator\": \"local:conflict\",\n  \"provenance\": \"human\",\n  \"notes\": \"\"\n}}\n"
+            ),
+        )
+        .expect("write conflicting pending fixture");
+    }
+    let output = cli(&project.0, &["recover", "--json"]);
+    assert!(!output.status.success());
+    assert!(!directory.join("source-conflict.json").exists());
+}
+
+#[test]
+fn explicit_recovery_completes_init_interrupted_before_manifest_publication() {
+    let temporary = TempDir::new("recovery-init");
+    let project = temporary.0.join("partial-project");
+    let state = project.join(".research-run");
+    for directory in ["sources", "claims", "evidence", "experiments", "reviews"] {
+        fs::create_dir_all(state.join(directory)).expect("create partial workspace");
+    }
+    fs::write(
+        state.join(".manifest.json.999.0.tmp"),
+        r#"{
+  "schema_version": 1,
+  "kind": "project-manifest",
+  "project_id": "partial-project",
+  "name": "Partial project",
+  "declared_roots": ["."]
+}
+"#,
+    )
+    .expect("write pending manifest");
+    let project_text = project.to_string_lossy();
+    succeeds(&temporary.0, &["recover", &project_text, "--json"]);
+    succeeds(&project, &["validate", "--json"]);
 }
 
 #[cfg(unix)]

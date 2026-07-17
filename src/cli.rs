@@ -60,7 +60,7 @@ enum Command {
     /// Show deterministic current state and claim ceilings.
     Status(OutputArgs),
     /// Inspect and finish interrupted atomic publications.
-    Recover(OutputArgs),
+    Recover(RecoveryArgs),
 }
 
 #[derive(Debug, Subcommand)]
@@ -166,6 +166,14 @@ struct OutputArgs {
     json: bool,
 }
 
+#[derive(Debug, Args)]
+struct RecoveryArgs {
+    #[arg(default_value = ".")]
+    path: PathBuf,
+    #[arg(long)]
+    json: bool,
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum ProvenanceArg {
     Human,
@@ -214,6 +222,20 @@ fn execute(cli: Cli) -> Result<()> {
             "Initialized Research Run workspace at {}",
             workspace.root().display()
         );
+        return Ok(());
+    }
+    if let Command::Recover(output) = &cli.command {
+        let workspace = Workspace::for_recovery(&output.path)?;
+        let recovery = workspace.recover()?;
+        if output.json {
+            print_json(&recovery)?;
+        } else {
+            println!("Recovered publications: {}", recovery.recovered.len());
+            println!(
+                "Discarded identical pending files: {}",
+                recovery.discarded_identical.len()
+            );
+        }
         return Ok(());
     }
     let current =
@@ -364,18 +386,7 @@ fn execute(cli: Cli) -> Result<()> {
                 print_human_status(&status);
             }
         }
-        Command::Recover(output) => {
-            let recovery = workspace.recover()?;
-            if output.json {
-                print_json(&recovery)?;
-            } else {
-                println!("Recovered publications: {}", recovery.recovered.len());
-                println!(
-                    "Discarded identical pending files: {}",
-                    recovery.discarded_identical.len()
-                );
-            }
-        }
+        Command::Recover(_) => unreachable!("recover returned above"),
     }
     Ok(())
 }
@@ -436,6 +447,13 @@ fn print_human_status(status: &Status) {
             println!("  Blocker: {blocker}");
         }
         println!("  Next: {}", claim.next_action);
+    }
+    println!("\nUnreviewed AI drafts");
+    if status.unreviewed_ai_drafts.is_empty() {
+        println!("- None.");
+    }
+    for draft in &status.unreviewed_ai_drafts {
+        println!("- {}/{}: {}", draft.kind, draft.id, draft.reason);
     }
     println!("\nExperiments");
     if status.experiments.is_empty() {

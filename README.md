@@ -92,8 +92,10 @@ synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
 - Absolute paths, `..` traversal, and symlinks in workspace authority paths are
   rejected.
 - If a process stops between writing and publishing a record, validation reports
-  the pending file. `research-run recover` validates it before completing or
-  reconciling the publication. It never silently chooses conflicting content.
+  the pending file. `research-run recover [PATH]` validates schema, references,
+  paths, and current authority before completing or reconciling the publication.
+  An explicit path also recovers an `init` interrupted before its manifest was
+  published. Recovery never silently chooses conflicting content.
 - Diagnostics identify a path and invariant, not record bodies or secret values.
 
 Review decisions are local assertions made by the CLI user; v0.1 has no account

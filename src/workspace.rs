@@ -37,8 +37,10 @@ pub struct Status {
     pub format_version: u32,
     pub project: ProjectStatus,
     pub claim_ceiling: &'static str,
+    pub counts: BTreeMap<&'static str, usize>,
     pub claims: Vec<ClaimStatus>,
     pub experiments: Vec<ExperimentStatus>,
+    pub unreviewed_ai_drafts: Vec<AiDraftStatus>,
     pub blockers: Vec<String>,
     pub next_actions: Vec<String>,
 }
@@ -75,6 +77,13 @@ pub struct ExperimentStatus {
     pub interpretation: String,
     pub limitations: Vec<String>,
     pub next_move: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AiDraftStatus {
+    pub kind: &'static str,
+    pub id: String,
+    pub reason: &'static str,
 }
 
 #[derive(Debug, Serialize)]
@@ -150,6 +159,20 @@ impl Workspace {
         Err(Error::NotFound(
             "no Research Run workspace found; run 'research-run init' first".to_owned(),
         ))
+    }
+
+    pub fn for_recovery(root: &Path) -> Result<Self> {
+        let root = absolute_path(root)?;
+        reject_symlink_chain(&root)?;
+        let state = root.join(STATE_DIRECTORY);
+        reject_symlink_chain(&state)?;
+        if !state.is_dir() {
+            return Err(Error::NotFound(format!(
+                "no partial or complete Research Run workspace at {}",
+                root.display()
+            )));
+        }
+        Ok(Self { root, state })
     }
 
     pub fn root(&self) -> &Path {
@@ -267,6 +290,55 @@ impl Workspace {
         snapshot
             .experiments
             .sort_by(|left, right| left.id.cmp(&right.id));
+        let counts = snapshot.counts();
+        let reviewed_claims: BTreeSet<_> = snapshot
+            .reviews
+            .iter()
+            .map(|review| review.claim_id.as_str())
+            .collect();
+        let mut unreviewed_ai_drafts = Vec::new();
+        for source in &snapshot.sources {
+            let referenced_claims: Vec<_> = snapshot
+                .evidence
+                .iter()
+                .filter(|link| link.source_id.as_deref() == Some(source.id.as_str()))
+                .map(|link| link.claim_id.as_str())
+                .collect();
+            if source.provenance == crate::domain::SourceProvenance::Ai
+                && (referenced_claims.is_empty()
+                    || referenced_claims
+                        .iter()
+                        .any(|claim_id| !reviewed_claims.contains(claim_id)))
+            {
+                unreviewed_ai_drafts.push(AiDraftStatus {
+                    kind: "source",
+                    id: source.id.clone(),
+                    reason: "AI-provenance source is not covered by a claim review.",
+                });
+            }
+        }
+        for claim in &snapshot.claims {
+            if claim.authorship == Authorship::Ai && !reviewed_claims.contains(claim.id.as_str()) {
+                unreviewed_ai_drafts.push(AiDraftStatus {
+                    kind: "claim",
+                    id: claim.id.clone(),
+                    reason: "AI-authored claim lacks an explicit human review decision.",
+                });
+            }
+        }
+        for link in &snapshot.evidence {
+            if link.authorship == Authorship::Ai
+                && !reviewed_claims.contains(link.claim_id.as_str())
+            {
+                unreviewed_ai_drafts.push(AiDraftStatus {
+                    kind: "evidence",
+                    id: link.id.clone(),
+                    reason: "AI-authored evidence link is not covered by a claim review.",
+                });
+            }
+        }
+        unreviewed_ai_drafts
+            .sort_by(|left, right| (left.kind, &left.id).cmp(&(right.kind, &right.id)));
         let mut claims = Vec::with_capacity(snapshot.claims.len());
         for claim in snapshot.claims {
             let links: Vec<_> = snapshot
@@ -352,8 +424,10 @@ impl Workspace {
                 name: snapshot.manifest.name,
             },
             claim_ceiling: "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.",
+            counts,
             claims,
             experiments,
+            unreviewed_ai_drafts,
             blockers,
             next_actions,
         })
@@ -364,55 +438,193 @@ impl Workspace {
             recovered: Vec::new(),
             discarded_identical: Vec::new(),
         };
-        for directory in [
-            self.state.clone(),
-            self.state.join("sources"),
-            self.state.join("claims"),
-            self.state.join("evidence"),
-            self.state.join("experiments"),
-            self.state.join("reviews"),
-        ] {
-            reject_symlink_chain(&directory)?;
-            for entry in fs::read_dir(&directory)
-                .map_err(|error| Error::io("read recovery directory", &directory, error))?
+        self.recover_directory(&self.state, &mut result)?;
+        let snapshot = self.load_snapshot_allow_pending(true)?;
+        let errors = self.reference_errors(&snapshot);
+        if !errors.is_empty() {
+            return Err(Error::invalid(
+                "existing workspace",
+                "reference validation failed before recovery",
+            ));
+        }
+        for directory in ["sources", "claims", "experiments", "evidence", "reviews"] {
+            self.recover_directory(&self.state.join(directory), &mut result)?;
+        }
+        let final_snapshot = self.load_snapshot()?;
+        let errors = self.reference_errors(&final_snapshot);
+        if !errors.is_empty() {
+            return Err(Error::invalid(
+                "recovered workspace",
+                "reference validation failed after recovery",
+            ));
+        }
+        Ok(result)
+    }
+
+    fn recover_directory(&self, directory: &Path, result: &mut RecoveryResult) -> Result<()> {
+        reject_symlink_chain(directory)?;
+        let mut pending_effects = Vec::new();
+        for entry in fs::read_dir(directory)
+            .map_err(|error| Error::io("read recovery directory", directory, error))?
+        {
+            let entry =
+                entry.map_err(|error| Error::io("read recovery entry", directory, error))?;
+            let path = entry.path();
+            let Some(target_name) = interrupted_target_name(&path) else {
+                continue;
+            };
+            reject_symlink_chain(&path)?;
+            let target = directory.join(target_name);
+            let pending = read_bounded(&path)?;
+            pending_effects.push((path, target, pending));
+        }
+        pending_effects.sort_by(|left, right| left.0.cmp(&right.0));
+
+        let mut content_by_target: BTreeMap<PathBuf, Vec<u8>> = BTreeMap::new();
+        let mut pending_review_claims = BTreeSet::new();
+        for (_, target, pending) in &pending_effects {
+            self.validate_pending_record(directory, target, pending)?;
+            if let Some(existing) = content_by_target.get(target)
+                && existing != pending
             {
-                let entry =
-                    entry.map_err(|error| Error::io("read recovery entry", &directory, error))?;
-                let path = entry.path();
-                let Some(target_name) = interrupted_target_name(&path) else {
-                    continue;
-                };
-                reject_symlink_chain(&path)?;
-                let target = directory.join(target_name);
-                let pending = read_bounded(&path)?;
-                validate_pending(&directory, &target, &pending)?;
-                if target.exists() {
-                    let current = read_bounded(&target)?;
-                    if current != pending {
-                        return Err(Error::AmbiguousEffect(format!(
-                            "recovery conflict for {}; inspect both files",
-                            target.display()
-                        )));
-                    }
-                    fs::remove_file(&path).map_err(|error| {
-                        Error::io("remove identical pending file", &path, error)
+                return Err(Error::AmbiguousEffect(format!(
+                    "conflicting pending publications target {}; inspect them before recovery",
+                    target.display()
+                )));
+            }
+            content_by_target.insert(target.clone(), pending.clone());
+            if directory.file_name() == Some(OsStr::new("reviews")) {
+                let review: ReviewDecision =
+                    serde_json::from_slice(pending).map_err(|_| Error::MalformedJson {
+                        path: target.clone(),
                     })?;
-                    result
-                        .discarded_identical
-                        .push(target.display().to_string());
-                } else {
-                    fs::hard_link(&path, &target)
-                        .map_err(|error| Error::io("publish recovered record", &target, error))?;
-                    sync_directory(&directory)?;
-                    fs::remove_file(&path).map_err(|error| {
-                        Error::io("remove recovered pending file", &path, error)
-                    })?;
-                    sync_directory(&directory)?;
-                    result.recovered.push(target.display().to_string());
+                if !pending_review_claims.insert(review.claim_id.clone()) {
+                    return Err(Error::AmbiguousEffect(format!(
+                        "multiple pending review decisions target claim {}; inspect them before recovery",
+                        review.claim_id
+                    )));
                 }
             }
         }
-        Ok(result)
+
+        for (path, target, pending) in pending_effects {
+            if target.exists() {
+                let current = read_bounded(&target)?;
+                if current != pending {
+                    return Err(Error::AmbiguousEffect(format!(
+                        "recovery conflict for {}; inspect both files",
+                        target.display()
+                    )));
+                }
+                fs::remove_file(&path)
+                    .map_err(|error| Error::io("remove identical pending file", &path, error))?;
+                result
+                    .discarded_identical
+                    .push(target.display().to_string());
+            } else {
+                fs::hard_link(&path, &target)
+                    .map_err(|error| Error::io("publish recovered record", &target, error))?;
+                sync_directory(directory)?;
+                fs::remove_file(&path)
+                    .map_err(|error| Error::io("remove recovered pending file", &path, error))?;
+                sync_directory(directory)?;
+                result.recovered.push(target.display().to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_pending_record(&self, directory: &Path, target: &Path, bytes: &[u8]) -> Result<()> {
+        if directory.file_name() == Some(OsStr::new(STATE_DIRECTORY)) {
+            let manifest: ProjectManifest =
+                serde_json::from_slice(bytes).map_err(|_| Error::MalformedJson {
+                    path: target.to_path_buf(),
+                })?;
+            return manifest.validate();
+        }
+        let directory_name = directory
+            .file_name()
+            .and_then(OsStr::to_str)
+            .unwrap_or_default();
+        macro_rules! parse_record {
+            ($record_type:ty) => {{
+                let record: $record_type =
+                    serde_json::from_slice(bytes).map_err(|_| Error::MalformedJson {
+                        path: target.to_path_buf(),
+                    })?;
+                record.validate()?;
+                if target.file_stem().and_then(OsStr::to_str) != Some(record.id()) {
+                    return Err(Error::invalid(
+                        "recovery target",
+                        "filename does not match record id",
+                    ));
+                }
+                record
+            }};
+        }
+        match directory_name {
+            "sources" => {
+                let _: SourceRecord = parse_record!(SourceRecord);
+            }
+            "claims" => {
+                let _: ClaimRecord = parse_record!(ClaimRecord);
+            }
+            "experiments" => {
+                let record: ExperimentReceipt = parse_record!(ExperimentReceipt);
+                self.validate_artifact_paths(&record.artifacts)?;
+            }
+            "evidence" => {
+                let record: EvidenceLink = parse_record!(EvidenceLink);
+                self.require_existing_record::<ClaimRecord>("claims", &record.claim_id)?;
+                if let Some(source_id) = &record.source_id {
+                    self.require_existing_record::<SourceRecord>("sources", source_id)?;
+                }
+                if let Some(experiment_id) = &record.experiment_id {
+                    self.require_existing_record::<ExperimentReceipt>(
+                        "experiments",
+                        experiment_id,
+                    )?;
+                }
+                if let Some(locator) = &record.artifact {
+                    self.validate_workspace_path(locator)?;
+                }
+            }
+            "reviews" => {
+                let record: ReviewDecision = parse_record!(ReviewDecision);
+                self.require_existing_record::<ClaimRecord>("claims", &record.claim_id)?;
+                let reviews: Vec<ReviewDecision> = self.load_records("reviews", true)?;
+                if reviews
+                    .iter()
+                    .any(|existing| existing.claim_id == record.claim_id)
+                {
+                    return Err(Error::Conflict(format!(
+                        "claim {} already has a v0.1 review decision",
+                        record.claim_id
+                    )));
+                }
+            }
+            _ => {
+                return Err(Error::invalid(
+                    "recovery directory",
+                    "not a canonical record directory",
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn require_existing_record<T>(&self, directory: &str, id: &str) -> Result<()>
+    where
+        T: DeserializeOwned + CanonicalRecord,
+    {
+        let path = self.state.join(directory).join(format!("{id}.json"));
+        let record: T = read_json(&path).map_err(|_| {
+            Error::invalid(
+                "recovered record reference",
+                format!("{directory}/{id} is missing or invalid"),
+            )
+        })?;
+        record.validate()
     }
 
     fn publish_record<T: CanonicalRecord>(&self, directory: &str, record: &T) -> Result<bool> {
@@ -502,13 +714,17 @@ impl Workspace {
     }
 
     fn load_snapshot(&self) -> Result<Snapshot> {
+        self.load_snapshot_allow_pending(false)
+    }
+
+    fn load_snapshot_allow_pending(&self, allow_pending: bool) -> Result<Snapshot> {
         let snapshot = Snapshot {
             manifest: self.read_manifest()?,
-            sources: self.load_records("sources")?,
-            claims: self.load_records("claims")?,
-            evidence: self.load_records("evidence")?,
-            experiments: self.load_records("experiments")?,
-            reviews: self.load_records("reviews")?,
+            sources: self.load_records("sources", allow_pending)?,
+            claims: self.load_records("claims", allow_pending)?,
+            evidence: self.load_records("evidence", allow_pending)?,
+            experiments: self.load_records("experiments", allow_pending)?,
+            reviews: self.load_records("reviews", allow_pending)?,
         };
         ensure_unique_ids(
             snapshot.sources.iter().map(|record| record.id.as_str()),
@@ -533,7 +749,7 @@ impl Workspace {
         Ok(snapshot)
     }
 
-    fn load_records<T>(&self, directory: &str) -> Result<Vec<T>>
+    fn load_records<T>(&self, directory: &str, allow_pending: bool) -> Result<Vec<T>>
     where
         T: DeserializeOwned + CanonicalRecord,
     {
@@ -547,6 +763,9 @@ impl Workspace {
             let record_path = entry.path();
             reject_symlink_chain(&record_path)?;
             if interrupted_target_name(&record_path).is_some() {
+                if allow_pending {
+                    continue;
+                }
                 return Err(Error::AmbiguousEffect(format!(
                     "interrupted publication found at {}; run 'research-run recover'",
                     record_path.display()
@@ -833,47 +1052,6 @@ fn interrupted_target_name(path: &Path) -> Option<&str> {
         return None;
     }
     Some(target)
-}
-
-fn validate_pending(directory: &Path, target: &Path, bytes: &[u8]) -> Result<()> {
-    if directory.file_name() == Some(OsStr::new(STATE_DIRECTORY)) {
-        let manifest: ProjectManifest =
-            serde_json::from_slice(bytes).map_err(|_| Error::MalformedJson {
-                path: target.to_path_buf(),
-            })?;
-        return manifest.validate();
-    }
-    let directory_name = directory
-        .file_name()
-        .and_then(OsStr::to_str)
-        .unwrap_or_default();
-    macro_rules! validate_as {
-        ($record_type:ty) => {{
-            let record: $record_type =
-                serde_json::from_slice(bytes).map_err(|_| Error::MalformedJson {
-                    path: target.to_path_buf(),
-                })?;
-            record.validate()?;
-            if target.file_stem().and_then(OsStr::to_str) != Some(record.id()) {
-                return Err(Error::invalid(
-                    "recovery target",
-                    "filename does not match record id",
-                ));
-            }
-            Ok(())
-        }};
-    }
-    match directory_name {
-        "sources" => validate_as!(SourceRecord),
-        "claims" => validate_as!(ClaimRecord),
-        "evidence" => validate_as!(EvidenceLink),
-        "experiments" => validate_as!(ExperimentReceipt),
-        "reviews" => validate_as!(ReviewDecision),
-        _ => Err(Error::invalid(
-            "recovery directory",
-            "not a canonical record directory",
-        )),
-    }
 }
 
 fn sync_directory(path: &Path) -> Result<()> {
