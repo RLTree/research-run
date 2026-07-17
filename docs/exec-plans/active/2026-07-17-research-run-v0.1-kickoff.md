@@ -113,6 +113,18 @@ sensitive material, or a material product decision with no safe default.
   layered-core plus Rust-overlay gold stack. Python files and caches created by
   the implementation attempt were removed before commit. The behavioral journey
   and retry scenarios were retained as Rust acceptance tests.
-- Current claim ceiling: governance and test scenarios are present but product
-  implementation, package, install, runtime journey, GitHub PR, release, and
-  real-use claims remain unproven.
+- 2026-07-17: Rust implementation, package, adversarial cases, recovery repair,
+  and clean-clone installed-binary journey passed their distinct local surfaces.
+  Recovery commit `9e1d411b670eec4d2073cc775d8bf5081f841154` passed final bounded Round 2
+  signoff; no Round 3 was opened.
+- 2026-07-17: UltraGoal source manifest 0.0.12 at
+  `69787f20adcf0b99c7f3a26f71b35a215fda28d6` produced a conflicting 70-mutation
+  fit plan on the clean recovery candidate, with one conflict at Research Run's
+  `AGENTS.md`. The exact source commit also failed an independent build under its
+  warnings-as-errors policy, while the observed installed cache remains 0.0.11.
+  The plan was not applied; a compact repository-owned source-governance profile
+  is the bounded retrofit.
+- Current claim ceiling: local Rust source, package, recovery, and installed CLI
+  journey are supported on their named candidates. GitHub PR, release, real use,
+  scientific truth, exact 100% source coverage, and installed/discovered/runtime
+  UltraGoal activation remain unproven.

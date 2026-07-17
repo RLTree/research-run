@@ -46,17 +46,55 @@ directory publication.
 Run from the repository root:
 
 ```console
-cargo fmt --check
-cargo check --locked --all-targets
-cargo test --locked --all-targets
-cargo clippy --locked --all-targets -- -D warnings
-cargo package --locked --allow-dirty
+scripts/check fast
+scripts/check full
+scripts/check coverage
 cargo audit
 cargo deny check
 gitleaks detect --source . --no-banner --redact
 ```
 
-`cargo audit`, `cargo deny`, and `gitleaks` are stronger local gates when the
-tools are available; CI runs deterministic Cargo gates and a repository secret
-scan. Packaging, install smoke, the public CLI journey, GitHub branch/PR state,
-release, and real-user use remain separate proof surfaces.
+`scripts/check fast` is the inner loop. `scripts/check full` is the broad source
+and package gate and runs only when a source claim can move. `scripts/check
+coverage` requires `cargo-llvm-cov` and enforces 100% line coverage for an exact
+material source-coverage claim; the present candidate does not meet that bar, so
+that claim and full fitted-governance activation remain withheld. `cargo audit`,
+`cargo deny`, and `gitleaks` are stronger local gates when available. CI runs the
+deterministic Cargo gates and a repository secret scan. Packaging, install smoke,
+the public CLI journey, GitHub branch/PR state, release, and real-user use remain
+separate proof surfaces.
+
+## Audit cadence
+
+The review owner classifies the decision boundary before review. Signoff binds
+to a clean commit SHA unless an immutable artifact is named explicitly; a dirty
+worktree cannot satisfy it.
+
+| Trigger | Owner | Exact candidate identity | Proof surface | Claims withheld until pass |
+| --- | --- | --- | --- | --- |
+| Critical protected boundary changes or fails | Implementer plus required independent boundary reviewer | Clean `HEAD` and failing input or fixture digest | Named security, authority, recovery, or data-loss boundary | Every claim depending on that boundary |
+| Claim-bearing material integration, product, release, or completion boundary | Implementer; full four-persona team only here | Clean `HEAD`, lockfile digest, and current claim ceiling | Complete affected source and required package/install/runtime/journey evidence | Completion and every unproven downstream claim |
+| Bounded reversible change | Implementer; at most one targeted reviewer | Clean `HEAD` or named staged-diff digest | Focused affected tests and deterministic fast gates | Only the changed behavior claim |
+| Non-material docs or mechanical change | Owner | Clean `HEAD` or exact diff | Freshness/check surface | Only affected documentation or mechanical claim |
+| UltraGoal repository fit | Repository owner | Research Run clean `HEAD`, UltraGoal source commit, and plan digest | Source fit inspect/plan; verify only after safe accepted apply | Install, discovery, runtime-active, and full fitted-governance claims |
+
+Material boundary cadence is one exhaustive independent issue-set review, one
+coherent repair, and one final exact-candidate signoff attempt. A material final
+failure does not start Round 3: redesign, split or narrow the scope, withhold the
+claim, or defer only demonstrably nonblocking debt. Bounded reversible work uses
+focused checks and at most one targeted review. Non-material work uses owner
+review and deterministic checks only. Broad review is not repeated after each
+source increment.
+
+The recovery repair is exactly commit
+`9e1d411b670eec4d2073cc775d8bf5081f841154`, which passed bounded final Round 2
+signoff. Its UltraGoal 0.0.12 fit plan was `conflicting`: 70 proposed mutations,
+one conflict at Research Run-owned `AGENTS.md`, digest
+`sha256:a9fa6fbc512b6f27abfcc133f9ee4d4a4a87c5ffb37271c1179fcef0a40a7d36`.
+It was not accepted or applied. Source authority is manifest 0.0.12 at commit
+`69787f20adcf0b99c7f3a26f71b35a215fda28d6`; the observed installed cache is
+0.0.11. Building the exact source commit independently failed under its own
+warnings-as-errors policy, so local reproduction of the source CLI and full fit
+verification are unavailable. These facts support source-guided adaptation only;
+installed, discovered, runtime-active, and full fitted-governance claims remain
+withheld.

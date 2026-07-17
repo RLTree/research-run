@@ -105,7 +105,10 @@ as the human-authorship boundary.
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact
-gates. Source, tests, package creation, local install, runtime journey, CI, pull
-request, release, and real researcher use are separate proof surfaces. v0.1 does
-not include a GUI, service, sync, telemetry, database, LLM provider, or generic
-workflow engine.
+gates. Use `scripts/check fast` during implementation and `scripts/check full`
+when a source or package claim can move. `scripts/check coverage` is the separate
+100%-line source-coverage authority and requires `cargo-llvm-cov`; a test pass is
+not a coverage pass. Source, tests, package creation, local install, runtime
+journey, CI, pull request, release, and real researcher use are separate proof
+surfaces. v0.1 does not include a GUI, service, sync, telemetry, database, LLM
+provider, or generic workflow engine.
