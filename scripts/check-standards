@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+ledger="agent-standards/obligations.json"
+jq -e '
+  .schema_version == 1 and
+  (.source.commit == "69787f20adcf0b99c7f3a26f71b35a215fda28d6") and
+  (.package_delta.artifact == "harness-ultragoal-governance-complete.zip") and
+  (.package_delta.sha256 == "089382f27b64c6eb219b3a032296917dc8984129a52e56e63cb77ba66ba72377") and
+  (.package_delta.inventory == {"laws":160,"classified_items":172,"validator_issues":0}) and
+  (.namespace.boundary_exceptions | length == 2) and
+  (.namespace.boundary_exceptions | any(
+    .path == "src/lib.rs" and .class == "product_source" and
+    .allowed_name == "lib" and (.forcing_contract | startswith("Cargo library crate root")))) and
+  (.namespace.boundary_exceptions | any(
+    .path == "fixtures/namespace/red/phase4_rebind.rs" and
+    .class == "validator_fixture" and .allowed_name == "phase4_rebind" and
+    (.forcing_contract | startswith("HU-CORE-012")))) and
+  ([.package_delta.clusters[].law_count] | add == 160) and
+  (.package_delta.clusters | any(
+    .id == "typed-authority-proof-and-agent-legibility" and
+    (.evidence | index("scripts/check-standards")) and
+    (.evidence | index("scripts/check-coverage")) and
+    (.evidence | index("scripts/check-product-artifacts")))) and
+  (.package_delta.clusters | any(
+    .id == "rust-correctness-security-performance" and
+    (.evidence | index("scripts/check-dependencies")) and
+    (.evidence | index("scripts/check-mutations")) and
+    (.evidence | index("scripts/check-product-artifacts")))) and
+  (.package_delta.clusters | any(
+    .id == "minimal-local-gold-stack" and
+    (.evidence | index("scripts/check-dependencies")) and
+    (.evidence | index("scripts/check-product-artifacts")))) and
+  all(.package_delta.clusters[];
+    (.status == "mechanized" and
+      any(.evidence[]; test("^(scripts/|tests/|src/|Cargo\\.toml|rust-toolchain\\.toml|schemas/)"))) or
+    (.status == "not_applicable" and (.reason | length > 40))) and
+  ([.package_delta.clusters[].status] | index("in_progress") | not) and
+  (.obligations | length == 12) and
+  ([.obligations[].module] | unique | length == 12) and
+  all(.obligations[];
+    (.status == "mechanized" and (.evidence | length > 0)) or
+    (.status == "not_applicable" and (.reason | length > 20)))
+' "$ledger" >/dev/null || {
+  echo "standards obligation failure: every UltraGoal 0.0.12 module must be uniquely classified, with executable evidence or a concrete repository-specific non-applicability reason" >&2
+  echo "withheld: agent_standard_closure and material_completion" >&2
+  exit 1
+}
+
+for gate in scripts/check scripts/check-coverage scripts/check-standards \
+  scripts/check-dependencies scripts/check-mutations scripts/check-product-artifacts; do
+  if [[ ! -x "$gate" ]]; then
+    echo "standards obligation failure: claimed executable evidence $gate is missing or not executable" >&2
+    echo "withheld: agent_standard_closure and package_delta_closure" >&2
+    exit 1
+  fi
+done
+
+if rg -n '/Users/|/home/[^/]+/|Downloads/' AGENTS.md STANDARD.md policy.toml \
+  agent-standards docs README.md >/dev/null; then
+  echo "authority portability failure: tracked authority contains a host-specific absolute path" >&2
+  echo "withheld: source_governance and package_delta_closure" >&2
+  exit 1
+fi
+
+banned='(^|[_-])(goal|gate[0-9]*|phase[0-9]*|slice|lane|workstream|checkpoint|backlog|progress|todo|wip|production_proof|claim_closure|readiness_packet|finalization_work|helpers|utils|common|misc|shared|support|services|lib|core|internal(_[a-z0-9_-]+)?|fit_command|fit_path|fit_goal|fit_slice)([_-]|$)'
+
+check_name() {
+  local kind="$1" value="$2" location="$3"
+  if printf '%s\n' "$value" | rg -i -q "$banned"; then
+    echo "namespace violation: $location has $kind '$value'; it describes goal/process/proof work rather than product behavior. Rename it for the owned Research Run behavior, or add a typed boundary exception naming the forcing external contract. withheld: namespace_law and material_completion" >&2
+    return 1
+  fi
+}
+
+classify_path() {
+  case "$1" in
+    src/*) echo product_source ;;
+    tests/*) echo product_test ;;
+    agent-standards/*|docs/*|AGENTS.md|AGENT_STANDARDS.md|ARCHITECTURE.md|STANDARD.md|policy.toml) echo governance ;;
+    scripts/*|.github/*) echo check_authority ;;
+    schemas/*|examples/*) echo data_contract ;;
+    Cargo.toml|Cargo.lock|rust-toolchain.toml|deny.toml) echo cargo_substrate ;;
+    .gitignore|LICENSE|README.md) echo repository_metadata ;;
+    fixtures/*) echo validator_fixture ;;
+    target|target/*|mutants.out*|mutants.out*/*|*.crate) echo generated_ephemeral ;;
+    *) return 1 ;;
+  esac
+}
+
+while IFS= read -r path; do
+  class="$(classify_path "$path")" || {
+    echo "namespace classification failure: $path has no governed path class. Add one exact class and rerun scripts/check-standards. withheld: namespace_law and material_completion" >&2
+    exit 1
+  }
+  jq -e --arg class "$class" '.namespace.path_classes | any(.id == $class)' "$ledger" >/dev/null || {
+    echo "namespace classification failure: $path resolved to undeclared class $class" >&2
+    exit 1
+  }
+  if jq -e --arg path "$path" '.namespace.boundary_exceptions | any(.path == $path)' "$ledger" >/dev/null; then
+    jq -e --arg path "$path" --arg class "$class" '.namespace.boundary_exceptions | any(
+      .path == $path and .class == $class and
+      (.allowed_name | length > 0) and (.forcing_contract | length > 20))' "$ledger" >/dev/null || {
+      echo "namespace exception failure: $path lacks an exact class, allowed name, and forcing contract" >&2
+      exit 1
+    }
+    continue
+  fi
+  case "$path" in
+    fixtures/namespace/tamper/exception.json) ;;
+  esac
+  IFS='/' read -r -a segments <<< "$path"
+  for segment in "${segments[@]}"; do
+    semantic_segment="${segment%%.*}"
+    check_name "path segment" "$semantic_segment" "$path"
+  done
+done < <(git ls-files --cached --others --exclude-standard)
+
+while IFS= read -r path; do
+  path="${path%/}"
+  class="$(classify_path "$path")" || {
+    echo "namespace classification failure: ignored generated path $path has no governed path class" >&2
+    exit 1
+  }
+  if [[ "$class" != "generated_ephemeral" ]]; then
+    echo "namespace classification failure: ignored path $path is not classified as generated ephemeral output" >&2
+    exit 1
+  fi
+done < <(git status --ignored --short | awk '$1 == "!!" { print $2 }')
+
+while IFS=: read -r path line declaration; do
+  symbol="$(printf '%s\n' "$declaration" | sed -E 's/.*\b(fn|struct|enum|trait|const|static|mod)[[:space:]]+([A-Za-z0-9_]+).*/\2/')"
+  case "$symbol" in
+    reviewer|Status) continue ;;
+  esac
+  check_name "Rust symbol" "$symbol" "$path:$line"
+done < <(rg -n --no-heading '^[[:space:]]*(pub([[:space:]]*\([^)]*\))?[[:space:]]+)?(async[[:space:]]+)?(fn|struct|enum|trait|const|static|mod)[[:space:]]+[A-Za-z0-9_]+' src tests)
+
+check_name "green fixture symbol" "publish_review_decision" "fixtures/namespace/green/review_decision.rs"
+if check_name "red fixture symbol" "phase4_rebind" "fixtures/namespace/red/phase4_rebind.rs" >/dev/null 2>&1; then
+  echo "namespace fixture failure: red phase name was accepted" >&2
+  exit 1
+fi
+if check_name "tamper fixture symbol" "fit_slice" "fixtures/namespace/tamper/exception.json" >/dev/null 2>&1; then
+  echo "namespace fixture failure: a goal-vocabulary exception bypassed validation" >&2
+  exit 1
+fi
+
+semantic_failure=0
+while IFS= read -r file; do
+  if [[ "$file" == src/*_tests.rs || "$file" == src/*_tests/* || "$file" == tests/* ]]; then
+    cap=400
+    class="test"
+  else
+    cap=300
+    class="production"
+  fi
+  noncomment="$(awk '
+    BEGIN { block=0; count=0 }
+    {
+      line=$0
+      if (block) {
+        if (line ~ /\*\//) { sub(/^.*\*\//, "", line); block=0 } else next
+      }
+      while (line ~ /\/\*/) {
+        before=line; sub(/\/\*.*/, "", before)
+        rest=line; sub(/^.*\/\*/, "", rest)
+        if (rest ~ /\*\//) { sub(/^.*\*\//, "", rest); line=before rest } else { line=before; block=1; break }
+      }
+      sub(/^[[:space:]]+/, "", line)
+      if (line != "" && line !~ /^\/\//) count++
+    }
+    END { print count }
+  ' "$file")"
+  if (( noncomment > cap )); then
+    echo "semantic tree violation: $file has $noncomment noncomment lines; $class Rust files are capped at $cap. Split by owned behavior. withheld: source_compliance and product_cohesion" >&2
+    semantic_failure=1
+  fi
+
+  awk -v file="$file" '
+    function braces(text, opened_text, closed_text) {
+      opened_text=text; closed_text=text
+      return gsub(/{/, "", opened_text) - gsub(/}/, "", closed_text)
+    }
+    BEGIN { active=0; opened=0; depth=0; start=0; name="" }
+    /^[[:space:]]*(pub([[:space:]]*\([^)]*\))?[[:space:]]+)?(async[[:space:]]+)?fn[[:space:]]+[A-Za-z0-9_]+/ {
+      if (!active) {
+        active=1; start=NR; name=$0
+        sub(/^.*fn[[:space:]]+/, "", name); sub(/[^A-Za-z0-9_].*$/, "", name)
+      }
+    }
+    active {
+      delta=braces($0); depth+=delta
+      if ($0 ~ /{/) opened=1
+      if (opened && depth==0) {
+        span=NR-start+1
+        if (span>80) {
+          printf "semantic tree violation: %s:%d function %s spans %d lines; functions are capped at 80. Split by owned behavior. withheld: source_compliance and product_cohesion\n", file, start, name, span > "/dev/stderr"
+          failures=1
+        }
+        active=0; opened=0; depth=0
+      }
+    }
+    END { exit failures }
+  ' "$file" || semantic_failure=1
+done < <(find src tests -type f -name '*.rs' -print | sort)
+
+if (( semantic_failure != 0 )); then
+  exit 1
+fi
+
+echo "standards obligations: 12 source modules and 160 package laws closed; all paths classified; namespace and semantic-tree fixtures passed"

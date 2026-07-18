@@ -10,4 +10,9 @@ if ! cargo llvm-cov --version >/dev/null 2>&1; then
   exit 2
 fi
 
-exec cargo llvm-cov --locked --all-targets --fail-under-lines 100
+cargo llvm-cov clean --workspace
+exec cargo llvm-cov --locked --test product \
+  --ignore-filename-regex '(_tests(/|\.rs$)|tests/)' \
+  --fail-under-lines 100 \
+  --fail-under-functions 100 \
+  --fail-under-regions 100

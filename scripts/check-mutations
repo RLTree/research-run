@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+selection='parse_artifact|validate_id|reject_symlink_chain|WorkspaceWriteLock::acquire|Workspace::publish_bytes|inspect_publication|link_canonical|Workspace::preflight_recovery|commit_recovery|terminal_text|source_requires_review|claim_assessment'
+
+RUSTFLAGS='--cfg coverage --check-cfg=cfg(coverage)' cargo mutants \
+  --cap-lints true \
+  --test-tool nextest \
+  --jobs 4 \
+  --timeout 60 \
+  --build-timeout 60 \
+  --baseline run \
+  --re "$selection" \
+  -- --test product
+
+outcomes="mutants.out/outcomes.json"
+jq -e '
+  all(.outcomes[];
+    .summary == "Success" or
+    .summary == "CaughtMutant" or
+    .summary == "Unviable") and
+  ([.outcomes[] | select(.summary == "CaughtMutant")] | length > 0)
+' "$outcomes" >/dev/null || {
+  echo "mutation failure: selected boundary set contains a missed, timed-out, or otherwise unresolved mutant" >&2
+  echo "withheld: mutation_proof and package_delta_closure" >&2
+  exit 1
+}
+
+caught="$(jq '[.outcomes[] | select(.summary == "CaughtMutant")] | length' "$outcomes")"
+unbuildable="$(jq '[.outcomes[] | select(.summary == "Unviable")] | length' "$outcomes")"
+echo "bounded mutation proof: $caught viable mutants killed; $unbuildable mutants classified unbuildable by compiler output in mutants.out/log"

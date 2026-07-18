@@ -1,6 +1,6 @@
 policy_version = 1
 product_language = "rust"
-rust_toolchain = "1.95.0"
+rust_toolchain = "1.97.1"
 canonical_format = "json"
 canonical_format_version = 1
 unsafe_code = "forbid"
@@ -17,6 +17,7 @@ retry_can_promote = false
 [budgets]
 max_record_bytes = 1048576
 max_records_per_kind = 10000
+max_snapshot_bytes = 67108864
 max_text_bytes = 65536
 max_list_items = 256
 max_artifact_pointers = 128
@@ -38,7 +39,32 @@ fast = "scripts/check fast"
 full = "scripts/check full"
 coverage = "scripts/check coverage"
 coverage_line_floor = 100
+coverage_function_floor = 100
+coverage_region_floor = 100
 coverage_tool = "cargo-llvm-cov"
+coverage_target = "product integration test"
+normal_test_runner = "cargo-nextest"
+doctest_runner = "cargo test --doc"
+standards = "scripts/check-standards"
+dependencies = "scripts/check dependencies"
+mutations = "scripts/check mutations"
+product_artifacts = "scripts/check artifacts"
+production_source_noncomment_lines_max = 300
+test_source_noncomment_lines_max = 400
+function_lines_max = 80
+
+[observations]
+machine_local_only = true
+regression_budget = "withheld_until_representative_history_exists"
+timer_resolution_seconds = 0.01
+
+[governance_package]
+artifact = "harness-ultragoal-governance-complete.zip"
+sha256 = "089382f27b64c6eb219b3a032296917dc8984129a52e56e63cb77ba66ba72377"
+laws = 160
+classified_items = 172
+validator_issues = 0
+authority = "validated_source_guidance_only"
 
 [review]
 critical_boundaries_block = true

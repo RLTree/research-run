@@ -107,6 +107,13 @@ sensitive material, or a material product decision with no safe default.
 
 ## Living progress
 
+- 2026-07-17: A new security/coverage/standards hardening goal superseded the
+  completed v0.1 build goal without reopening accepted commits. Initial Codex
+  Security scan `d6d92c2b-242a-4232-bcb1-1c9b8f96ed4c` sealed 11 low findings
+  and 17 mandatory repair boundaries on exact commit `8949454`. One coherent
+  repair is in progress; final security, coverage, package/install, CI, and
+  product claims remain withheld until exact-candidate proof passes.
+
 - 2026-07-17: Durable goal created; implementation is running on
   `codex/research-run-v0.1-build` from the grounded kickoff commit.
 - 2026-07-17: Tree superseded the initial uncommitted Python decision with the

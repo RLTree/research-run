@@ -2,7 +2,7 @@
 name = "research-run"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.97.1"
 description = "Local-first, provenance-bound research evidence ledger"
 license = "MIT"
 repository = "https://github.com/RLTree/research-run"
@@ -20,7 +20,9 @@ lto = "thin"
 strip = "symbols"
 
 [lints.rust]
+warnings = "deny"
 unsafe_code = "forbid"
+unexpected_cfgs = { level = "deny", check-cfg = ['cfg(coverage)'] }
 
 [lints.clippy]
 all = { level = "deny", priority = -1 }

@@ -15,7 +15,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.95.0 --profile minimal --component clippy,rustfmt
+        run: rustup toolchain install 1.97.1 --profile minimal --component clippy,rustfmt
       - name: Check formatting
         run: cargo fmt --check
       - name: Check all targets

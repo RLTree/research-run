@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "source": {
+    "name": "harness-ultragoal",
+    "manifest_version": "0.0.12",
+    "commit": "69787f20adcf0b99c7f3a26f71b35a215fda28d6",
+    "authority": "source-guidance-only",
+    "supersession": "Decision-boundary cadence in STANDARD.md supersedes module 05 four-persona-every-material-round wording."
+  },
+  "package_delta": {
+    "artifact": "harness-ultragoal-governance-complete.zip",
+    "sha256": "089382f27b64c6eb219b3a032296917dc8984129a52e56e63cb77ba66ba72377",
+    "inventory": {
+      "laws": 160,
+      "classified_items": 172,
+      "validator_issues": 0
+    },
+    "authority": "validated-source-guidance-only",
+    "clusters": [
+      {
+        "id": "typed-authority-proof-and-agent-legibility",
+        "law_ranges": ["HU-CORE-001", "HU-CORE-003:007", "HU-CORE-011:023", "HU-CORE-025:027", "HU-CORE-031:040"],
+        "law_count": 32,
+        "status": "mechanized",
+        "evidence": ["scripts/check-standards", "scripts/check-coverage", "scripts/check-product-artifacts", "tests/product/repository_authority.rs", "tests/product/researcher_journey.rs"],
+        "claim_impact": "source_compliance, proof_surface_separation, product_cohesion",
+        "reason": "Typed records, claim ceilings, classified paths, semantic tree limits, deterministic gates, and product journeys are executable."
+      },
+      {
+        "id": "rust-correctness-security-performance",
+        "law_ranges": ["HU-RUST-001:016", "HU-RUST-019:027", "HU-RUST-029", "HU-RUST-031", "HU-RUST-034:035", "HU-RUST-037:039"],
+        "law_count": 32,
+        "status": "mechanized",
+        "evidence": ["rust-toolchain.toml", "Cargo.toml", "scripts/check", "scripts/check-coverage", "scripts/check-dependencies", "scripts/check-mutations", "scripts/check-product-artifacts", "scripts/check-standards", "tests/product/resilience.rs"],
+        "claim_impact": "rust_source, test, coverage, package, local_runtime",
+        "reason": "Pinned Cargo authority, warning denial, typed boundaries, semantic limits, exact coverage, bounded mutation, dependency checks, atomic recovery, and resource cleanup have executable gates."
+      },
+      {
+        "id": "minimal-local-gold-stack",
+        "law_ranges": ["HU-GOLD-001:005", "HU-GOLD-022:025", "HU-GOLD-031", "HU-GOLD-037:039"],
+        "law_count": 13,
+        "status": "mechanized",
+        "evidence": ["scripts/check", "scripts/check-dependencies", "scripts/check-product-artifacts", "scripts/check-standards", "schemas/v1", "tests/product/researcher_journey.rs", "policy.toml"],
+        "claim_impact": "architecture, local_ci_parity, compactness, failure_grammar",
+        "reason": "The repository keeps one local Rust CLI, versioned schemas, one command graph, explicit budgets, and no untriggered infrastructure."
+      },
+      {
+        "id": "distribution-receipt-control-plane",
+        "law_ranges": ["HU-CORE-002", "HU-CORE-008:010", "HU-CORE-024", "HU-CORE-028:030"],
+        "law_count": 8,
+        "status": "not_applicable",
+        "evidence": ["policy.toml", "STANDARD.md"],
+        "claim_impact": "ultragoal_install, ultragoal_discovery, ultragoal_runtime_activation remain withheld",
+        "reason": "Research Run consumes package law as source guidance and is not the UltraGoal distribution, receipt issuer, final-packet builder, or installed control plane."
+      },
+      {
+        "id": "rust-untriggered-specialists-and-release",
+        "law_ranges": ["HU-RUST-017:018", "HU-RUST-028", "HU-RUST-030", "HU-RUST-032:033", "HU-RUST-036", "HU-RUST-040"],
+        "law_count": 8,
+        "status": "not_applicable",
+        "evidence": ["Cargo.toml", "policy.toml"],
+        "claim_impact": "fuzz, compile_fail, async, daemon, telemetry, official_release, overlay_enforcement claims unavailable",
+        "reason": "The bounded CLI has no macros or type-state API, shared ownership graph, async tasks, daemon, telemetry backend, official release, or downstream policy-enforcement role; deterministic parser matrices cover its finite inputs without new fuzz dependencies."
+      },
+      {
+        "id": "gold-stack-untriggered-services-and-release",
+        "law_ranges": ["HU-GOLD-006:021", "HU-GOLD-026:030", "HU-GOLD-032:036", "HU-GOLD-040"],
+        "law_count": 27,
+        "status": "not_applicable",
+        "evidence": ["Cargo.toml", "policy.toml"],
+        "claim_impact": "generated_client, service, database, telemetry, infrastructure, production_slo, release claims unavailable",
+        "reason": "No generated client lane, Python, database, cache, queue, service, telemetry backend, cloud infrastructure, production SLO, signing, or release boundary exists in v0.1."
+      },
+      {
+        "id": "typescript-ui-overlay",
+        "law_ranges": ["HU-TS-001:040"],
+        "law_count": 40,
+        "status": "not_applicable",
+        "evidence": ["Cargo.toml", "policy.toml"],
+        "claim_impact": "typescript and UI claims unavailable",
+        "reason": "No TypeScript, JavaScript, browser, SvelteKit, or UI paths exist; adding that overlay would violate the measured-activation and minimal-architecture laws."
+      }
+    ]
+  },
+  "namespace": {
+    "path_classes": [
+      {"id": "product_source", "pattern": "src/**"},
+      {"id": "product_test", "pattern": "tests/**"},
+      {"id": "governance", "pattern": "agent-standards/**|docs/**|AGENTS.md|AGENT_STANDARDS.md|ARCHITECTURE.md|STANDARD.md|policy.toml"},
+      {"id": "check_authority", "pattern": "scripts/**|.github/**"},
+      {"id": "data_contract", "pattern": "schemas/**|examples/**"},
+      {"id": "cargo_substrate", "pattern": "Cargo.toml|Cargo.lock|rust-toolchain.toml|deny.toml"},
+      {"id": "repository_metadata", "pattern": ".gitignore|LICENSE|README.md"},
+      {"id": "validator_fixture", "pattern": "fixtures/**"},
+      {"id": "generated_ephemeral", "pattern": "target/**|mutants.out*/**|*.crate"}
+    ],
+    "boundary_exceptions": [
+      {
+        "path": "src/lib.rs",
+        "class": "product_source",
+        "allowed_name": "lib",
+        "forcing_contract": "Cargo library crate root and published Rust crate API boundary"
+      },
+      {
+        "path": "fixtures/namespace/red/phase4_rebind.rs",
+        "class": "validator_fixture",
+        "allowed_name": "phase4_rebind",
+        "forcing_contract": "HU-CORE-012 red fixture must contain rejected process vocabulary"
+      }
+    ]
+  },
+  "obligations": [
+    {
+      "id": "namespace-progressive-disclosure",
+      "module": "01",
+      "status": "mechanized",
+      "evidence": [
+        "scripts/check-standards",
+        "fixtures/namespace"
+      ],
+      "reason": "Tracked and untracked hand-authored paths and Rust symbols receive contextual validation; ignored generated roots receive an explicit ephemeral classification."
+    },
+    {
+      "id": "boundaries-validation-enforcement",
+      "module": "02",
+      "status": "mechanized",
+      "evidence": [
+        "scripts/check",
+        "scripts/check-coverage",
+        "scripts/check-standards"
+      ],
+      "reason": "Cargo, coverage, standards, red, green, and tamper checks are executable."
+    },
+    {
+      "id": "execplans-worktrees-orchestration",
+      "module": "03",
+      "status": "mechanized",
+      "evidence": [
+        "docs/exec-plans/active/2026-07-17-research-run-v0.1-kickoff.md",
+        "STANDARD.md"
+      ],
+      "reason": "One living ExecPlan and single-root execution are current authority."
+    },
+    {
+      "id": "security-reliability-product-cohesion",
+      "module": "04",
+      "status": "mechanized",
+      "evidence": [
+        "tests/product/workspace_defense.rs",
+        "tests/product/researcher_journey.rs",
+        "scripts/check"
+      ],
+      "reason": "Security, recovery, negative, and installed-binary journey surfaces are executable."
+    },
+    {
+      "id": "review-completion",
+      "module": "05",
+      "status": "mechanized",
+      "evidence": [
+        "STANDARD.md",
+        "policy.toml"
+      ],
+      "reason": "Bounded decision-boundary review cadence and claim ceilings are explicit."
+    },
+    {
+      "id": "standards-gardening",
+      "module": "06",
+      "status": "mechanized",
+      "evidence": [
+        "scripts/check-standards",
+        "agent-standards/obligations.json"
+      ],
+      "reason": "Applicable obligations and regression fixtures are durable and checked."
+    },
+    {
+      "id": "cli-authority-proof-surfaces",
+      "module": "07",
+      "status": "mechanized",
+      "evidence": [
+        "AGENTS.md",
+        "STANDARD.md",
+        "policy.toml"
+      ],
+      "reason": "Typed CLI authority and distinct proof surfaces are routed and checked."
+    },
+    {
+      "id": "observability-repair-loop",
+      "module": "08",
+      "status": "not_applicable",
+      "evidence": [
+        "STANDARD.md"
+      ],
+      "reason": "Research Run v0.1 is a bounded local CLI with no measured trigger for an observability stack; command errors and focused checks supply the current repair loop."
+    },
+    {
+      "id": "product-success-quality-in-use",
+      "module": "09",
+      "status": "mechanized",
+      "evidence": [
+        "docs/exec-plans/active/2026-07-17-research-run-v0.1-kickoff.md",
+        "tests/product/researcher_journey.rs"
+      ],
+      "reason": "The kickoff owns the job, outcomes, claim ceiling, and representative journey for the current v0.1 product claim."
+    },
+    {
+      "id": "plugin-activation-distribution",
+      "module": "10",
+      "status": "not_applicable",
+      "evidence": [
+        "STANDARD.md",
+        "policy.toml"
+      ],
+      "reason": "Research Run is the governed product repository, not the UltraGoal plugin distribution; source, install, cache, and runtime claims stay separate and withheld."
+    },
+    {
+      "id": "research-improvement-quality-gates",
+      "module": "11",
+      "status": "mechanized",
+      "evidence": [
+        "docs/research/2026-07-17-v0.1-evidence-and-decisions.md",
+        "scripts/check"
+      ],
+      "reason": "Current research authority, decisions, and quality gates are routed."
+    },
+    {
+      "id": "tool-risk-runtime-substrates",
+      "module": "12",
+      "status": "mechanized",
+      "evidence": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "deny.toml",
+        "rust-toolchain.toml"
+      ],
+      "reason": "The pinned Rust substrate and minimal dependency closure are explicit and auditable."
+    }
+  ]
+}
