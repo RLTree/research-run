@@ -113,6 +113,13 @@ sensitive material, or a material product decision with no safe default.
   and 17 mandatory repair boundaries on exact commit `8949454`. One coherent
   repair is in progress; final security, coverage, package/install, CI, and
   product claims remain withheld until exact-candidate proof passes.
+- 2026-07-17: Coherent hardening commit
+  `8d310e64183126cb0ad9353d4d6555ef05a81b61` passed the broad clean-candidate
+  gate: 100% production lines/functions/regions, all 50 viable selected mutants
+  killed with 11 compiler-unbuildable, all 160 package laws classified, audit,
+  deny, dependency duplication, SBOM, gitleaks, package/install, installed
+  journey, and machine-local performance/size observations. Final security scan,
+  final documentation candidate gates, push, and GitHub checks remain open.
 
 - 2026-07-17: Durable goal created; implementation is running on
   `codex/research-run-v0.1-build` from the grounded kickoff commit.
@@ -131,7 +138,8 @@ sensitive material, or a material product decision with no safe default.
   warnings-as-errors policy, while the observed installed cache remains 0.0.11.
   The plan was not applied; a compact repository-owned source-governance profile
   is the bounded retrofit.
-- Current claim ceiling: local Rust source, package, recovery, and installed CLI
-  journey are supported on their named candidates. GitHub PR, release, real use,
-  scientific truth, exact 100% source coverage, and installed/discovered/runtime
-  UltraGoal activation remain unproven.
+- Current claim ceiling: exact Rust source coverage, package, recovery, and
+  installed CLI journey are supported on hardening commit `8d310e6`. GitHub on
+  the final candidate, final Codex Security revalidation, release, real use,
+  scientific truth, and installed/discovered/runtime UltraGoal activation remain
+  unproven.
