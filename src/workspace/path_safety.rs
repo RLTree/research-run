@@ -110,11 +110,11 @@ pub(super) fn reject_symlink_chain(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn is_allowed_platform_alias(path: &Path, _metadata: &fs::Metadata) -> bool {
+fn is_allowed_platform_alias(_path: &Path, _metadata: &fs::Metadata) -> bool {
     #[cfg(target_os = "macos")]
     {
-        path == Path::new("/var")
-            && fs::read_link(path).is_ok_and(|target| target == Path::new("private/var"))
+        _path == Path::new("/var")
+            && fs::read_link(_path).is_ok_and(|target| target == Path::new("private/var"))
     }
     #[cfg(not(target_os = "macos"))]
     {
