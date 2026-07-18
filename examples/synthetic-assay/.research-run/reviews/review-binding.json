@@ -1,0 +1,10 @@
+{
+  "claim_id": "claim-binding",
+  "decision": "limited",
+  "id": "review-binding",
+  "kind": "review",
+  "rationale": "The source supports the claim, but the negative repeat limits it.",
+  "reviewer": "Example Researcher",
+  "schema_version": 1
+}
+

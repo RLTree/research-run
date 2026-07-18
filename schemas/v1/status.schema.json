@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "status.schema.json",
+  "title": "Research Run deterministic status projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "project", "claim_ceiling", "counts", "claims", "experiments", "unreviewed_ai_drafts", "blockers", "next_actions"],
+  "properties": {
+    "format_version": { "const": 1 },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "types.schema.json#/$defs/id" },
+        "name": { "$ref": "types.schema.json#/$defs/text" }
+      }
+    },
+    "claim_ceiling": { "$ref": "types.schema.json#/$defs/text" },
+    "counts": { "$ref": "validation.schema.json#/$defs/counts" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "scope", "assessment", "evidence", "blockers", "next_action"],
+        "properties": {
+          "id": { "$ref": "types.schema.json#/$defs/id" },
+          "text": { "$ref": "types.schema.json#/$defs/text" },
+          "scope": { "$ref": "types.schema.json#/$defs/text" },
+          "assessment": { "enum": ["unsupported", "limited", "supported", "contradicted", "unreviewed"] },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "stance", "authorship"],
+              "properties": {
+                "id": { "$ref": "types.schema.json#/$defs/id" },
+                "stance": { "enum": ["supports", "limits", "contradicts", "context"] },
+                "authorship": { "$ref": "types.schema.json#/$defs/authorship" }
+              }
+            }
+          },
+          "blockers": { "type": "array", "items": { "$ref": "types.schema.json#/$defs/text" } },
+          "next_action": { "$ref": "types.schema.json#/$defs/text" }
+        }
+      }
+    },
+    "experiments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "outcome", "observations", "interpretation", "limitations", "next_move"],
+        "properties": {
+          "id": { "$ref": "types.schema.json#/$defs/id" },
+          "outcome": { "enum": ["positive", "negative", "ambiguous", "inconclusive"] },
+          "observations": { "type": "array", "items": { "$ref": "types.schema.json#/$defs/text" } },
+          "interpretation": { "$ref": "types.schema.json#/$defs/text" },
+          "limitations": { "type": "array", "items": { "$ref": "types.schema.json#/$defs/text" } },
+          "next_move": { "$ref": "types.schema.json#/$defs/text" }
+        }
+      }
+    },
+    "unreviewed_ai_drafts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "id", "reason"],
+        "properties": {
+          "kind": { "enum": ["source", "claim", "evidence"] },
+          "id": { "$ref": "types.schema.json#/$defs/id" },
+          "reason": { "$ref": "types.schema.json#/$defs/text" }
+        }
+      }
+    },
+    "blockers": { "type": "array", "items": { "$ref": "types.schema.json#/$defs/text" } },
+    "next_actions": { "type": "array", "items": { "$ref": "types.schema.json#/$defs/text" } }
+  }
+}

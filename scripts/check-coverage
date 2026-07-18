@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+if ! cargo llvm-cov --version >/dev/null 2>&1; then
+  echo "coverage blocker: cargo-llvm-cov is not installed" >&2
+  echo "withheld: exact_source_coverage and full_fitted_governance" >&2
+  exit 2
+fi
+
+exec cargo llvm-cov --locked --all-targets --fail-under-lines 100

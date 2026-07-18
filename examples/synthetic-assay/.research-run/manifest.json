@@ -1,0 +1,10 @@
+{
+  "declared_roots": [
+    "."
+  ],
+  "kind": "project-manifest",
+  "name": "Synthetic assay",
+  "project_id": "synthetic-assay",
+  "schema_version": 1
+}
+

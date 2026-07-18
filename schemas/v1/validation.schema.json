@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "validation.schema.json",
+  "title": "Research Run validation projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["valid", "errors", "counts"],
+  "properties": {
+    "valid": { "type": "boolean" },
+    "errors": { "type": "array", "items": { "$ref": "types.schema.json#/$defs/text" } },
+    "counts": { "$ref": "#/$defs/counts" }
+  },
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "claim": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "evidence": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "experiment": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "review": { "type": "integer", "minimum": 0, "maximum": 10000 }
+      }
+    }
+  }
+}

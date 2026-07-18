@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evidence.schema.json",
+  "title": "Research Run EvidenceLink v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "claim_id", "source_id", "experiment_id", "artifact", "stance", "specific_evidence", "authorship"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "evidence" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "claim_id": { "$ref": "types.schema.json#/$defs/id" },
+    "source_id": { "oneOf": [{ "$ref": "types.schema.json#/$defs/id" }, { "type": "null" }] },
+    "experiment_id": { "oneOf": [{ "$ref": "types.schema.json#/$defs/id" }, { "type": "null" }] },
+    "artifact": { "oneOf": [{ "$ref": "types.schema.json#/$defs/text" }, { "type": "null" }] },
+    "stance": { "enum": ["supports", "limits", "contradicts", "context"] },
+    "specific_evidence": { "$ref": "types.schema.json#/$defs/text" },
+    "authorship": { "$ref": "types.schema.json#/$defs/authorship" }
+  },
+  "oneOf": [
+    { "properties": { "source_id": { "type": "string" }, "experiment_id": { "type": "null" }, "artifact": { "type": "null" } } },
+    { "properties": { "source_id": { "type": "null" }, "experiment_id": { "type": "string" }, "artifact": { "type": "null" } } },
+    { "properties": { "source_id": { "type": "null" }, "experiment_id": { "type": "null" }, "artifact": { "type": "string" } } }
+  ]
+}

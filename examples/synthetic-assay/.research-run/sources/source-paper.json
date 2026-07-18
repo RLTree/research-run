@@ -1,0 +1,10 @@
+{
+  "citation": "Synthetic Paper (2026)",
+  "id": "source-paper",
+  "kind": "source",
+  "locator": "https://example.invalid/paper",
+  "notes": "Synthetic and fully deidentified example source.",
+  "provenance": "human",
+  "schema_version": 1
+}
+

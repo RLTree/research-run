@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+mode="${1:-fast}"
+
+case "$mode" in
+  fast)
+    cargo fmt --check
+    cargo check --locked --all-targets
+    cargo test --locked --test repository_governance
+    ;;
+  full)
+    cargo fmt --check
+    cargo check --locked --all-targets
+    cargo test --locked --all-targets
+    cargo clippy --locked --all-targets -- -D warnings
+    cargo package --locked
+    ;;
+  coverage)
+    exec "$repo_root/scripts/check-coverage"
+    ;;
+  *)
+    echo "usage: scripts/check {fast|full|coverage}" >&2
+    exit 2
+    ;;
+esac

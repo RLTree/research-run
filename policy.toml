@@ -1,0 +1,61 @@
+policy_version = 1
+product_language = "rust"
+rust_toolchain = "1.95.0"
+canonical_format = "json"
+canonical_format_version = 1
+unsafe_code = "forbid"
+network_runtime = false
+telemetry = false
+
+[authority]
+canonical_root = ".research-run"
+promotion_record = "human_review_decision"
+derived_outputs_can_promote = false
+evidence_links_can_promote = false
+retry_can_promote = false
+
+[budgets]
+max_record_bytes = 1048576
+max_records_per_kind = 10000
+max_text_bytes = 65536
+max_list_items = 256
+max_artifact_pointers = 128
+
+[effects]
+parse_before_write = true
+workspace_confined = true
+reject_symlinks = true
+atomic_publication = true
+idempotent_identical_retry = true
+conflicting_identity = "fail_closed"
+
+[proof]
+distinct = ["source", "package", "install", "cache", "discovery", "runtime", "journey", "github", "release", "real_use", "product"]
+withheld = ["scientific_truth", "real_world_usefulness", "scientific_impact", "exact_source_coverage", "ultragoal_install", "ultragoal_discovery", "ultragoal_runtime_activation", "full_fitted_governance"]
+
+[checks]
+fast = "scripts/check fast"
+full = "scripts/check full"
+coverage = "scripts/check coverage"
+coverage_line_floor = 100
+coverage_tool = "cargo-llvm-cov"
+
+[review]
+critical_boundaries_block = true
+material_rounds_max = 2
+material_repair_rounds = 1
+full_persona_boundaries = ["material_integration", "product", "release", "completion"]
+bounded_targeted_reviews_max = 1
+
+[governance_source]
+name = "harness-ultragoal"
+manifest_version = "0.0.12"
+source_commit = "69787f20adcf0b99c7f3a26f71b35a215fda28d6"
+installed_cache_version_observed = "0.0.11"
+fit_candidate = "9e1d411b670eec4d2073cc775d8bf5081f841154"
+fit_classification = "conflicting"
+fit_mutations = 70
+fit_conflict = "AGENTS.md"
+fit_plan_sha256 = "a9fa6fbc512b6f27abfcc133f9ee4d4a4a87c5ffb37271c1179fcef0a40a7d36"
+exact_source_build = "failed_warnings_as_errors"
+full_activation = false

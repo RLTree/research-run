@@ -1,0 +1,25 @@
+{
+  "artifacts": [
+    {
+      "description": "Deidentified synthetic summary only",
+      "digest": null,
+      "locator": "artifacts/summary.txt",
+      "locator_type": "workspace"
+    }
+  ],
+  "id": "experiment-repeat",
+  "interpretation": "This run does not reproduce the reported effect.",
+  "kind": "experiment",
+  "limitations": [
+    "One synthetic batch was tested."
+  ],
+  "method_ref": "protocols/synthetic-assay.md",
+  "next_move": "Repeat with an independently prepared batch.",
+  "observations": [
+    "Signal was indistinguishable from the negative control."
+  ],
+  "outcome": "negative",
+  "question": "Does the effect reproduce?",
+  "schema_version": 1
+}
+

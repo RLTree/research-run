@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "types.schema.json",
+  "title": "Research Run shared v1 types",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536
+    },
+    "authorship": {
+      "enum": ["human", "ai"]
+    },
+    "artifactPointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator_type", "locator", "description", "digest"],
+      "properties": {
+        "locator_type": { "enum": ["workspace", "external"] },
+        "locator": { "$ref": "#/$defs/text" },
+        "description": { "$ref": "#/$defs/text" },
+        "digest": {
+          "oneOf": [{ "$ref": "#/$defs/text" }, { "type": "null" }]
+        }
+      }
+    }
+  }
+}

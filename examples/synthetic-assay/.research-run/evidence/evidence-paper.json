@@ -1,0 +1,13 @@
+{
+  "artifact": null,
+  "authorship": "human",
+  "claim_id": "claim-binding",
+  "experiment_id": null,
+  "id": "evidence-paper",
+  "kind": "evidence",
+  "schema_version": 1,
+  "source_id": "source-paper",
+  "specific_evidence": "Figure 2 reports binding in the matching synthetic assay.",
+  "stance": "supports"
+}
+
