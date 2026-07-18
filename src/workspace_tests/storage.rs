@@ -167,6 +167,10 @@ fn symlinked_paths_are_rejected_at_each_storage_boundary() {
     assert!(reject_symlink_chain(&link.join("record.json")).is_err());
     assert!(Workspace::discover(&link).is_err());
     assert!(Workspace::for_recovery(&link).is_err());
+    assert!(Workspace::initialize(&link.join("project"), "Unsafe").is_err());
+    let canonical_child = root.join("canonical-child");
+    symlink(&outside, &canonical_child).expect("canonical child symlink");
+    assert!(create_directory_chain(&canonical_child).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
     fs::remove_dir_all(outside).expect("remove fixture");
 }

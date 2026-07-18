@@ -30,7 +30,7 @@ fn initialize(path: &Path, name: &str) -> Result<()> {
     let workspace = Workspace::initialize(path, name)?;
     println!(
         "Initialized Research Run workspace at {}",
-        workspace.root().display()
+        terminal_text(&workspace.root().display().to_string())
     );
     Ok(())
 }
@@ -155,16 +155,18 @@ fn add_review(command: ReviewCommand) -> Result<()> {
         rationale,
         reviewer,
     } = command;
+    let workspace = discover_current()?;
+    let evidence_ids = workspace.claim_evidence_ids(&claim)?;
     let record = ReviewDecision {
         schema_version: FORMAT_VERSION,
         kind: "review".to_owned(),
         id,
         claim_id: claim,
+        evidence_ids,
         decision: decision.into(),
         rationale,
         reviewer,
     };
-    let workspace = discover_current()?;
     print_effect("review", &record.id, workspace.add_review(&record)?);
     Ok(())
 }

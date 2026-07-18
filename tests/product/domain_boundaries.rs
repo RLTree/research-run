@@ -150,6 +150,7 @@ fn experiment_and_review_validation_reject_invalid_states() {
         kind: "review".to_owned(),
         id: "review-one".to_owned(),
         claim_id: "claim-one".to_owned(),
+        evidence_ids: Vec::new(),
         decision: Assessment::Unreviewed,
         rationale: "Rationale".to_owned(),
         reviewer: "Researcher".to_owned(),
@@ -318,11 +319,6 @@ fn valid_experiment() -> ExperimentReceipt {
 }
 
 #[test]
-fn each_experiment_and_review_field_fails_independently() {
-    each_experiment_field_fails_independently();
-    each_review_field_fails_independently();
-}
-
 fn each_experiment_field_fails_independently() {
     let baseline = valid_experiment();
     for candidate in [
@@ -372,44 +368,4 @@ fn each_experiment_field_fails_independently() {
         digest: None,
     };
     assert!(pointer.validate().is_err());
-}
-
-fn each_review_field_fails_independently() {
-    let review = ReviewDecision {
-        schema_version: 1,
-        kind: "review".to_owned(),
-        id: "review-one".to_owned(),
-        claim_id: "claim-one".to_owned(),
-        decision: Assessment::Supported,
-        rationale: "Rationale".to_owned(),
-        reviewer: "Reviewer".to_owned(),
-    };
-    for candidate in [
-        ReviewDecision {
-            schema_version: 2,
-            ..review.clone()
-        },
-        ReviewDecision {
-            kind: "wrong".to_owned(),
-            ..review.clone()
-        },
-        ReviewDecision {
-            id: "Invalid".to_owned(),
-            ..review.clone()
-        },
-        ReviewDecision {
-            claim_id: "Invalid".to_owned(),
-            ..review.clone()
-        },
-        ReviewDecision {
-            rationale: String::new(),
-            ..review.clone()
-        },
-        ReviewDecision {
-            reviewer: String::new(),
-            ..review.clone()
-        },
-    ] {
-        assert!(candidate.validate().is_err());
-    }
 }

@@ -69,7 +69,8 @@ fn review(root: &Path, id: &str, claim_id: &str) {
             "kind": "review",
             "id": id,
             "claim_id": claim_id,
-            "decision": "supported",
+            "evidence_ids": [],
+            "decision": "limited",
             "rationale": "Rationale",
             "reviewer": "Reviewer"
         }),
@@ -269,7 +270,7 @@ fn reject_missing_and_duplicate_review_references(root: &Path) {
                 "--claim",
                 "claim-one",
                 "--decision",
-                "supported",
+                "limited",
                 "--rationale",
                 "Rationale",
                 "--reviewer",

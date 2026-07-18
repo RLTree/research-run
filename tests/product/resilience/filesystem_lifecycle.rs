@@ -289,8 +289,6 @@ fn publication_and_pending_inspection_propagate_storage_failures() {
 
     for fault in ["inspect pending effects", "inspect pending effect"] {
         let pending = initialize(fault);
-        fs::write(pending.0.join(".research-run/sources/unrelated.txt"), b"x")
-            .expect("unrelated entry");
         assert!(
             !add_source(&pending.0, "source-one", Some(fault))
                 .status

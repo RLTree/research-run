@@ -9,6 +9,12 @@ decision may set a claim assessment to `supported`, `limited`, `contradicted`, o
 `unsupported`. `supported` means reviewed support within this workspace and
 scope—not general scientific truth.
 
+Each review binds to the sorted immutable evidence IDs present for its claim at
+the decision boundary. Later evidence makes that decision historical and returns
+the claim to `unreviewed` until a new human review binds the changed graph.
+`supported` requires at least one recorded evidence link; recovery and direct
+record ingestion enforce the same binding as the CLI.
+
 ## Current stack
 
 Research Run v0.1 is a correctness-critical Rust CLI on the pinned stable 1.97.1

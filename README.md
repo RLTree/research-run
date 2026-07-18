@@ -101,6 +101,9 @@ synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
 Review decisions are local assertions made by the CLI user; v0.1 has no account
 system or identity verification. Treat Git review and repository access controls
 as the human-authorship boundary.
+The CLI records the claim's current sorted evidence IDs with each review. Adding
+later evidence makes the old decision historical and returns the claim to
+`unreviewed` until another explicit human review covers the changed graph.
 
 ## Development and proof surfaces
 

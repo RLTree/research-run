@@ -47,14 +47,14 @@ impl Workspace {
                 errors.push(format!("evidence/{}: {error}", link.id));
             }
         }
-        let mut reviewed_claims = BTreeSet::new();
+        let mut reviewed_graphs = BTreeSet::new();
         for review in &snapshot.reviews {
             if !claims.contains(review.claim_id.as_str()) {
                 errors.push(format!("reviews/{}: unknown claim reference", review.id));
             }
-            if !reviewed_claims.insert(review.claim_id.as_str()) {
+            if !reviewed_graphs.insert((review.claim_id.as_str(), review.evidence_ids.as_slice())) {
                 errors.push(format!(
-                    "reviews/{}: multiple v0.1 reviews for one claim are ambiguous",
+                    "reviews/{}: multiple v0.1 reviews for one claim evidence graph are ambiguous",
                     review.id
                 ));
             }

@@ -57,6 +57,7 @@ fn direct_workspace_journey_exercises_every_record_authority() {
         kind: "review".to_owned(),
         id: "review-one".to_owned(),
         claim_id: claim.id.clone(),
+        evidence_ids: vec![evidence.id.clone()],
         decision: Assessment::Limited,
         rationale: "Bounded rationale".to_owned(),
         reviewer: "Researcher".to_owned(),

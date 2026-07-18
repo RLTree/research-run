@@ -13,5 +13,7 @@ mod researcher_journey;
 mod resilience;
 #[path = "product/retry_behavior.rs"]
 mod retry_behavior;
+#[path = "product/review_authority.rs"]
+mod review_authority;
 #[path = "product/workspace_defense.rs"]
 mod workspace_defense;

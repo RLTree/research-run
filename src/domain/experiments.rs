@@ -89,6 +89,8 @@ pub struct ReviewDecision {
     pub kind: String,
     pub id: String,
     pub claim_id: String,
+    #[serde(default)]
+    pub evidence_ids: Vec<String>,
     pub decision: Assessment,
     pub rationale: String,
     pub reviewer: String,
@@ -104,10 +106,25 @@ impl CanonicalRecord for ReviewDecision {
     fn validate(&self) -> Result<()> {
         validate_record_header(self.schema_version, &self.kind, Self::KIND, &self.id)?;
         validate_id(&self.claim_id, "claim_id")?;
+        for evidence_id in &self.evidence_ids {
+            validate_id(evidence_id, "evidence_id")?;
+        }
+        if !self.evidence_ids.windows(2).all(|pair| pair[0] < pair[1]) {
+            return Err(Error::invalid(
+                "review evidence_ids",
+                "must be sorted and unique",
+            ));
+        }
         if self.decision == Assessment::Unreviewed {
             return Err(Error::invalid(
                 "review decision",
                 "human reviews cannot set the unreviewed assessment",
+            ));
+        }
+        if self.decision == Assessment::Supported && self.evidence_ids.is_empty() {
+            return Err(Error::invalid(
+                "review decision",
+                "supported requires at least one recorded evidence link",
             ));
         }
         required_text(&self.rationale, "review rationale")?;

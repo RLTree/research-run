@@ -38,6 +38,11 @@ fn recover_propagates_lock_and_final_snapshot_failures() {
             .success()
     );
     assert!(
+        !run(&root.0, &["recover", "--json"], Some("final snapshot load"))
+            .status
+            .success()
+    );
+    assert!(
         !run(
             &root.0,
             &["recover", "--json"],
@@ -58,7 +63,7 @@ fn single_pending_review_recovers_without_false_duplicate() {
         "review-one",
         json!({
             "schema_version": 1, "kind": "review", "id": "review-one",
-            "claim_id": "claim-one", "decision": "supported",
+            "claim_id": "claim-one", "evidence_ids": [], "decision": "limited",
             "rationale": "Rationale", "reviewer": "Reviewer"
         }),
     );
@@ -87,6 +92,22 @@ fn reject_invalid_pending_manifests() {
         pending(&root.0, ".", "manifest", value);
         assert!(!run(&root.0, &["recover", "--json"], None).status.success());
     }
+
+    let noncanonical = initialize("manifest-noncanonical-target");
+    pending(
+        &noncanonical.0,
+        ".",
+        "other",
+        json!({
+            "schema_version": 1, "kind": "project-manifest", "project_id": "coverage",
+            "name": "Coverage", "declared_roots": ["."]
+        }),
+    );
+    assert!(
+        !run(&noncanonical.0, &["recover", "--json"], None)
+            .status
+            .success()
+    );
 }
 
 #[cfg(unix)]
@@ -134,6 +155,26 @@ fn reject_symlinked_pending_artifacts() {
                 .status
                 .success()
         );
+
+        let pending_link = initialize("pending-record-symlink");
+        let outside_record = outside.0.join("source.json");
+        fs::write(
+            &outside_record,
+            serde_json::to_vec(&pending_source_value("source-one")).expect("source JSON"),
+        )
+        .expect("outside pending record");
+        symlink(
+            outside_record,
+            pending_link
+                .0
+                .join(".research-run/sources/.source-one.json.11.1.tmp"),
+        )
+        .expect("pending record symlink");
+        assert!(
+            !run(&pending_link.0, &["recover", "--json"], None)
+                .status
+                .success()
+        );
     }
 }
 
@@ -148,7 +189,7 @@ fn reject_invalid_pending_reviews() {
         "review-one",
         json!({
             "schema_version": 1, "kind": "review", "id": "review-one",
-            "claim_id": "claim-missing", "decision": "supported",
+            "claim_id": "claim-missing", "evidence_ids": [], "decision": "limited",
             "rationale": "Rationale", "reviewer": "Reviewer"
         }),
     );
@@ -171,7 +212,7 @@ fn reject_invalid_pending_reviews() {
         "review-one",
         json!({
             "schema_version": 1, "kind": "review", "id": "review-one",
-            "claim_id": "claim-one", "decision": "supported",
+            "claim_id": "claim-one", "evidence_ids": [], "decision": "limited",
             "rationale": "Rationale", "reviewer": "Reviewer"
         }),
     );
@@ -189,7 +230,7 @@ fn reject_invalid_pending_reviews() {
         "review-one",
         json!({
             "schema_version": 1, "kind": "review", "id": "review-one",
-            "claim_id": "claim-one", "decision": "supported",
+            "claim_id": "claim-one", "evidence_ids": [], "decision": "limited",
             "rationale": "Rationale", "reviewer": "Reviewer"
         }),
     );
@@ -202,10 +243,75 @@ fn reject_invalid_pending_reviews() {
         .status
         .success()
     );
+
+    reject_mismatched_pending_review_graph();
+    reject_malformed_pending_review_authority();
+}
+
+fn reject_malformed_pending_review_authority() {
+    for (label, target_id, record_id, decision) in [
+        (
+            "pending-supported-without-evidence",
+            "review-one",
+            "review-one",
+            "supported",
+        ),
+        (
+            "pending-review-filename-mismatch",
+            "review-one",
+            "review-other",
+            "limited",
+        ),
+    ] {
+        let root = initialize(label);
+        super::recovery::add_claim(&root.0);
+        pending(
+            &root.0,
+            "reviews",
+            target_id,
+            json!({
+                "schema_version": 1, "kind": "review", "id": record_id,
+                "claim_id": "claim-one", "evidence_ids": [], "decision": decision,
+                "rationale": "Rationale", "reviewer": "Reviewer"
+            }),
+        );
+        assert!(!run(&root.0, &["recover", "--json"], None).status.success());
+    }
+}
+
+fn reject_mismatched_pending_review_graph() {
+    let mismatched_graph = initialize("pending-review-graph-mismatch");
+    super::recovery::add_claim(&mismatched_graph.0);
+    pending(
+        &mismatched_graph.0,
+        "reviews",
+        "review-one",
+        json!({
+            "schema_version": 1, "kind": "review", "id": "review-one",
+            "claim_id": "claim-one", "evidence_ids": ["evidence-missing"],
+            "decision": "limited", "rationale": "Rationale", "reviewer": "Reviewer"
+        }),
+    );
+    assert!(
+        !run(&mismatched_graph.0, &["recover", "--json"], None)
+            .status
+            .success()
+    );
 }
 
 #[test]
 fn recovery_plan_propagates_each_storage_transition() {
+    let symlink_race = initialize("pending-record-symlink-race");
+    assert!(
+        !run(
+            &symlink_race.0,
+            &["recover", "--json"],
+            Some("pending record symlink race")
+        )
+        .status
+        .success()
+    );
+
     let preflight = initialize("preflight-target-read");
     let pending_path = pending(
         &preflight.0,

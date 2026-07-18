@@ -28,7 +28,8 @@ fn valid_pending_records_recover_in_dependency_order() {
     let experiment = experiment("experiment-one");
     let mut evidence = evidence("evidence-one", &claim.id, Some(&source.id));
     evidence.experiment_id = None;
-    let review = review("review-one", &claim.id);
+    let mut review = review("review-one", &claim.id);
+    review.evidence_ids = vec![evidence.id.clone()];
     for (directory, filename, bytes) in [
         (
             "sources",
@@ -109,15 +110,18 @@ fn pending_record_validation_covers_each_canonical_directory() {
     workspace.add_claim(&claim("claim-one")).expect("claim");
 
     let cases = [
-        (RecoveryKind::Source, "sources", "source-one.json"),
-        (RecoveryKind::Claim, "claims", "claim-one.json"),
+        (RecordRecoveryKind::Source, "sources", "source-one.json"),
+        (RecordRecoveryKind::Claim, "claims", "claim-one.json"),
         (
-            RecoveryKind::Experiment,
+            RecordRecoveryKind::Experiment,
             "experiments",
             "experiment-one.json",
         ),
-        (RecoveryKind::Evidence, "evidence", "evidence-one.json"),
-        (RecoveryKind::Review, "reviews", "review-one.json"),
+        (
+            RecordRecoveryKind::Evidence,
+            "evidence",
+            "evidence-one.json",
+        ),
     ];
     for (kind, directory, filename) in cases {
         assert!(
@@ -131,11 +135,24 @@ fn pending_record_validation_covers_each_canonical_directory() {
         );
     }
 
+    let authority = workspace
+        .review_recovery_authority()
+        .expect("review authority");
+    assert!(
+        workspace
+            .validate_pending_review(
+                &workspace.state.join("reviews/review-one.json"),
+                b"{",
+                &authority,
+            )
+            .is_err()
+    );
+
     let wrong_target = workspace.state.join("sources/wrong.json");
     let source_bytes = serde_json::to_vec(&source("source-one")).expect("source json");
     assert!(
         workspace
-            .validate_pending_record(RecoveryKind::Source, &wrong_target, &source_bytes)
+            .validate_pending_record(RecordRecoveryKind::Source, &wrong_target, &source_bytes)
             .is_err()
     );
 
@@ -144,9 +161,9 @@ fn pending_record_validation_covers_each_canonical_directory() {
     assert!(
         workspace
             .validate_pending_record(
-                RecoveryKind::Evidence,
+                RecordRecoveryKind::Evidence,
                 &workspace.state.join("evidence/evidence-one.json"),
-                &missing_reference
+                &missing_reference,
             )
             .is_err()
     );

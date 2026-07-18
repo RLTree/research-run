@@ -99,7 +99,8 @@ fn review(id: &str) -> ReviewDecision {
         kind: "review".to_owned(),
         id: id.to_owned(),
         claim_id: "claim-one".to_owned(),
-        decision: Assessment::Supported,
+        evidence_ids: Vec::new(),
+        decision: Assessment::Limited,
         rationale: "Rationale".to_owned(),
         reviewer: "Reviewer".to_owned(),
     }
@@ -156,18 +157,71 @@ fn workspace_add_methods_propagate_snapshot_and_artifact_failures() {
         assert!(workspace.add_evidence(&link).is_err());
     }
 
-    for operation in ["evidence", "review"] {
+    for operation in ["source", "claim", "experiment", "evidence", "review"] {
         let root = initialize(operation);
         let workspace = Workspace::discover(&root.0).expect("discover workspace");
         fs::write(root.0.join(".research-run/manifest.json"), b"not-json")
             .expect("corrupt manifest after discovery");
-        let result = if operation == "evidence" {
-            workspace.add_evidence(&evidence("evidence-one"))
-        } else {
-            workspace.add_review(&review("review-one"))
+        let result = match operation {
+            "source" => workspace.add_source(&source("source-one")),
+            "claim" => workspace.add_claim(&claim("claim-one")),
+            "experiment" => workspace.add_experiment(&experiment("experiment-one")),
+            "evidence" => workspace.add_evidence(&evidence("evidence-one")),
+            "review" => workspace.add_review(&review("review-one")),
+            _ => unreachable!(),
         };
         assert!(result.is_err());
     }
+}
+
+#[test]
+fn mutations_reject_damaged_authority_and_unbound_reviews() {
+    reject_mutation_over_damaged_references();
+    reject_unbound_review_authority();
+}
+
+fn reject_mutation_over_damaged_references() {
+    let root = initialize("damaged-mutation-authority");
+    fs::write(
+        root.0.join(".research-run/evidence/damaged.json"),
+        serde_json::to_vec_pretty(&evidence("damaged")).expect("evidence JSON"),
+    )
+    .expect("write damaged reference");
+    let workspace = Workspace::discover(&root.0).expect("discover workspace");
+    assert!(workspace.add_source(&source("source-two")).is_err());
+    assert!(workspace.add_claim(&claim("claim-two")).is_err());
+    assert!(
+        workspace
+            .add_experiment(&experiment("experiment-two"))
+            .is_err()
+    );
+    assert!(workspace.add_evidence(&evidence("evidence-two")).is_err());
+    assert!(workspace.add_review(&review("review-two")).is_err());
+}
+
+fn reject_unbound_review_authority() {
+    let root = initialize("unbound-review-authority");
+    let workspace = Workspace::discover(&root.0).expect("discover workspace");
+    assert!(workspace.add_claim(&claim("claim-one")).is_ok());
+
+    let mut supported_without_evidence = review("supported-without-evidence");
+    supported_without_evidence.decision = Assessment::Supported;
+    assert!(workspace.add_review(&supported_without_evidence).is_err());
+
+    let mut mismatched = review("mismatched-review");
+    mismatched.decision = Assessment::Limited;
+    mismatched.evidence_ids = vec!["evidence-missing".to_owned()];
+    assert!(workspace.add_review(&mismatched).is_err());
+
+    let mut missing_claim = review("missing-claim-review");
+    missing_claim.claim_id = "claim-missing".to_owned();
+    missing_claim.decision = Assessment::Limited;
+    assert!(workspace.add_review(&missing_claim).is_err());
+    assert!(workspace.claim_evidence_ids("claim-missing").is_err());
+
+    fs::write(root.0.join(".research-run/manifest.json"), b"not-json")
+        .expect("corrupt manifest after discovery");
+    assert!(workspace.claim_evidence_ids("claim-one").is_err());
 }
 
 #[test]

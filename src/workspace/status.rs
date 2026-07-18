@@ -23,15 +23,9 @@ struct StatusIndex<'a> {
 
 impl<'a> StatusIndex<'a> {
     fn build(snapshot: &'a Snapshot) -> Self {
-        let reviews_by_claim = snapshot
-            .reviews
-            .iter()
-            .map(|review| (review.claim_id.as_str(), review))
-            .collect::<BTreeMap<_, _>>();
-        let reviewed_claims = reviews_by_claim.keys().copied().collect();
         let mut index = Self {
-            reviews_by_claim,
-            reviewed_claims,
+            reviews_by_claim: BTreeMap::new(),
+            reviewed_claims: BTreeSet::new(),
             claims_by_source: BTreeMap::new(),
             evidence_by_claim: BTreeMap::new(),
             ai_evidence_claims: BTreeSet::new(),
@@ -53,6 +47,28 @@ impl<'a> StatusIndex<'a> {
                 index.ai_evidence_claims.insert(link.claim_id.as_str());
             }
         }
+        for review in &snapshot.reviews {
+            let mut current = index
+                .evidence_by_claim
+                .get(review.claim_id.as_str())
+                .into_iter()
+                .flatten()
+                .map(|evidence| evidence.id.as_str())
+                .collect::<Vec<_>>();
+            current.sort_unstable();
+            if current
+                == review
+                    .evidence_ids
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>()
+            {
+                index
+                    .reviews_by_claim
+                    .insert(review.claim_id.as_str(), review);
+            }
+        }
+        index.reviewed_claims = index.reviews_by_claim.keys().copied().collect();
         index
     }
 }

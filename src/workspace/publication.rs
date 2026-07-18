@@ -93,6 +93,7 @@ impl Workspace {
 }
 
 fn inspect_publication(target: &Path, content: &[u8]) -> Result<Option<bool>> {
+    inject_inspection_race(target, content);
     reject_symlink_chain(target)?;
     if content.len() as u64 > MAX_RECORD_BYTES {
         return Err(Error::Budget(format!(
@@ -111,6 +112,44 @@ fn inspect_publication(target: &Path, content: &[u8]) -> Result<Option<bool>> {
         target.display()
     )))
 }
+
+#[cfg(all(any(test, coverage), unix))]
+fn inject_inspection_race(target: &Path, content: &[u8]) {
+    use std::os::unix::fs::symlink;
+
+    if take_storage_failure("inspect publication symlink race") {
+        let destination = target.with_extension("race-destination");
+        fs::write(&destination, content).expect("write injected publication destination");
+        symlink(destination, target).expect("create injected publication symlink");
+    }
+    if take_storage_failure("inspect publication pending race") {
+        let name = target
+            .file_name()
+            .and_then(OsStr::to_str)
+            .expect("canonical target name");
+        let pending = target
+            .parent()
+            .expect("canonical target parent")
+            .join(format!(".{name}.race.0.tmp"));
+        fs::write(pending, content).expect("write injected pending publication");
+    }
+    if take_storage_failure("inspect publication unreadable race") {
+        fs::create_dir(target).expect("create injected unreadable publication target");
+    }
+    if std::env::var("RESEARCH_RUN_COVERAGE_FAULT").as_deref() == Ok("inspect pending effect") {
+        fs::write(
+            target
+                .parent()
+                .expect("canonical target parent")
+                .join("publication-entry"),
+            b"entry",
+        )
+        .expect("write injected publication directory entry");
+    }
+}
+
+#[cfg(not(all(any(test, coverage), unix)))]
+fn inject_inspection_race(_target: &Path, _content: &[u8]) {}
 
 fn pending_path(target: &Path) -> PathBuf {
     let parent = target

@@ -273,6 +273,27 @@ fn add_each_review_assessment(project: &Path) {
                 if index == 0 { "ai" } else { "human" },
             ],
         );
+        if decision == "supported" {
+            succeeds(
+                project,
+                &[
+                    "evidence",
+                    "add",
+                    "--id",
+                    "review-evidence-2",
+                    "--claim",
+                    &claim,
+                    "--source",
+                    "source-human",
+                    "--stance",
+                    "supports",
+                    "--specific-evidence",
+                    "Evidence required for support.",
+                    "--authorship",
+                    "human",
+                ],
+            );
+        }
         succeeds(
             project,
             &[

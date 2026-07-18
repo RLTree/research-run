@@ -9,6 +9,7 @@ use super::{STATE_DIRECTORY, Workspace};
 
 impl Workspace {
     pub fn initialize(root: &Path, name: &str) -> Result<Self> {
+        let manifest = ProjectManifest::new(name)?;
         let root = absolute_path(root)?;
         reject_symlink_chain(&root)?;
         create_directory_chain(&root)?;
@@ -22,7 +23,6 @@ impl Workspace {
             create_directory_chain(&path)?;
         }
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
-        let manifest = ProjectManifest::new(name)?;
         workspace.publish_value(&workspace.state.join("manifest.json"), &manifest)?;
         Ok(workspace)
     }

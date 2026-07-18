@@ -19,7 +19,9 @@ records inside one workspace without silently raising scientific claims.
 
 Canonical authority lives only in `.research-run/`: one manifest plus source,
 claim, evidence, experiment, and human-review JSON records. A review decision is
-the only semantic authority that changes a claim assessment.
+the only semantic authority that changes a claim assessment. It stores the
+sorted evidence IDs reviewed by the human; status applies it only while that
+binding exactly matches the current claim evidence graph.
 
 ## Proof and governance
 

@@ -135,6 +135,7 @@ fn installed_process_exercises_artifact_and_recovery_reference_variants() {
             "kind": "review",
             "id": id,
             "claim_id": "claim-one",
+            "evidence_ids": ["evidence-artifact"],
             "decision": "supported",
             "rationale": "Rationale",
             "reviewer": "Reviewer"
@@ -263,6 +264,7 @@ fn reject_second_review_during_recovery(root: &Path) {
             "kind": "review",
             "id": "review-two",
             "claim_id": "claim-one",
+            "evidence_ids": ["evidence-artifact-recovered", "evidence-experiment"],
             "decision": "limited",
             "rationale": "Second",
             "reviewer": "Reviewer"

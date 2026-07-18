@@ -98,6 +98,7 @@ pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
             path.display()
         )));
     }
+    inject_record_symlink_after_read(path, &bytes);
     reject_symlink_chain(path)?;
     let current_metadata = map_io(fs::metadata(path), "reinspect record", path)?;
     if !same_file_identity(&opened_metadata, &current_metadata)
@@ -110,6 +111,21 @@ pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
     }
     Ok(bytes)
 }
+
+#[cfg(all(any(test, coverage), unix))]
+fn inject_record_symlink_after_read(path: &Path, bytes: &[u8]) {
+    use std::os::unix::fs::symlink;
+
+    if take_storage_failure("record symlink after read") {
+        let destination = path.with_extension("post-read");
+        fs::write(&destination, bytes).expect("write injected record destination");
+        fs::remove_file(path).expect("remove injected record pathname");
+        symlink(destination, path).expect("create injected record symlink");
+    }
+}
+
+#[cfg(not(all(any(test, coverage), unix)))]
+fn inject_record_symlink_after_read(_path: &Path, _bytes: &[u8]) {}
 
 #[cfg(unix)]
 pub(super) fn same_file_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {

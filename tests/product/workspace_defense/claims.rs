@@ -7,6 +7,64 @@ fn ai_drafts_evidence_and_retry_cannot_promote_a_claim() {
     assert_ai_drafts_cannot_promote(&project.0);
     add_human_review(&project.0);
     assert_human_review_controls_promotion(&project.0);
+    add_post_review_contradiction(&project.0);
+    assert_graph_change_withholds_prior_review(&project.0);
+    add_re_review(&project.0);
+    assert_human_review_controls_promotion(&project.0);
+}
+
+fn add_post_review_contradiction(project: &Path) {
+    succeeds(
+        project,
+        &[
+            "evidence",
+            "add",
+            "--id",
+            "evidence-later",
+            "--claim",
+            "claim-ai",
+            "--source",
+            "source-ai",
+            "--stance",
+            "contradicts",
+            "--specific-evidence",
+            "Later material changes the reviewed graph.",
+            "--authorship",
+            "human",
+        ],
+    );
+}
+
+fn assert_graph_change_withholds_prior_review(project: &Path) {
+    let status: Value = serde_json::from_slice(&succeeds(project, &["status", "--json"]).stdout)
+        .expect("stale review status JSON");
+    assert_eq!(status["claims"][0]["assessment"], "unreviewed");
+    assert!(
+        !status["claims"][0]["blockers"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+fn add_re_review(project: &Path) {
+    succeeds(
+        project,
+        &[
+            "review",
+            "add",
+            "--id",
+            "review-later",
+            "--claim",
+            "claim-ai",
+            "--decision",
+            "supported",
+            "--rationale",
+            "A human reviewed the changed evidence graph.",
+            "--reviewer",
+            "Example Researcher",
+        ],
+    );
 }
 
 fn add_ai_draft_records(project: &Path) {

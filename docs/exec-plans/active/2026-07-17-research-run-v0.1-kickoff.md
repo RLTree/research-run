@@ -120,6 +120,15 @@ sensitive material, or a material product decision with no safe default.
   deny, dependency duplication, SBOM, gitleaks, package/install, installed
   journey, and machine-local performance/size observations. Final security scan,
   final documentation candidate gates, push, and GitHub checks remain open.
+- 2026-07-18: Current-source deep scan
+  `23b39124-5532-4cb4-b87f-fba6a1f229bf` targeted clean commit `0b6c312`,
+  saturated after three discovery rounds, validated 24 canonical candidates,
+  and retained two low reportable findings after attack-path policy:
+  intermediate workspace symlinks and stale review graph authority. The coherent
+  repair rejects both original PoCs, binds reviews to exact evidence IDs, closes
+  mutation and capacity prechecks, indexes review recovery authority, and passes
+  the dirty-loop 100% line/function/region gate. Clean final security, mutation,
+  package/install, branch, and GitHub proof remain open.
 
 - 2026-07-17: Durable goal created; implementation is running on
   `codex/research-run-v0.1-build` from the grounded kickoff commit.

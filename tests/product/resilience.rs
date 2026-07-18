@@ -86,6 +86,8 @@ fn pending_source(root: &Path, id: &str, sequence: u32) -> PathBuf {
     path
 }
 
+#[path = "resilience/capacity.rs"]
+mod capacity;
 #[path = "resilience/cli_boundaries.rs"]
 mod cli_boundaries;
 #[path = "resilience/diagnostics.rs"]

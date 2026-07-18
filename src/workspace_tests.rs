@@ -7,7 +7,7 @@ use crate::domain::{
     Stance,
 };
 
-use super::recovery::RecoveryKind;
+use super::recovery::RecordRecoveryKind;
 use super::{
     MAX_RECORD_BYTES, MAX_SNAPSHOT_BYTES, PendingCleanup, ReadBudget, Snapshot, Workspace,
     WorkspaceWriteLock, create_directory_chain, ensure_no_pending_effect, inject_storage_failure,
@@ -71,6 +71,7 @@ fn review(id: &str, claim_id: &str) -> ReviewDecision {
         kind: "review".to_owned(),
         id: id.to_owned(),
         claim_id: claim_id.to_owned(),
+        evidence_ids: Vec::new(),
         decision: Assessment::Limited,
         rationale: "Bounded rationale".to_owned(),
         reviewer: "Researcher".to_owned(),

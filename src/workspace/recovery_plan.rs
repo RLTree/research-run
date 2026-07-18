@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::{Error, Result};
 
 use super::path_safety::{interrupted_target_name, reject_symlink_chain};
-use super::recovery::RecoveryKind;
+use super::recovery::{RecordRecoveryKind, RecoveryKind};
 use super::storage::{ReadBudget, map_io, read_bounded, read_bounded_with_budget, sync_directory};
 use super::{MAX_RECORDS_PER_KIND, RecoveryResult, Workspace, injected_storage_failure};
 
@@ -31,6 +31,44 @@ impl Workspace {
     }
 
     fn preflight_recovery(&self, kind: RecoveryKind, pending: &[PendingRecord]) -> Result<()> {
+        match kind {
+            RecoveryKind::Review => {
+                let authority = self.review_recovery_authority()?;
+                let mut validate = |record: &PendingRecord| {
+                    self.validate_pending_review(&record.target, &record.bytes, &authority)
+                };
+                self.preflight_records(pending, &mut validate)
+            }
+            RecoveryKind::Manifest => {
+                self.preflight_non_review(RecordRecoveryKind::Manifest, pending)
+            }
+            RecoveryKind::Source => self.preflight_non_review(RecordRecoveryKind::Source, pending),
+            RecoveryKind::Claim => self.preflight_non_review(RecordRecoveryKind::Claim, pending),
+            RecoveryKind::Experiment => {
+                self.preflight_non_review(RecordRecoveryKind::Experiment, pending)
+            }
+            RecoveryKind::Evidence => {
+                self.preflight_non_review(RecordRecoveryKind::Evidence, pending)
+            }
+        }
+    }
+
+    fn preflight_non_review(
+        &self,
+        kind: RecordRecoveryKind,
+        pending: &[PendingRecord],
+    ) -> Result<()> {
+        let mut validate = |record: &PendingRecord| {
+            self.validate_pending_record(kind, &record.target, &record.bytes)
+        };
+        self.preflight_records(pending, &mut validate)
+    }
+
+    fn preflight_records(
+        &self,
+        pending: &[PendingRecord],
+        validate: &mut dyn FnMut(&PendingRecord) -> Result<Option<String>>,
+    ) -> Result<()> {
         let mut content_by_target: BTreeMap<&Path, usize> = BTreeMap::new();
         let mut pending_review_claims = BTreeSet::new();
         for (index, record) in pending.iter().enumerate() {
@@ -38,7 +76,7 @@ impl Workspace {
                 content_by_target.insert(&record.target, index);
                 continue;
             }
-            let review_claim = self.validate_pending_record(kind, &record.target, &record.bytes)?;
+            let review_claim = validate(record)?;
             if let Some(existing) = content_by_target.get(record.target.as_path())
                 && pending[*existing].bytes != record.bytes
             {
@@ -61,8 +99,12 @@ impl Workspace {
     }
 }
 
+// The explicit symlink error arm is a distinct recovery authority boundary and
+// must remain independently visible to the authoritative region-coverage gate.
+#[allow(clippy::question_mark)]
 fn collect_pending_records(directory: &Path) -> Result<Vec<PendingRecord>> {
     reject_symlink_chain(directory)?;
+    inject_pending_symlink_race(directory);
     let mut pending = Vec::new();
     let mut budget = ReadBudget::default();
     for entry in map_io(
@@ -76,7 +118,9 @@ fn collect_pending_records(directory: &Path) -> Result<Vec<PendingRecord>> {
         let Some(target_name) = interrupted_target_name(&entry_name) else {
             continue;
         };
-        reject_symlink_chain(&path)?;
+        if let Err(error) = reject_symlink_chain(&path) {
+            return Err(error);
+        }
         pending.push(PendingRecord {
             target: directory.join(target_name),
             bytes: read_bounded_with_budget(&path, &mut budget)?,
@@ -93,6 +137,22 @@ fn collect_pending_records(directory: &Path) -> Result<Vec<PendingRecord>> {
     pending.sort_by(|left, right| left.path.cmp(&right.path));
     Ok(pending)
 }
+
+#[cfg(all(coverage, unix))]
+fn inject_pending_symlink_race(directory: &Path) {
+    use std::os::unix::fs::symlink;
+
+    if std::env::var("RESEARCH_RUN_COVERAGE_FAULT").as_deref() == Ok("pending record symlink race")
+    {
+        let destination = directory.join("manifest.race-destination");
+        fs::write(&destination, b"{}").expect("write injected pending destination");
+        symlink(destination, directory.join(".manifest.json.11.1.tmp"))
+            .expect("create injected pending symlink");
+    }
+}
+
+#[cfg(not(all(coverage, unix)))]
+fn inject_pending_symlink_race(_directory: &Path) {}
 
 fn enforce_recovery_budget(
     workspace: &Workspace,

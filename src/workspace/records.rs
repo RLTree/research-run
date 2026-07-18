@@ -21,12 +21,16 @@ impl Workspace {
     pub fn add_source(&self, record: &SourceRecord) -> Result<bool> {
         let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
         record.validate()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        ensure_record_capacity(snapshot.sources.len(), "sources")?;
         self.publish_record("sources", record)
     }
 
     pub fn add_claim(&self, record: &ClaimRecord) -> Result<bool> {
         let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
         record.validate()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        ensure_record_capacity(snapshot.claims.len(), "claims")?;
         self.publish_record("claims", record)
     }
 
@@ -34,13 +38,16 @@ impl Workspace {
         let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
         record.validate()?;
         self.validate_artifact_paths(&record.artifacts)?;
+        let snapshot = self.load_mutable_snapshot()?;
+        ensure_record_capacity(snapshot.experiments.len(), "experiments")?;
         self.publish_record("experiments", record)
     }
 
     pub fn add_evidence(&self, record: &EvidenceLink) -> Result<bool> {
         let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
         record.validate()?;
-        let snapshot = self.load_snapshot()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        ensure_record_capacity(snapshot.evidence.len(), "evidence")?;
         if !snapshot
             .claims
             .iter()
@@ -76,7 +83,8 @@ impl Workspace {
     pub fn add_review(&self, record: &ReviewDecision) -> Result<bool> {
         let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
         record.validate()?;
-        let snapshot = self.load_snapshot()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        ensure_record_capacity(snapshot.reviews.len(), "reviews")?;
         if !snapshot
             .claims
             .iter()
@@ -84,17 +92,30 @@ impl Workspace {
         {
             return Err(Error::invalid("claim reference", "claim does not exist"));
         }
-        if snapshot
-            .reviews
-            .iter()
-            .any(|review| review.claim_id == record.claim_id)
-        {
+        let evidence_ids = claim_evidence_ids(&snapshot, &record.claim_id);
+        if record.evidence_ids != evidence_ids {
+            return Err(Error::invalid(
+                "review evidence_ids",
+                "must exactly match the current claim evidence graph",
+            ));
+        }
+        if snapshot.reviews.iter().any(|review| {
+            review.claim_id == record.claim_id && review.evidence_ids == record.evidence_ids
+        }) {
             return Err(Error::Conflict(format!(
-                "claim {} already has a v0.1 review decision",
+                "claim {} already has a v0.1 review decision for this evidence graph",
                 record.claim_id
             )));
         }
         self.publish_record("reviews", record)
+    }
+
+    pub fn claim_evidence_ids(&self, claim_id: &str) -> Result<Vec<String>> {
+        let snapshot = self.load_snapshot()?;
+        if !snapshot.claims.iter().any(|claim| claim.id == claim_id) {
+            return Err(Error::invalid("claim reference", "claim does not exist"));
+        }
+        Ok(claim_evidence_ids(&snapshot, claim_id))
     }
 
     pub fn validate(&self) -> ValidationResult {
@@ -137,6 +158,17 @@ impl Workspace {
 
     pub(super) fn load_snapshot(&self) -> Result<Snapshot> {
         self.load_snapshot_allow_pending(false)
+    }
+
+    fn load_mutable_snapshot(&self) -> Result<Snapshot> {
+        let snapshot = self.load_snapshot()?;
+        if !self.reference_errors(&snapshot).is_empty() {
+            return Err(Error::invalid(
+                "existing workspace",
+                "reference validation failed before mutation",
+            ));
+        }
+        Ok(snapshot)
     }
 
     pub(super) fn load_snapshot_allow_pending(&self, allow_pending: bool) -> Result<Snapshot> {
@@ -213,4 +245,24 @@ impl Workspace {
         entries.sort();
         Ok(entries)
     }
+}
+
+fn claim_evidence_ids(snapshot: &Snapshot, claim_id: &str) -> Vec<String> {
+    let mut ids = snapshot
+        .evidence
+        .iter()
+        .filter(|evidence| evidence.claim_id == claim_id)
+        .map(|evidence| evidence.id.clone())
+        .collect::<Vec<_>>();
+    ids.sort();
+    ids
+}
+
+fn ensure_record_capacity(count: usize, directory: &str) -> Result<()> {
+    if count >= MAX_RECORDS_PER_KIND {
+        return Err(Error::Budget(format!(
+            "{directory} already reached the {MAX_RECORDS_PER_KIND} record budget"
+        )));
+    }
+    Ok(())
 }

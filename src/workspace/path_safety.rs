@@ -10,7 +10,7 @@ use super::storage::map_io;
 
 pub(super) fn create_directory_chain(path: &Path) -> Result<()> {
     if path.exists() {
-        return Ok(());
+        return reject_symlink_chain(path);
     }
     let parent = path
         .parent()
@@ -45,18 +45,13 @@ pub(super) fn absolute_path(path: &Path) -> Result<PathBuf> {
         )?;
         current.join(path)
     };
+    reject_symlink_chain(&absolute)?;
     if absolute.exists() {
-        let metadata = map_io(
+        map_io(
             fs::symlink_metadata(&absolute),
             "inspect workspace root",
             &absolute,
         )?;
-        if metadata.file_type().is_symlink() {
-            return Err(Error::invalid(
-                "workspace root",
-                format!("symlink is forbidden: {}", absolute.display()),
-            ));
-        }
         return map_io(
             absolute.canonicalize(),
             "canonicalize workspace root",
@@ -67,17 +62,11 @@ pub(super) fn absolute_path(path: &Path) -> Result<PathBuf> {
         .ancestors()
         .find(|ancestor| ancestor.exists())
         .expect("an absolute path always has an existing root ancestor");
-    let metadata = map_io(
+    map_io(
         fs::symlink_metadata(existing),
         "inspect workspace ancestor",
         existing,
     )?;
-    if metadata.file_type().is_symlink() {
-        return Err(Error::invalid(
-            "workspace root",
-            format!("symlink is forbidden: {}", existing.display()),
-        ));
-    }
     let canonical = map_io(
         existing.canonicalize(),
         "canonicalize workspace ancestor",
@@ -104,7 +93,10 @@ pub(super) fn reject_symlink_chain(path: &Path) -> Result<()> {
             fs::symlink_metadata(ancestor)
         };
         match inspected {
-            Ok(metadata) if metadata.file_type().is_symlink() => {
+            Ok(metadata)
+                if metadata.file_type().is_symlink()
+                    && !is_allowed_platform_alias(ancestor, &metadata) =>
+            {
                 return Err(Error::invalid(
                     "workspace path",
                     format!("symlink is forbidden: {}", ancestor.display()),
@@ -118,6 +110,21 @@ pub(super) fn reject_symlink_chain(path: &Path) -> Result<()> {
     Ok(())
 }
 
+fn is_allowed_platform_alias(path: &Path, _metadata: &fs::Metadata) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        path == Path::new("/var")
+            && fs::read_link(path).is_ok_and(|target| target == Path::new("private/var"))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+}
+
+// Explicit error arms keep both fail-closed directory boundaries independently
+// visible to the authoritative region-coverage gate.
+#[allow(clippy::question_mark)]
 pub(super) fn ensure_no_pending_effect(target: &Path) -> Result<()> {
     let parent = target
         .parent()
@@ -127,8 +134,15 @@ pub(super) fn ensure_no_pending_effect(target: &Path) -> Result<()> {
         .and_then(OsStr::to_str)
         .expect("validated record identifiers produce UTF-8 filenames");
     let prefix = format!(".{target_name}.");
-    for entry in map_io(fs::read_dir(parent), "inspect pending effects", parent)? {
-        let entry = map_io(entry, "inspect pending effect", parent)?;
+    let entries = match map_io(fs::read_dir(parent), "inspect pending effects", parent) {
+        Ok(entries) => entries,
+        Err(error) => return Err(error),
+    };
+    for entry in entries {
+        let entry = match map_io(entry, "inspect pending effect", parent) {
+            Ok(entry) => entry,
+            Err(error) => return Err(error),
+        };
         let name = entry.file_name();
         #[cfg(target_os = "macos")]
         let name = name

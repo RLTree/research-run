@@ -67,6 +67,35 @@ fn installed_process_exercises_atomic_publication_fault_boundaries() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn installed_process_rejects_publication_and_read_identity_races() {
+    for fault in [
+        "inspect publication symlink race",
+        "inspect publication pending race",
+        "inspect publication unreadable race",
+    ] {
+        let root = initialize(fault);
+        let output = add_source(&root.0, "source-one", Some(fault));
+        assert!(!output.status.success(), "fault {fault} was ignored");
+    }
+
+    let root = initialize("record-symlink-after-read");
+    assert!(
+        !run(
+            &root.0,
+            &["status", "--json"],
+            Some("record symlink after read")
+        )
+        .status
+        .success()
+    );
+}
+
+#[cfg(not(unix))]
+#[test]
+fn installed_process_rejects_publication_and_read_identity_races() {}
+
 #[test]
 fn installed_process_exercises_directory_race_and_current_directory_faults() {
     let root = TempDir::new("directory-race");
