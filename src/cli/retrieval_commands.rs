@@ -95,7 +95,7 @@ fn print_projection(result: &ProjectionResult, human: bool) -> Result<()> {
     }
 }
 
-fn render_context(bundle: &ContextBundle) -> String {
+pub(super) fn render_context(bundle: &ContextBundle) -> String {
     let mut output = format!(
         "Research Run context: {} ({})\nScope: {}\nClaim ceiling: {}\n",
         terminal_text(&bundle.project_name),

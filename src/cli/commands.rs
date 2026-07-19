@@ -9,6 +9,7 @@ use crate::{Error, Result};
 use super::arguments::{
     ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, ReviewCommand, SourceCommand,
 };
+use super::handoff_commands;
 use super::inventory_commands;
 use super::output_arguments::RecoveryArgs;
 use super::render::{
@@ -40,6 +41,7 @@ pub(super) fn execute(cli: Cli) -> Result<()> {
         Command::Blockers(args) => retrieval_commands::blockers(args),
         Command::Next(args) => retrieval_commands::next(args),
         Command::Context(args) => retrieval_commands::context(args),
+        Command::Handoff { command } => handoff_commands::execute(command),
         Command::Validate(output) => validate(output.json),
         Command::Status(output) => status(output.json),
     }

@@ -102,7 +102,7 @@ pub fn validate_workspace_locator(value: &str) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn validate_timestamp(value: &str) -> Result<()> {
+pub(crate) fn validate_timestamp(value: &str) -> Result<()> {
     let bytes = value.as_bytes();
     let separators = [
         (4, b'-'),

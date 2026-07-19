@@ -6,7 +6,7 @@ use crate::{Error, Result};
 use super::Workspace;
 use super::retrieval_items::{projection_items, relationship_items};
 use super::retrieval_types::{
-    ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
+    ContextBundle, HandoffBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
 };
 
 impl Workspace {
@@ -152,10 +152,12 @@ impl Workspace {
             .collect::<Vec<_>>();
         relationships.truncate(limit);
         Ok(ContextBundle {
-            kind: "context",
+            kind: "context".to_owned(),
             project_id: snapshot.manifest.project_id,
             project_name: snapshot.manifest.name,
-            claim_ceiling: "Workspace review only; validation and retrieval do not prove scientific truth.",
+            claim_ceiling:
+                "Workspace review only; validation and retrieval do not prove scientific truth."
+                    .to_owned(),
             scope: query.unwrap_or("recent workspace state").to_owned(),
             matches,
             unresolved,
@@ -163,6 +165,24 @@ impl Workspace {
             next_actions,
             relationships,
         })
+    }
+
+    pub fn handoff(
+        &self,
+        id: &str,
+        generated_at: &str,
+        query: Option<&str>,
+        limit: usize,
+    ) -> Result<HandoffBundle> {
+        let bundle = HandoffBundle {
+            schema_version: 1,
+            kind: "handoff".to_owned(),
+            id: id.to_owned(),
+            generated_at: generated_at.to_owned(),
+            context: self.context(query, limit)?,
+        };
+        bundle.validate()?;
+        Ok(bundle)
     }
 }
 

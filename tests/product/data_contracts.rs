@@ -37,6 +37,7 @@ fn every_versioned_schema_is_well_formed_json() {
         "claim.schema.json",
         "evidence.schema.json",
         "experiment.schema.json",
+        "handoff.schema.json",
         "inventory.schema.json",
         "knowledge.schema.json",
         "project-manifest.schema.json",

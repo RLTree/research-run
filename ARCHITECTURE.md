@@ -48,6 +48,12 @@ renders a terminal-neutralized inspection view. Search results name matched
 fields and every item names its canonical authority path plus stale and
 invalidation state.
 
+`handoff create` wraps a bounded context projection in a versioned portable
+envelope with an operator-supplied identity and UTC generation time. `handoff
+inspect` validates and renders that envelope without requiring the originating
+workspace. The envelope is a projection and cannot promote or replace canonical
+records.
+
 ## Proof and governance
 
 - `tests/product.rs` routes product journeys, failure/recovery behavior, and

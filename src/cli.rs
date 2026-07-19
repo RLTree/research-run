@@ -2,6 +2,8 @@ use clap::Parser;
 
 mod arguments;
 mod commands;
+mod handoff_arguments;
+mod handoff_commands;
 mod input;
 mod inventory_arguments;
 mod inventory_commands;

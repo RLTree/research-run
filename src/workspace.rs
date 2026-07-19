@@ -170,7 +170,7 @@ pub struct RecoveryResult {
 }
 
 pub use retrieval_types::{
-    ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
+    ContextBundle, HandoffBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
 };
 
 pub(super) struct Snapshot {

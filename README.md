@@ -169,6 +169,21 @@ prose. Context bundles include the requested matches, unresolved material,
 blockers, next actions, connected relationships, and the scientific claim
 ceiling.
 
+Create a portable session handoff and validate it from a fresh directory:
+
+```console
+research-run handoff create \
+  --id handoff-current \
+  --generated-at 2026-07-18T20:05:00Z \
+  --limit 50 > /tmp/research-run-handoff.json
+research-run handoff inspect \
+  --input /tmp/research-run-handoff.json --human
+```
+
+The handoff includes recent or query-matched state, important authority paths,
+unresolved questions, blockers, next actions, relationships, and the claim
+ceiling. It is a portable projection, not claim or workspace authority.
+
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact

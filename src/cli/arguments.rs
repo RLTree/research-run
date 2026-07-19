@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 
+use super::handoff_arguments::HandoffCommand;
 use super::inventory_arguments::InventoryCommand;
 use super::output_arguments::{OutputArgs, RecoveryArgs};
 use super::retrieval_arguments::{
@@ -95,6 +96,11 @@ pub(super) enum Command {
     Next(LimitArgs),
     /// Build a bounded fresh-agent context projection.
     Context(ContextArgs),
+    /// Create or inspect a portable fresh-agent handoff bundle.
+    Handoff {
+        #[command(subcommand)]
+        command: HandoffCommand,
+    },
     /// Validate canonical records, references, budgets, and paths.
     Validate(OutputArgs),
     /// Show deterministic current state and claim ceilings.

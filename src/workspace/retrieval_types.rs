@@ -1,6 +1,10 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+use crate::domain::{validate_id, validate_timestamp};
+use crate::{Error, Result};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ProjectionItem {
     pub kind: String,
     pub id: String,
@@ -23,7 +27,8 @@ pub struct ProjectionResult {
     pub items: Vec<ProjectionItem>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct RelationshipProjection {
     pub id: String,
     pub relationship: String,
@@ -36,16 +41,38 @@ pub struct RelationshipProjection {
     pub authority_path: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ContextBundle {
-    pub kind: &'static str,
+    pub kind: String,
     pub project_id: String,
     pub project_name: String,
-    pub claim_ceiling: &'static str,
+    pub claim_ceiling: String,
     pub scope: String,
     pub matches: Vec<ProjectionItem>,
     pub unresolved: Vec<ProjectionItem>,
     pub blockers: Vec<ProjectionItem>,
     pub next_actions: Vec<ProjectionItem>,
     pub relationships: Vec<RelationshipProjection>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HandoffBundle {
+    pub schema_version: u32,
+    pub kind: String,
+    pub id: String,
+    pub generated_at: String,
+    pub context: ContextBundle,
+}
+
+impl HandoffBundle {
+    pub fn validate(&self) -> Result<()> {
+        if self.schema_version != 1 || self.kind != "handoff" || self.context.kind != "context" {
+            return Err(Error::invalid("handoff", "unknown version or record kind"));
+        }
+        validate_id(&self.id, "handoff id")?;
+        validate_timestamp(&self.generated_at)?;
+        validate_id(&self.context.project_id, "handoff project_id")
+    }
 }
