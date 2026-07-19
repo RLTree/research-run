@@ -126,6 +126,25 @@ files, and repeating the same accepted plan is a no-op. After files change,
 reports added, changed, moved, missing, duplicate, or ambiguous material.
 Ambiguous identity conflicts cannot be applied.
 
+## Capture typed project knowledge
+
+Nontrivial records use JSON files or standard input so an agent can inspect the
+complete mutation before applying it:
+
+```console
+research-run knowledge add --input observation.json
+research-run relationship add --input revision.json
+```
+
+Knowledge types include goals, research questions, hypotheses, protocols,
+methods, observations, measurements, analyses, interpretations, decisions,
+risks, blockers, uncertainties, contradictions, next actions, plans,
+presentations, and session summaries. Relationships are append-only and typed;
+revision, supersession, and invalidation history remains acyclic and never
+erases the older record. These relationships cannot promote a claim. Claim
+assessment still requires an explicit human `review add` decision bound to the
+current evidence graph.
+
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact

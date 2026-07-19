@@ -59,6 +59,11 @@ directory publication.
   product mode and every read still rechecks opened-file identity.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
+- Typed knowledge records are append-only. `revises`, `supersedes`, and
+  `invalidates` relationships require knowledge endpoints and must remain
+  acyclic. Generic relationships may describe a contradiction or dependency,
+  but cannot affect claim assessment; only the existing evidence graph plus an
+  explicit human review decision can do that.
 - Production and hand-authored test Rust files contain at most 250 noncomment
   lines, and functions at most 80 physical lines. Splits must own product behavior;
   forwarding shells and generic buckets do not satisfy the limit.

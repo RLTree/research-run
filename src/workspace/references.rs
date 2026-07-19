@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use crate::Result;
 use crate::domain::ReviewDecision;
 
+use super::knowledge::relationship_reference_errors;
 use super::path_safety::reject_symlink_chain;
 use super::{Snapshot, Workspace};
 
@@ -85,6 +86,7 @@ impl Workspace {
                 errors.push(format!("experiments/{}: {error}", experiment.id));
             }
         }
+        errors.extend(relationship_reference_errors(snapshot));
         errors
     }
 

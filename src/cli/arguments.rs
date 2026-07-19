@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::inventory_arguments::InventoryCommand;
+use super::output_arguments::{OutputArgs, RecoveryArgs};
+use super::structured_arguments::StructuredCommand;
 use crate::domain::{Assessment, Authorship, Outcome, SourceProvenance, Stance};
 
 #[derive(Debug, Parser)]
@@ -59,6 +61,16 @@ pub(super) enum Command {
     Review {
         #[command(subcommand)]
         command: ReviewCommand,
+    },
+    /// Add typed goals, questions, methods, observations, analyses, and work state.
+    Knowledge {
+        #[command(subcommand)]
+        command: StructuredCommand,
+    },
+    /// Connect canonical records with a typed append-only relationship.
+    Relationship {
+        #[command(subcommand)]
+        command: StructuredCommand,
     },
     /// Validate canonical records, references, budgets, and paths.
     Validate(OutputArgs),
@@ -163,20 +175,6 @@ pub(super) enum ReviewCommand {
         #[arg(long)]
         reviewer: String,
     },
-}
-
-#[derive(Debug, Args)]
-pub(super) struct OutputArgs {
-    #[arg(long)]
-    pub(super) json: bool,
-}
-
-#[derive(Debug, Args)]
-pub(super) struct RecoveryArgs {
-    #[arg(default_value = ".")]
-    pub(super) path: PathBuf,
-    #[arg(long)]
-    pub(super) json: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

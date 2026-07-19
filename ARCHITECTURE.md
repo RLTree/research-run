@@ -18,7 +18,8 @@ records inside one workspace without silently raising scientific claims.
    output and receipts cannot promote a claim.
 
 Canonical authority lives only in `.research-run/`: one manifest plus source,
-claim, evidence, experiment, human-review, and inventory JSON records. A review decision is
+claim, evidence, experiment, human-review, inventory, typed knowledge, and
+relationship JSON records. A review decision is
 the only semantic authority that changes a claim assessment. It stores the
 sorted evidence IDs reviewed by the human; status applies it only while that
 binding exactly matches the current claim evidence graph.
@@ -30,6 +31,15 @@ only an exact unchanged plan, then publishes the complete inventory as one
 atomic record. Later reconciliation records added, changed, moved, missing,
 duplicate, or ambiguous material without editing project bytes or converting
 absence into deletion.
+
+Knowledge records cover goals, research questions, hypotheses, protocols,
+methods, observations, measurements, analyses, interpretations, decisions,
+risks, blockers, uncertainties, contradictions, next actions, plans,
+presentations, and session summaries. Relationships append explicit dependency,
+provenance, revision, supersession, invalidation, resolution, blocking, and
+contradiction history. They never overwrite their endpoints and never participate
+in claim assessment; `EvidenceLink` plus `ReviewDecision` remain the sole claim
+graph and promotion authority.
 
 ## Proof and governance
 

@@ -4,6 +4,7 @@ use crate::Result;
 
 mod experiments;
 mod inventory;
+mod knowledge;
 mod records;
 mod validation;
 
@@ -11,6 +12,10 @@ pub use experiments::{ArtifactLocatorType, ArtifactPointer, ExperimentReceipt, R
 pub use inventory::{
     InventoryPlan, InventorySnapshot, MaterialClass, MaterialEntry, ReconciliationChange,
     ReconciliationKind,
+};
+pub use knowledge::{
+    EntityKind, EntityRef, KnowledgeKind, KnowledgeRecord, KnowledgeState, RelationshipKind,
+    RelationshipRecord,
 };
 pub use records::{
     Assessment, Authorship, ClaimRecord, EvidenceLink, Outcome, ProjectManifest, SourceProvenance,

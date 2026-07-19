@@ -4,6 +4,8 @@ mod data_contracts;
 mod domain_boundaries;
 #[path = "product/identifier_validation.rs"]
 mod identifier_validation;
+#[path = "product/knowledge_history.rs"]
+mod knowledge_history;
 #[path = "product/repository_authority.rs"]
 mod repository_authority;
 #[path = "product/researcher_journey.rs"]

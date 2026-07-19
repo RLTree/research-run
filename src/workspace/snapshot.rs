@@ -48,6 +48,12 @@ impl Workspace {
             experiments: self.load_records("experiments", allow_pending, &mut budget)?,
             reviews: self.load_records("reviews", allow_pending, &mut budget)?,
             inventories: self.load_optional_records("inventories", allow_pending, &mut budget)?,
+            knowledge: self.load_optional_records("knowledge", allow_pending, &mut budget)?,
+            relationships: self.load_optional_records(
+                "relationships",
+                allow_pending,
+                &mut budget,
+            )?,
         })
     }
 

@@ -1,19 +1,22 @@
 use std::path::Path;
 
 use crate::domain::{
-    ClaimRecord, EvidenceLink, ExperimentReceipt, FORMAT_VERSION, ReviewDecision, SourceRecord,
+    ClaimRecord, EvidenceLink, ExperimentReceipt, FORMAT_VERSION, KnowledgeRecord,
+    RelationshipRecord, ReviewDecision, SourceRecord,
 };
 use crate::workspace::Workspace;
 use crate::{Error, Result};
 
 use super::arguments::{
-    ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, RecoveryArgs, ReviewCommand,
-    SourceCommand,
+    ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, ReviewCommand, SourceCommand,
 };
+use super::input::read_json_input;
 use super::inventory_commands;
+use super::output_arguments::RecoveryArgs;
 use super::render::{
     parse_artifact, print_effect, print_human_status, print_json, print_text, terminal_text,
 };
+use super::structured_arguments::StructuredCommand;
 
 pub(super) fn execute(cli: Cli) -> Result<()> {
     match cli.command {
@@ -26,9 +29,29 @@ pub(super) fn execute(cli: Cli) -> Result<()> {
         Command::Evidence { command } => add_evidence(command),
         Command::Experiment { command } => add_experiment(command),
         Command::Review { command } => add_review(command),
+        Command::Knowledge { command } => add_knowledge(command),
+        Command::Relationship { command } => add_relationship(command),
         Command::Validate(output) => validate(output.json),
         Command::Status(output) => status(output.json),
     }
+}
+
+fn add_knowledge(command: StructuredCommand) -> Result<()> {
+    let StructuredCommand::Add { input } = command;
+    let record: KnowledgeRecord = read_json_input(&input)?;
+    let workspace = discover_current()?;
+    print_effect("knowledge", &record.id, workspace.add_knowledge(&record)?)
+}
+
+fn add_relationship(command: StructuredCommand) -> Result<()> {
+    let StructuredCommand::Add { input } = command;
+    let record: RelationshipRecord = read_json_input(&input)?;
+    let workspace = discover_current()?;
+    print_effect(
+        "relationship",
+        &record.id,
+        workspace.add_relationship(&record)?,
+    )
 }
 
 fn initialize(path: &Path, name: &str) -> Result<()> {

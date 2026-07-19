@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v1/relationship.schema.json",
+  "title": "Research Run Relationship Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "relationship", "from", "to", "rationale", "occurred_at", "authorship"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "relationship" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "relationship": { "enum": ["related-to", "depends-on", "derived-from", "uses", "supersedes", "revises", "invalidates", "resolves", "blocks", "contradicts"] },
+    "from": { "$ref": "#/$defs/reference" },
+    "to": { "$ref": "#/$defs/reference" },
+    "rationale": { "type": "string", "minLength": 1, "maxLength": 65536 },
+    "occurred_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "authorship": { "$ref": "types.schema.json#/$defs/authorship" }
+  },
+  "$defs": {
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["source", "claim", "evidence", "experiment", "review", "knowledge", "inventory"] },
+        "id": { "$ref": "types.schema.json#/$defs/id" }
+      }
+    }
+  }
+}

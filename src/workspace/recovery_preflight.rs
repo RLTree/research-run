@@ -6,13 +6,14 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::domain::{
-    CanonicalRecord, ClaimRecord, EvidenceLink, ExperimentReceipt, InventorySnapshot,
-    ProjectManifest, ReviewDecision, SourceRecord,
+    CanonicalRecord, ClaimRecord, EvidenceLink, ExperimentReceipt, ProjectManifest, ReviewDecision,
+    SourceRecord,
 };
 use crate::{Error, Result};
 
 use super::publication::canonical_json_bytes;
 use super::recovery_commit::commit_recovery;
+use super::recovery_optional::{OptionalRecovery, preflight_optional};
 use super::recovery_plan::PendingRecord;
 use super::recovery_review::validate_pending_review_graphs;
 use super::storage::{ReadBudget, parse_json, read_bounded, read_json_with_budget};
@@ -26,6 +27,8 @@ pub(super) struct RecoveryBatch {
     evidence: Vec<PendingRecord>,
     reviews: Vec<PendingRecord>,
     inventories: Vec<PendingRecord>,
+    knowledge: Vec<PendingRecord>,
+    relationships: Vec<PendingRecord>,
 }
 
 impl Workspace {
@@ -36,12 +39,6 @@ impl Workspace {
         let mut experiment_pending = collect_named(self, "experiments")?;
         let mut evidence_pending = collect_named(self, "evidence")?;
         let mut review_pending = collect_named(self, "reviews")?;
-        let inventory_directory = self.state.join("inventories");
-        let mut inventory_pending = if inventory_directory.exists() {
-            self.collect_recovery_pending(&inventory_directory)?
-        } else {
-            Vec::new()
-        };
         let mut budget = ReadBudget::default();
         let manifest = canonical_manifest(self, &mut manifest_pending, &mut budget)?;
         let sources =
@@ -62,16 +59,14 @@ impl Workspace {
         )?;
         let reviews =
             canonical_records::<ReviewDecision>(self, "reviews", &mut review_pending, &mut budget)?;
-        let inventories = if inventory_directory.exists() {
-            canonical_records::<InventorySnapshot>(
-                self,
-                "inventories",
-                &mut inventory_pending,
-                &mut budget,
-            )?
-        } else {
-            Vec::new()
-        };
+        let OptionalRecovery {
+            inventories,
+            knowledge,
+            relationships,
+            inventory_pending,
+            knowledge_pending,
+            relationship_pending,
+        } = preflight_optional(self, &mut budget)?;
         let snapshot = Snapshot {
             manifest,
             sources,
@@ -80,6 +75,8 @@ impl Workspace {
             evidence,
             reviews,
             inventories,
+            knowledge,
+            relationships,
         };
         if injected_storage_failure("final snapshot load") {
             return Err(Error::invalid(
@@ -98,6 +95,8 @@ impl Workspace {
                 evidence: evidence_pending,
                 reviews: review_pending,
                 inventories: inventory_pending,
+                knowledge: knowledge_pending,
+                relationships: relationship_pending,
             })
         } else {
             Err(Error::invalid(
@@ -125,6 +124,8 @@ impl RecoveryBatch {
             ("evidence", self.evidence),
             ("reviews", self.reviews),
             ("inventories", self.inventories),
+            ("knowledge", self.knowledge),
+            ("relationships", self.relationships),
         ] {
             commit_recovery(&workspace.state.join(directory), pending, result)?;
         }
@@ -162,7 +163,7 @@ fn canonical_manifest(
     candidate.ok_or_else(|| Error::NotFound("recovery requires a project manifest".to_owned()))
 }
 
-fn canonical_records<T>(
+pub(super) fn canonical_records<T>(
     workspace: &Workspace,
     directory: &str,
     pending: &mut [PendingRecord],
