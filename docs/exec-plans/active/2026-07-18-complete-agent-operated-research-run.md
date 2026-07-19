@@ -232,11 +232,14 @@ pass.
   controls after the current production-source test repair. Its mutation command
   uses Cargo's test runner with one outer mutation worker and `cargo -j 1`, with
   the mutation-runner jobserver disabled. Separate live process checks observed
-  one mutation parent, one Cargo child, and one `rustc` child at a time. The run
-  ended before its selected set completed: its outcome ledger contains the
-  passing baseline, 108 caught mutants, and 4 compiler-unviable mutants. This
-  is incomplete mutation evidence, not a zero-survivor or package-delta claim;
-  it must not be restarted without an explicit new decision boundary.
+  one mutation parent, one Cargo child, and one `rustc` child at a time. Under
+  an explicit renewed decision boundary, three non-overlapping serialized runs
+  closed the 195-mutant selected set: 177 viable mutants were caught and 18 were
+  compiler-unviable, with zero missed or timed-out outcomes. The first 112 and
+  controlled 60-mutant resume were preserved before a 23-mutant final resume;
+  the combined ledger has 195 unique mutant identities and three passing
+  baselines. This is bounded local mutation proof only; it does not promote
+  human-review, Product Fitness, release, or real-use claims.
 - 2026-07-19: The same clean candidate passed `scripts/check fast` and an
   isolated `scripts/check artifacts` package, install, installed-binary
   journey, and machine-local observation. The package archive was 157,104
@@ -252,12 +255,10 @@ pass.
 ## Current claim ceiling
 
 No completion claim is active for this plan. Candidate `33c2725` has current
-fast-check and package/install journey evidence, plus machine-local artifact
-observations. Its mutation evidence is incomplete, so the affected mutation and
-package-delta closure remains withheld. The original delivery's open-PR condition
-is also absent because PR #4 is already merged. The canonical UltraGoal retrofit
-remains blocked by four protected authority conflicts, and final independent
-review, human-authority proof, and audience-bound Product Fitness proof remain
-pending or withheld on their own surfaces. Release, scientific truth, scientific
-impact, continuance, and unobserved real researcher usefulness are outside this
-run.
+fast-check, bounded mutation, package/install journey, and machine-local artifact
+evidence. The delivery branches were merged by the repository owner; those merges
+do not substitute for final independent review, human-authority proof, or
+audience-bound Product Fitness proof. The canonical UltraGoal retrofit remains
+blocked by four protected authority conflicts. Release, scientific truth,
+scientific impact, continuance, and unobserved real researcher usefulness are
+outside this run.
