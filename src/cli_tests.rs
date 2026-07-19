@@ -212,9 +212,23 @@ fn empty_human_projection_and_current_directory_failure_are_explicit() {
             ..
         })
     ));
-    let root = std::env::temp_dir().join(format!("research-run-cli-empty-{}", std::process::id()));
-    std::fs::create_dir(&root).expect("empty directory");
+    let root = empty_directory();
     inject_current_directory(&root);
     assert!(matches!(discover_current(), Err(crate::Error::NotFound(_))));
     std::fs::remove_dir(root).expect("remove empty directory");
+}
+
+fn empty_directory() -> std::path::PathBuf {
+    for attempt in 0..128 {
+        let root = std::env::temp_dir().join(format!(
+            "research-run-cli-empty-{}-{attempt}",
+            std::process::id()
+        ));
+        match std::fs::create_dir(&root) {
+            Ok(()) => return root,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => panic!("empty directory: {error}"),
+        }
+    }
+    panic!("unable to allocate empty directory")
 }
