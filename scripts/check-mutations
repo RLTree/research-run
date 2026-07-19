@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
-selection='parse_artifact|validate_id|reject_symlink_chain|WorkspaceWriteLock::acquire|Workspace::publish_bytes|inspect_publication|link_canonical|Workspace::preflight_recovery|commit_recovery|terminal_text|source_requires_review|claim_assessment'
+selection='parse_artifact|validate_id|reject_symlink_chain|WorkspaceWriteLock::acquire|Workspace::publish_bytes|inspect_publication|link_canonical|Workspace::preflight_recovery|commit_recovery|terminal_text|source_requires_review|claim_assessment|InventoryPlan::validate|MigrationPlan::validate|KnowledgeRecord::validate|RelationshipRecord::validate|scan_materials|enforce_file_count|add_inventory_bytes|reconcile|Workspace::add_knowledge|Workspace::add_relationship|Workspace::apply_inventory_plan|Workspace::apply_migration|Workspace::context|Workspace::search|HandoffBundle::validate'
 # Capacity is independently proven at its exact 10,000-record boundary. It does
 # not exercise this selected semantic set and would consume each mutant timeout.
 mutation_tests='not test(/capacity/)'
@@ -17,7 +17,7 @@ RUSTFLAGS='--cfg coverage --check-cfg=cfg(coverage)' cargo mutants \
   --build-timeout 60 \
   --baseline run \
   --re "$selection" \
-  -- --test product -E "$mutation_tests"
+  -- -E "$mutation_tests"
 
 outcomes="mutants.out/outcomes.json"
 jq -e '

@@ -3,7 +3,9 @@ use std::io::{self, Read};
 
 use clap::Parser;
 
-use super::input::{is_allowed_platform_alias, read_json_input, read_limited};
+use super::input::{
+    is_allowed_platform_alias, read_json_input, read_limited, reject_symlink_chain,
+};
 use super::{Cli, execute, inject_current_directory};
 use crate::domain::RelationshipRecord;
 use crate::workspace::Workspace;
@@ -48,6 +50,25 @@ fn structured_input_reports_non_not_found_metadata_and_open_failures() {
             &metadata
         ));
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn structured_input_symlink_chain_distinguishes_absence_errors_and_links() {
+    use std::os::unix::fs::symlink;
+
+    let root = std::env::temp_dir().join(format!("research-run-input-path-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir(&root).expect("input path root");
+    assert!(reject_symlink_chain(&root.join("missing.json")).is_ok());
+    assert!(reject_symlink_chain(std::path::Path::new("\0")).is_err());
+    let target = root.join("target.json");
+    fs::write(&target, b"{}").expect("target");
+    let linked = root.join("linked.json");
+    symlink(&target, &linked).expect("input symlink");
+    assert!(reject_symlink_chain(&linked).is_err());
+    assert!(reject_symlink_chain(&target).is_ok());
+    fs::remove_dir_all(root).expect("remove input path root");
 }
 
 #[test]

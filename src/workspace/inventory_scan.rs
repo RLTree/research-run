@@ -24,22 +24,12 @@ pub(super) fn scan_materials(root: &Path) -> Result<(PathBuf, Vec<MaterialEntry>
     let mut paths = Vec::new();
     collect_paths(&root, &root, &mut paths)?;
     paths.sort();
-    if paths.len() > MAX_INVENTORY_ENTRIES {
-        return Err(Error::Budget(format!(
-            "material inventory exceeds the {MAX_INVENTORY_ENTRIES} file budget"
-        )));
-    }
+    enforce_file_count(paths.len())?;
     let mut total = 0_u64;
     let mut entries = Vec::with_capacity(paths.len());
     for path in paths {
         let (bytes, sha256) = hash_file(&path)?;
-        // File and entry budgets bound this sum far below u64::MAX.
-        total += bytes;
-        if total > MAX_INVENTORY_BYTES || injected_storage_failure("inventory byte budget") {
-            return Err(Error::Budget(format!(
-                "material inventory exceeds the {MAX_INVENTORY_BYTES} byte scan budget"
-            )));
-        }
+        total = add_inventory_bytes(total, bytes)?;
         let relative = path.strip_prefix(&root).expect("collected path is rooted");
         let relative = (!injected_storage_failure("material path UTF-8"))
             .then(|| relative.to_str())
@@ -54,6 +44,27 @@ pub(super) fn scan_materials(root: &Path) -> Result<(PathBuf, Vec<MaterialEntry>
         });
     }
     Ok((root, entries))
+}
+
+pub(super) fn enforce_file_count(count: usize) -> Result<()> {
+    if count > MAX_INVENTORY_ENTRIES {
+        return Err(Error::Budget(format!(
+            "material inventory exceeds the {MAX_INVENTORY_ENTRIES} file budget"
+        )));
+    }
+    Ok(())
+}
+
+pub(super) fn add_inventory_bytes(total: u64, bytes: u64) -> Result<u64> {
+    let total = total
+        .checked_add(bytes)
+        .ok_or_else(|| Error::Budget("material inventory byte total overflowed".to_owned()))?;
+    if total > MAX_INVENTORY_BYTES || injected_storage_failure("inventory byte budget") {
+        return Err(Error::Budget(format!(
+            "material inventory exceeds the {MAX_INVENTORY_BYTES} byte scan budget"
+        )));
+    }
+    Ok(total)
 }
 
 fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Result<()> {

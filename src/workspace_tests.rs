@@ -21,6 +21,7 @@ fn temporary() -> std::path::PathBuf {
         std::process::id(),
         COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
+    let _ = fs::remove_dir_all(&path);
     fs::create_dir(&path).expect("temporary directory");
     path
 }

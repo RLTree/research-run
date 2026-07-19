@@ -86,7 +86,7 @@ fn input_budget() -> Error {
     ))
 }
 
-fn reject_symlink_chain(path: &Path) -> Result<()> {
+pub(super) fn reject_symlink_chain(path: &Path) -> Result<()> {
     for component in path.ancestors() {
         match fs::symlink_metadata(component) {
             Ok(metadata)

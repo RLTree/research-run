@@ -1,7 +1,9 @@
 use super::*;
 use crate::domain::{MaterialClass, MaterialEntry, ReconciliationKind};
 use crate::workspace::inventory_reconcile::reconcile;
-use crate::workspace::inventory_scan::{classify_material, scan_materials};
+use crate::workspace::inventory_scan::{
+    add_inventory_bytes, classify_material, enforce_file_count, scan_materials,
+};
 
 fn digest(byte: char) -> String {
     byte.to_string().repeat(64)
@@ -46,6 +48,51 @@ fn reconciliation_classifies_every_change_without_inference() {
     ] {
         assert!(changes.iter().any(|change| change.kind == kind), "{kind:?}");
     }
+}
+
+#[test]
+fn reconciliation_distinguishes_each_fingerprint_and_consumes_only_exact_moves() {
+    let unchanged = material("same", 'a');
+    assert!(reconcile(std::slice::from_ref(&unchanged), &[unchanged.clone()]).is_empty());
+
+    let mut hash_changed = material("same", 'a');
+    hash_changed.sha256 = digest('b');
+    assert_eq!(
+        reconcile(&[material("same", 'a')], &[hash_changed])[0].kind,
+        ReconciliationKind::Changed
+    );
+    let mut size_changed = material("same", 'a');
+    size_changed.bytes = 2;
+    assert_eq!(
+        reconcile(&[material("same", 'a')], &[size_changed])[0].kind,
+        ReconciliationKind::Changed
+    );
+
+    let moved = reconcile(&[material("old", 'c')], &[material("new", 'c')]);
+    assert_eq!(moved.len(), 1);
+    assert_eq!(moved[0].kind, ReconciliationKind::Moved);
+    let ambiguous = reconcile(
+        &[material("old-one", 'd'), material("old-two", 'd')],
+        &[material("new", 'd')],
+    );
+    assert_eq!(
+        ambiguous
+            .iter()
+            .filter(|change| change.kind == ReconciliationKind::Conflict)
+            .count(),
+        2
+    );
+    assert_eq!(ambiguous.len(), 5);
+}
+
+#[test]
+fn inventory_count_and_byte_budgets_accept_the_limit_and_reject_the_next_unit() {
+    assert!(enforce_file_count(crate::domain::MAX_INVENTORY_ENTRIES).is_ok());
+    assert!(enforce_file_count(crate::domain::MAX_INVENTORY_ENTRIES + 1).is_err());
+    let limit = 512 * 1_048_576;
+    assert_eq!(add_inventory_bytes(0, limit).expect("exact limit"), limit);
+    assert!(add_inventory_bytes(limit, 1).is_err());
+    assert!(add_inventory_bytes(u64::MAX, 1).is_err());
 }
 
 #[test]
