@@ -198,6 +198,8 @@ fn assert_context_and_human(project: &std::path::Path) {
     let human = String::from_utf8(human.stdout).expect("human UTF-8");
     assert!(human.contains("Claim ceiling:"));
     assert!(human.contains("[stale]"));
+    assert!(human.contains("Relationships\n"));
+    assert!(human.contains("revision-signal"));
     for args in [
         vec!["list", "--human"],
         vec![

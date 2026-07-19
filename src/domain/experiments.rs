@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Error, Result};
 
 use super::validation::{
-    required_text, validate_id, validate_record_header, validate_text_list,
+    required_text, validate_hex_digest, validate_id, validate_record_header, validate_text_list,
     validate_workspace_locator,
 };
 use super::{Assessment, CanonicalRecord, MAX_ARTIFACT_POINTERS, MAX_LIST_ITEMS, Outcome};
@@ -122,16 +122,8 @@ impl CanonicalRecord for ReviewDecision {
                 "must be sorted and unique",
             ));
         }
-        if let Some(digest) = &self.subject_sha256
-            && (digest.len() != 64
-                || !digest
-                    .bytes()
-                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
-        {
-            return Err(Error::invalid(
-                "review subject_sha256",
-                "must be a lowercase SHA-256 digest",
-            ));
+        if let Some(digest) = &self.subject_sha256 {
+            validate_hex_digest(digest, "review subject_sha256")?;
         }
         if self.decision == Assessment::Unreviewed {
             return Err(Error::invalid(

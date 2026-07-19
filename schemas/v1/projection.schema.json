@@ -26,7 +26,12 @@
         "subtype": { "type": "string", "minLength": 1 },
         "title": { "type": "string" },
         "summary": { "type": "string", "maxLength": 512 },
-        "occurred_at": { "type": ["string", "null"] },
+        "occurred_at": {
+          "oneOf": [
+            { "$ref": "types.schema.json#/$defs/timestamp" },
+            { "type": "null" }
+          ]
+        },
         "state": { "type": ["string", "null"] },
         "authority_path": { "type": "string", "pattern": "^\\.research-run/" },
         "matched_by": { "type": "array", "maxItems": 5, "items": { "type": "string" } },

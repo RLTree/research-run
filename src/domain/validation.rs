@@ -46,6 +46,17 @@ pub fn validate_id(value: &str, field: &str) -> Result<()> {
     Ok(())
 }
 
+pub(super) fn validate_hex_digest(value: &str, field: &str) -> Result<()> {
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(Error::invalid(field, "must be a lowercase SHA-256 digest"));
+    }
+    Ok(())
+}
+
 pub fn required_text(value: &str, field: &str) -> Result<String> {
     bounded_text(value, field)?;
     let trimmed = value.trim();
@@ -99,6 +110,15 @@ pub fn validate_workspace_locator(value: &str) -> Result<()> {
             "parent traversal and absolute paths are forbidden",
         ));
     }
+    if value
+        .split('/')
+        .any(|component| component.is_empty() || component == ".")
+    {
+        return Err(Error::invalid(
+            "workspace locator",
+            "must use canonical non-empty path components",
+        ));
+    }
     Ok(())
 }
 
@@ -129,7 +149,7 @@ pub(crate) fn validate_timestamp(value: &str) -> Result<()> {
         let component = value[start..end]
             .parse::<u32>()
             .expect("timestamp shape proves ASCII digits");
-        let minimum = u32::from(start == 5 || start == 8);
+        let minimum = u32::from(start == 5);
         if component < minimum || component > maximum {
             return Err(Error::invalid(
                 "observed_at",

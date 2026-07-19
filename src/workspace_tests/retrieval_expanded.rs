@@ -227,8 +227,17 @@ fn assert_work_retrieval(workspace: &Workspace) {
     );
     assert_eq!(
         workspace.next_action_items(10).expect("next").items.len(),
-        1
+        2
     );
+    let claim_next = workspace
+        .next_action_items(10)
+        .expect("claim next")
+        .items
+        .into_iter()
+        .find(|item| item.kind == "claim")
+        .expect("reviewed claim next action");
+    assert_eq!(claim_next.id, "claim-one");
+    assert_eq!(claim_next.state.as_deref(), Some("limited"));
     assert_eq!(
         workspace
             .related("knowledge", "question", 10)

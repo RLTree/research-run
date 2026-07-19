@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use crate::Result;
-use crate::workspace::{ContextBundle, ProjectionItem, ProjectionResult};
+use crate::workspace::{ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection};
 
 use super::current_directory::discover_current;
 use super::render::{print_json, print_text, terminal_text};
@@ -65,23 +65,7 @@ pub(super) fn related(args: RelatedArgs) -> Result<()> {
     let workspace = discover_current()?;
     let items = workspace.related(&args.kind, &args.id, args.output.limit)?;
     if args.output.human {
-        let mut output = String::from("Relationships\n");
-        for item in items {
-            writeln!(
-                output,
-                "- {}: {} {}/{} -> {}/{}\n  {}\n  Authority: {}",
-                terminal_text(&item.id),
-                terminal_text(&item.relationship),
-                terminal_text(&item.from_kind),
-                terminal_text(&item.from_id),
-                terminal_text(&item.to_kind),
-                terminal_text(&item.to_id),
-                terminal_text(&item.rationale),
-                terminal_text(&item.authority_path)
-            )
-            .expect("String rendering is infallible");
-        }
-        print_text(&output)
+        print_text(&render_relationships(&items))
     } else {
         print_json(&items)
     }
@@ -117,6 +101,30 @@ pub(super) fn render_context(bundle: &ContextBundle) -> String {
     output.push_str(&render_items("Unresolved", &bundle.unresolved));
     output.push_str(&render_items("Blockers", &bundle.blockers));
     output.push_str(&render_items("Next actions", &bundle.next_actions));
+    output.push_str(&render_relationships(&bundle.relationships));
+    output
+}
+
+fn render_relationships(items: &[RelationshipProjection]) -> String {
+    let mut output = String::from("Relationships\n");
+    if items.is_empty() {
+        output.push_str("- None.\n");
+    }
+    for item in items {
+        writeln!(
+            output,
+            "- {}: {} {}/{} -> {}/{}\n  {}\n  Authority: {}",
+            terminal_text(&item.id),
+            terminal_text(&item.relationship),
+            terminal_text(&item.from_kind),
+            terminal_text(&item.from_id),
+            terminal_text(&item.to_kind),
+            terminal_text(&item.to_id),
+            terminal_text(&item.rationale),
+            terminal_text(&item.authority_path)
+        )
+        .expect("String rendering is infallible");
+    }
     output
 }
 

@@ -8,16 +8,16 @@ use super::structured_arguments::StructuredCommand;
 
 pub(super) fn add_knowledge(command: StructuredCommand) -> Result<()> {
     let StructuredCommand::Add { input } = command;
-    let record: KnowledgeRecord = read_json_input(&input)?;
     let workspace = discover_current()?;
+    let record: KnowledgeRecord = read_json_input(&input)?;
     let created = workspace.add_knowledge(&record)?;
     print_effect("knowledge", &record.id, created)
 }
 
 pub(super) fn add_relationship(command: StructuredCommand) -> Result<()> {
     let StructuredCommand::Add { input } = command;
-    let record: RelationshipRecord = read_json_input(&input)?;
     let workspace = discover_current()?;
+    let record: RelationshipRecord = read_json_input(&input)?;
     let created = workspace.add_relationship(&record)?;
     print_effect("relationship", &record.id, created)
 }

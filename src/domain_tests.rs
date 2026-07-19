@@ -15,6 +15,9 @@ fn identifiers_and_paths_fail_closed() {
     assert!(validate_id("../claim", "id").is_err());
     assert!(validate_workspace_locator("").is_err());
     assert!(validate_workspace_locator("artifacts/summary.txt").is_ok());
+    assert!(validate_workspace_locator("./artifacts/summary.txt").is_err());
+    assert!(validate_workspace_locator("artifacts//summary.txt").is_err());
+    assert!(validate_workspace_locator("artifacts/./summary.txt").is_err());
     assert!(validate_workspace_locator(&"x".repeat(65_537)).is_err());
     assert!(validate_workspace_locator("../secret").is_err());
     assert!(validate_workspace_locator("/tmp/secret").is_err());

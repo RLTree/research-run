@@ -3,8 +3,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::domain::{
     ArtifactLocatorType, ArtifactPointer, Assessment, Authorship, CanonicalRecord, ClaimRecord,
-    EvidenceLink, ExperimentReceipt, Outcome, ProjectManifest, ReviewDecision, SourceProvenance,
-    SourceRecord, Stance,
+    EntityKind, EntityRef, EvidenceLink, ExperimentReceipt, KnowledgeKind, KnowledgeRecord,
+    KnowledgeState, Outcome, ProjectManifest, RelationshipKind, RelationshipRecord, ReviewDecision,
+    SourceProvenance, SourceRecord, Stance,
 };
 
 use super::{
@@ -93,6 +94,60 @@ fn experiment(id: &str) -> ExperimentReceipt {
         next_move: "Repeat".to_owned(),
         artifacts: Vec::new(),
     }
+}
+
+#[test]
+fn non_history_relationship_may_close_a_history_path() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Relationship semantics").expect("initialize");
+    let knowledge = |id: &str| KnowledgeRecord {
+        schema_version: 1,
+        kind: "knowledge".to_owned(),
+        id: id.to_owned(),
+        record_type: KnowledgeKind::Observation,
+        title: id.to_owned(),
+        body: "Retained history".to_owned(),
+        occurred_at: "2026-07-18T20:00:00Z".to_owned(),
+        state: KnowledgeState::Open,
+        authorship: Authorship::Human,
+    };
+    workspace.add_knowledge(&knowledge("old")).expect("old");
+    workspace.add_knowledge(&knowledge("new")).expect("new");
+    let relation =
+        |id: &str, relationship: RelationshipKind, from: &str, to: &str| RelationshipRecord {
+            schema_version: 1,
+            kind: "relationship".to_owned(),
+            id: id.to_owned(),
+            relationship,
+            from: EntityRef {
+                kind: EntityKind::Knowledge,
+                id: from.to_owned(),
+            },
+            to: EntityRef {
+                kind: EntityKind::Knowledge,
+                id: to.to_owned(),
+            },
+            rationale: "Typed relation".to_owned(),
+            occurred_at: "2026-07-18T20:00:00Z".to_owned(),
+            authorship: Authorship::Human,
+        };
+    workspace
+        .add_relationship(&relation(
+            "revision",
+            RelationshipKind::Revises,
+            "new",
+            "old",
+        ))
+        .expect("history edge");
+    workspace
+        .add_relationship(&relation(
+            "related",
+            RelationshipKind::RelatedTo,
+            "old",
+            "new",
+        ))
+        .expect("non-history edge");
+    fs::remove_dir_all(root).expect("remove fixture");
 }
 
 #[path = "workspace_tests/handoff_expanded.rs"]

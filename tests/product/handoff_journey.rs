@@ -22,7 +22,11 @@ fn fresh_process_consumes_handoff_without_source_workspace() {
     let inspected: Value = serde_json::from_slice(&inspected.stdout).expect("handoff JSON");
     assert_eq!(inspected["id"], "handoff-current");
     assert_eq!(inspected["context"]["blockers"][0]["id"], "blocker-reagent");
-    assert_eq!(inspected["context"]["next_actions"][0]["id"], "next-order");
+    let next_actions = inspected["context"]["next_actions"].as_array().unwrap();
+    assert!(next_actions.iter().any(|item| item["id"] == "next-order"));
+    assert!(next_actions.iter().any(|item| {
+        item["kind"] == "claim" && item["id"] == "claim-assay" && item["state"] == "limited"
+    }));
     let matches = inspected["context"]["matches"].as_array().unwrap();
     for (kind, id) in [
         ("claim", "claim-assay"),

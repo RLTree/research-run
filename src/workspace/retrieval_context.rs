@@ -107,7 +107,6 @@ pub(super) fn claim_next_actions(status: &Status) -> Vec<ProjectionItem> {
     status
         .claims
         .iter()
-        .filter(|claim| !claim.blockers.is_empty())
         .map(|claim| claim_action_item(claim, "next-action", claim.next_action.clone()))
         .collect()
 }
@@ -120,7 +119,7 @@ fn claim_action_item(claim: &super::ClaimStatus, subtype: &str, summary: String)
         title: format!("{} for claim {}", subtype.replace('-', " "), claim.id),
         summary,
         occurred_at: None,
-        state: Some(format!("{:?}", claim.assessment).to_ascii_lowercase()),
+        state: Some(super::retrieval_items::enum_name(&claim.assessment)),
         authority_path: format!(".research-run/claims/{}.json", claim.id),
         matched_by: Vec::new(),
         stale: false,

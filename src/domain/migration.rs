@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Error, Result};
 
 use super::CanonicalRecord;
-use super::validation::{validate_header, validate_id, validate_timestamp};
+use super::validation::{validate_header, validate_hex_digest, validate_id, validate_timestamp};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -135,16 +135,5 @@ fn validate_fields(value: &impl MigrationFields) -> Result<()> {
             "must contain at least one canonical file and byte",
         ));
     }
-    let digest = value.authority_sha256();
-    if digest.len() != 64
-        || !digest
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-    {
-        return Err(Error::invalid(
-            "migration digest",
-            "must be 64 lowercase hex bytes",
-        ));
-    }
-    Ok(())
+    validate_hex_digest(value.authority_sha256(), "migration digest")
 }

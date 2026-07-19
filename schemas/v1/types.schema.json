@@ -12,6 +12,10 @@
       "minLength": 1,
       "maxLength": 65536
     },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
     "authorship": {
       "enum": ["human", "ai"]
     },

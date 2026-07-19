@@ -34,7 +34,7 @@ impl Workspace {
         if !entity_exists(&snapshot, &record.to) {
             return Err(unknown_reference("to", &record.to));
         }
-        if is_history(record.relationship) & creates_history_cycle(&snapshot, record) {
+        if is_history(record.relationship) && creates_history_cycle(&snapshot, record) {
             return Err(Error::invalid(
                 "relationship history",
                 "supersession, revision, and invalidation must remain acyclic",

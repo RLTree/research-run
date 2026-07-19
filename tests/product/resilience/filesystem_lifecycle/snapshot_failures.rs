@@ -9,7 +9,7 @@ fn snapshot_reader_propagates_each_typed_record_failure_boundary() {
 
 #[test]
 fn expanded_snapshot_directories_propagate_malformed_records() {
-    for directory in ["knowledge", "migrations"] {
+    for directory in ["inventories", "knowledge", "relationships", "migrations"] {
         let root = initialize(directory);
         fs::write(
             root.0

@@ -57,6 +57,18 @@ fn every_versioned_schema_is_well_formed_json() {
 }
 
 #[test]
+fn projection_timestamps_use_the_shared_utc_contract() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/v1");
+    let projection: Value = serde_json::from_slice(
+        &fs::read(root.join("projection.schema.json")).expect("projection schema"),
+    )
+    .expect("projection schema JSON");
+    let timestamp = &projection["$defs"]["item"]["properties"]["occurred_at"]["oneOf"];
+    assert_eq!(timestamp[0]["$ref"], "types.schema.json#/$defs/timestamp");
+    assert_eq!(timestamp[1]["type"], "null");
+}
+
+#[test]
 fn checked_in_synthetic_example_is_valid_and_reports_limited_claim() {
     let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/synthetic-assay");
     let binary = std::env::var("CARGO_BIN_EXE_research-run").expect("binary path");

@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Error, Result};
 
-use super::validation::{required_text, validate_header, validate_id, validate_timestamp};
+use super::validation::{
+    required_text, validate_header, validate_hex_digest, validate_id, validate_timestamp,
+};
 use super::{CanonicalRecord, MAX_INVENTORY_ENTRIES};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -35,18 +37,7 @@ pub struct MaterialEntry {
 impl MaterialEntry {
     fn validate(&self) -> Result<()> {
         super::validate_workspace_locator(&self.path)?;
-        if self.sha256.len() != 64
-            || !self
-                .sha256
-                .bytes()
-                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        {
-            return Err(Error::invalid(
-                "material sha256",
-                "must be 64 lowercase hex bytes",
-            ));
-        }
-        Ok(())
+        validate_hex_digest(&self.sha256, "material sha256")
     }
 }
 

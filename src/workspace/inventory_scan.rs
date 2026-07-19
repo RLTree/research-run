@@ -24,7 +24,6 @@ pub(super) fn scan_materials(root: &Path) -> Result<(PathBuf, Vec<MaterialEntry>
     let mut paths = Vec::new();
     collect_paths(&root, &root, &mut paths)?;
     paths.sort();
-    enforce_file_count(paths.len())?;
     let mut total = 0_u64;
     let mut entries = Vec::with_capacity(paths.len());
     for path in paths {
@@ -69,15 +68,13 @@ pub(super) fn add_inventory_bytes(total: u64, bytes: u64) -> Result<u64> {
 
 fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Result<()> {
     reject_symlink_chain(directory)?;
-    let mut entries = map_io(
+    let entries = map_io(
         fs::read_dir(directory),
         "read retrofit directory",
         directory,
-    )?
-    .map(|entry| map_io(entry, "read retrofit entry", directory))
-    .collect::<Result<Vec<_>>>()?;
-    entries.sort_by_key(std::fs::DirEntry::file_name);
+    )?;
     for entry in entries {
+        let entry = map_io(entry, "read retrofit entry", directory)?;
         let path = entry.path();
         let relative = path.strip_prefix(root).expect("entry is rooted");
         let metadata = map_io(fs::symlink_metadata(&path), "inspect retrofit entry", &path)?;
@@ -96,6 +93,7 @@ fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Res
             collect_paths(root, &path, paths)?;
         } else if metadata.is_file() {
             paths.push(path);
+            enforce_file_count(paths.len())?;
         } else {
             return Err(Error::invalid(
                 "retrofit target",

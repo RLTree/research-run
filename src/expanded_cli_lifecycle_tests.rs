@@ -62,7 +62,8 @@ fn structured_wrappers_cover_success_and_failure() {
         ],
     )
     .expect("relationship success");
-    assert_relationship_discovery_failure(&relationship);
+    assert_structured_discovery_precedes_input("knowledge");
+    assert_structured_discovery_precedes_input("relationship");
     write_json(&relationship, relationship_value("missing"));
     assert!(
         run_at(
@@ -110,17 +111,17 @@ fn assert_relationship_input_failure(root: &std::path::Path, input: &std::path::
     );
 }
 
-fn assert_relationship_discovery_failure(input: &std::path::Path) {
+fn assert_structured_discovery_precedes_input(kind: &str) {
     inject_current_directory_failure();
-    let command = Cli::try_parse_from([
-        "research-run",
-        "relationship",
-        "add",
-        "--input",
-        text(input),
-    ])
-    .expect("parse relationship");
-    assert!(execute(command).is_err());
+    let command = Cli::try_parse_from(["research-run", kind, "add", "--input", "missing.json"])
+        .expect("parse structured command");
+    assert!(matches!(
+        execute(command),
+        Err(crate::Error::Io {
+            action: "read current directory",
+            ..
+        })
+    ));
 }
 
 #[test]
