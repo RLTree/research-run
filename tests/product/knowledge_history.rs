@@ -145,6 +145,67 @@ fn structured_stdin_is_supported_without_promoting_claims() {
     );
 }
 
+#[test]
+fn structured_file_input_rejects_missing_directory_oversized_and_symlink_paths() {
+    let temporary = TempDir::new("knowledge-input-defense");
+    let project = temporary.0.join("project");
+    succeeds(
+        &temporary.0,
+        &["init", project.to_str().unwrap(), "--name", "Input defense"],
+    );
+    let missing = temporary.0.join("missing.json");
+    assert!(
+        !cli(
+            &project,
+            &["knowledge", "add", "--input", missing.to_str().unwrap()]
+        )
+        .status
+        .success()
+    );
+    let malformed = temporary.0.join("malformed.json");
+    fs::write(&malformed, b"{").expect("malformed input");
+    let output = cli(
+        &project,
+        &["knowledge", "add", "--input", malformed.to_str().unwrap()],
+    );
+    assert!(!output.status.success());
+    assert!(
+        !cli(
+            &project,
+            &["knowledge", "add", "--input", temporary.0.to_str().unwrap(),]
+        )
+        .status
+        .success()
+    );
+    let oversized = temporary.0.join("oversized.json");
+    fs::File::create(&oversized)
+        .expect("oversized fixture")
+        .set_len(1_048_577)
+        .expect("oversized length");
+    let output = cli(
+        &project,
+        &["knowledge", "add", "--input", oversized.to_str().unwrap()],
+    );
+    assert_eq!(output.status.code(), Some(5));
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::symlink;
+        let valid = temporary.0.join("valid.json");
+        fs::write(&valid, knowledge("linked", "observation").to_string()).expect("valid");
+        let linked = temporary.0.join("linked.json");
+        symlink(&valid, &linked).expect("linked input");
+        assert!(
+            !cli(
+                &project,
+                &["knowledge", "add", "--input", linked.to_str().unwrap()]
+            )
+            .status
+            .success()
+        );
+    }
+}
+
 fn add_json(temporary: &TempDir, project: &std::path::Path, command: &str, value: Value) {
     let path = temporary.0.join(format!("{command}-input.json"));
     fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).expect("write input");

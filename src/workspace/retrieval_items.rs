@@ -1,17 +1,15 @@
 use std::collections::BTreeSet;
 
-use crate::domain::{Assessment, RelationshipKind};
+use crate::domain::RelationshipKind;
 
 use super::Snapshot;
-use super::references::current_review_bindings;
-use super::retrieval_types::{ProjectionItem, RelationshipProjection};
+use super::retrieval_canonical::add_canonical;
+use super::retrieval_types::ProjectionItem;
 
 pub(super) fn projection_items(snapshot: &Snapshot) -> Vec<ProjectionItem> {
     let (stale, invalidated) = history_flags(snapshot);
     let mut items = Vec::new();
-    add_sources(snapshot, &mut items);
-    add_claims(snapshot, &mut items);
-    add_experiments(snapshot, &mut items);
+    add_canonical(snapshot, &mut items);
     for record in &snapshot.knowledge {
         items.push(item(ItemSpec {
             kind: "knowledge",
@@ -29,86 +27,6 @@ pub(super) fn projection_items(snapshot: &Snapshot) -> Vec<ProjectionItem> {
     add_inventories(snapshot, &mut items);
     items.sort_by(|left, right| (&left.kind, &left.id).cmp(&(&right.kind, &right.id)));
     items
-}
-
-pub(super) fn relationship_items(snapshot: &Snapshot) -> Vec<RelationshipProjection> {
-    let mut items = snapshot
-        .relationships
-        .iter()
-        .map(|record| RelationshipProjection {
-            id: record.id.clone(),
-            relationship: enum_name(&record.relationship),
-            from_kind: enum_name(&record.from.kind),
-            from_id: record.from.id.clone(),
-            to_kind: enum_name(&record.to.kind),
-            to_id: record.to.id.clone(),
-            rationale: record.rationale.clone(),
-            occurred_at: record.occurred_at.clone(),
-            authority_path: format!(".research-run/relationships/{}.json", record.id),
-        })
-        .collect::<Vec<_>>();
-    items.sort_by(|left, right| left.id.cmp(&right.id));
-    items
-}
-
-fn add_sources(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
-    for record in &snapshot.sources {
-        items.push(item(ItemSpec {
-            kind: "source",
-            id: &record.id,
-            subtype: &enum_name(&record.provenance),
-            title: &record.citation,
-            summary: &format!("{} {}", record.locator, record.notes),
-            occurred_at: None,
-            state: None,
-            authority_path: &format!(".research-run/sources/{}.json", record.id),
-            stale: false,
-            invalidated: false,
-        }));
-    }
-}
-
-fn add_claims(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
-    let reviews = current_review_bindings(snapshot);
-    for record in &snapshot.claims {
-        let assessment = reviews
-            .get(record.id.as_str())
-            .map(|review| review.decision)
-            .unwrap_or(Assessment::Unreviewed);
-        items.push(item(ItemSpec {
-            kind: "claim",
-            id: &record.id,
-            subtype: "claim",
-            title: &record.text,
-            summary: &format!("{} Owner: {}", record.scope, record.owner),
-            occurred_at: None,
-            state: Some(&enum_name(&assessment)),
-            authority_path: &format!(".research-run/claims/{}.json", record.id),
-            stale: false,
-            invalidated: false,
-        }));
-    }
-}
-
-fn add_experiments(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
-    for record in &snapshot.experiments {
-        items.push(item(ItemSpec {
-            kind: "experiment",
-            id: &record.id,
-            subtype: &enum_name(&record.outcome),
-            title: &record.question,
-            summary: &format!(
-                "{} {}",
-                record.observations.join(" "),
-                record.interpretation
-            ),
-            occurred_at: None,
-            state: Some(&enum_name(&record.outcome)),
-            authority_path: &format!(".research-run/experiments/{}.json", record.id),
-            stale: false,
-            invalidated: false,
-        }));
-    }
 }
 
 fn add_inventories(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
@@ -166,20 +84,20 @@ fn history_flags(snapshot: &Snapshot) -> (BTreeSet<&str>, BTreeSet<&str>) {
     (stale, invalidated)
 }
 
-struct ItemSpec<'a> {
-    kind: &'a str,
-    id: &'a str,
-    subtype: &'a str,
-    title: &'a str,
-    summary: &'a str,
-    occurred_at: Option<&'a str>,
-    state: Option<&'a str>,
-    authority_path: &'a str,
-    stale: bool,
-    invalidated: bool,
+pub(super) struct ItemSpec<'a> {
+    pub(super) kind: &'a str,
+    pub(super) id: &'a str,
+    pub(super) subtype: &'a str,
+    pub(super) title: &'a str,
+    pub(super) summary: &'a str,
+    pub(super) occurred_at: Option<&'a str>,
+    pub(super) state: Option<&'a str>,
+    pub(super) authority_path: &'a str,
+    pub(super) stale: bool,
+    pub(super) invalidated: bool,
 }
 
-fn item(spec: ItemSpec<'_>) -> ProjectionItem {
+pub(super) fn item(spec: ItemSpec<'_>) -> ProjectionItem {
     ProjectionItem {
         kind: spec.kind.to_owned(),
         id: spec.id.to_owned(),
@@ -199,7 +117,7 @@ fn truncate(value: &str, limit: usize) -> String {
     value.chars().take(limit).collect()
 }
 
-fn enum_name(value: &impl serde::Serialize) -> String {
+pub(super) fn enum_name(value: &impl serde::Serialize) -> String {
     serde_json::to_value(value)
         .expect("domain enum serialization is infallible")
         .as_str()

@@ -93,9 +93,27 @@ fn experiment(id: &str) -> ExperimentReceipt {
     }
 }
 
+#[path = "workspace_tests/handoff_expanded.rs"]
+mod handoff_expanded;
+#[path = "workspace_tests/inventory_expanded.rs"]
+mod inventory_expanded;
+#[path = "workspace_tests/inventory_failure_expanded.rs"]
+mod inventory_failure_expanded;
+#[path = "workspace_tests/knowledge_expanded.rs"]
+mod knowledge_expanded;
+#[path = "workspace_tests/migration_expanded.rs"]
+mod migration_expanded;
+#[path = "workspace_tests/migration_failure_expanded.rs"]
+mod migration_failure_expanded;
 #[path = "workspace_tests/records.rs"]
 mod records;
 #[path = "workspace_tests/recovery.rs"]
 mod recovery;
+#[path = "workspace_tests/retrieval_expanded.rs"]
+mod retrieval_expanded;
+#[path = "workspace_tests/retrieval_failure_expanded.rs"]
+mod retrieval_failure_expanded;
+#[path = "workspace_tests/snapshot_expanded.rs"]
+mod snapshot_expanded;
 #[path = "workspace_tests/storage.rs"]
 mod storage;

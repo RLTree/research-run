@@ -3,19 +3,21 @@ use std::fmt::Write;
 use crate::Result;
 use crate::workspace::{ContextBundle, ProjectionItem, ProjectionResult};
 
-use super::commands::discover_current;
+use super::current_directory::discover_current;
 use super::render::{print_json, print_text, terminal_text};
 use super::retrieval_arguments::{
     ContextArgs, LimitArgs, ListArgs, RelatedArgs, SearchArgs, ShowArgs,
 };
 
 pub(super) fn list(args: ListArgs) -> Result<()> {
-    let result = discover_current()?.list(args.kind.as_deref(), args.output.limit)?;
+    let workspace = discover_current()?;
+    let result = workspace.list(args.kind.as_deref(), args.output.limit)?;
     print_projection(&result, args.output.human)
 }
 
 pub(super) fn show(args: ShowArgs) -> Result<()> {
-    let item = discover_current()?.show(&args.kind, &args.id)?;
+    let workspace = discover_current()?;
+    let item = workspace.show(&args.kind, &args.id)?;
     if args.human {
         print_text(&render_items("Record", std::slice::from_ref(&item)))
     } else {
@@ -24,37 +26,44 @@ pub(super) fn show(args: ShowArgs) -> Result<()> {
 }
 
 pub(super) fn search(args: SearchArgs) -> Result<()> {
-    let result = discover_current()?.search(&args.query, args.output.limit)?;
+    let workspace = discover_current()?;
+    let result = workspace.search(&args.query, args.output.limit)?;
     print_projection(&result, args.output.human)
 }
 
 pub(super) fn recent(args: LimitArgs) -> Result<()> {
-    let result = discover_current()?.recent(args.limit)?;
+    let workspace = discover_current()?;
+    let result = workspace.recent(args.limit)?;
     print_projection(&result, args.human)
 }
 
 pub(super) fn timeline(args: LimitArgs) -> Result<()> {
-    let result = discover_current()?.timeline(args.limit)?;
+    let workspace = discover_current()?;
+    let result = workspace.timeline(args.limit)?;
     print_projection(&result, args.human)
 }
 
 pub(super) fn unresolved(args: LimitArgs) -> Result<()> {
-    let result = discover_current()?.unresolved(args.limit)?;
+    let workspace = discover_current()?;
+    let result = workspace.unresolved(args.limit)?;
     print_projection(&result, args.human)
 }
 
 pub(super) fn blockers(args: LimitArgs) -> Result<()> {
-    let result = discover_current()?.blocker_items(args.limit)?;
+    let workspace = discover_current()?;
+    let result = workspace.blocker_items(args.limit)?;
     print_projection(&result, args.human)
 }
 
 pub(super) fn next(args: LimitArgs) -> Result<()> {
-    let result = discover_current()?.next_action_items(args.limit)?;
+    let workspace = discover_current()?;
+    let result = workspace.next_action_items(args.limit)?;
     print_projection(&result, args.human)
 }
 
 pub(super) fn related(args: RelatedArgs) -> Result<()> {
-    let items = discover_current()?.related(&args.kind, &args.id, args.output.limit)?;
+    let workspace = discover_current()?;
+    let items = workspace.related(&args.kind, &args.id, args.output.limit)?;
     if args.output.human {
         let mut output = String::from("Relationships\n");
         for item in items {
@@ -79,7 +88,8 @@ pub(super) fn related(args: RelatedArgs) -> Result<()> {
 }
 
 pub(super) fn context(args: ContextArgs) -> Result<()> {
-    let bundle = discover_current()?.context(args.query.as_deref(), args.output.limit)?;
+    let workspace = discover_current()?;
+    let bundle = workspace.context(args.query.as_deref(), args.output.limit)?;
     if args.output.human {
         print_text(&render_context(&bundle))
     } else {

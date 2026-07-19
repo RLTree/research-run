@@ -28,6 +28,8 @@ mod recovery_preflight;
 mod recovery_review;
 mod references;
 mod retrieval;
+mod retrieval_canonical;
+mod retrieval_context;
 mod retrieval_items;
 mod retrieval_types;
 mod snapshot;
@@ -45,23 +47,30 @@ static COVERAGE_FAULT_OCCURRENCE: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(test)]
 thread_local! {
-    static STORAGE_FAILURE: std::cell::RefCell<Option<&'static str>> = const { std::cell::RefCell::new(None) };
+    static STORAGE_FAILURE: std::cell::RefCell<Option<(&'static str, u64)>> = const { std::cell::RefCell::new(None) };
 }
 
 #[cfg(test)]
 pub(super) fn inject_storage_failure(point: &'static str) {
-    STORAGE_FAILURE.with_borrow_mut(|failure| *failure = Some(point));
+    let (point, occurrence) = point
+        .rsplit_once('#')
+        .and_then(|(point, occurrence)| occurrence.parse().ok().map(|count| (point, count)))
+        .unwrap_or((point, 1));
+    STORAGE_FAILURE.with_borrow_mut(|failure| *failure = Some((point, occurrence)));
 }
 
 #[cfg(test)]
 pub(super) fn take_storage_failure(point: &str) -> bool {
-    STORAGE_FAILURE.with_borrow_mut(|failure| {
-        if failure.as_deref() == Some(point) {
+    STORAGE_FAILURE.with_borrow_mut(|failure| match failure.as_mut() {
+        Some((target, remaining)) if *target == point && *remaining == 1 => {
             failure.take();
             true
-        } else {
+        }
+        Some((target, remaining)) if *target == point => {
+            *remaining -= 1;
             false
         }
+        _ => false,
     })
 }
 

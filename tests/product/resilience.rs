@@ -90,8 +90,12 @@ fn pending_source(root: &Path, id: &str, sequence: u32) -> PathBuf {
 mod capacity;
 #[path = "resilience/cli_boundaries.rs"]
 mod cli_boundaries;
+#[path = "resilience/coverage_completion.rs"]
+mod coverage_completion;
 #[path = "resilience/diagnostics.rs"]
 mod diagnostics;
+#[path = "resilience/expanded_diagnostics.rs"]
+mod expanded_diagnostics;
 #[path = "resilience/filesystem_lifecycle.rs"]
 mod filesystem_lifecycle;
 #[path = "resilience/record_integrity.rs"]

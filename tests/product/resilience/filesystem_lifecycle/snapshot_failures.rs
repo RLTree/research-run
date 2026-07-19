@@ -7,6 +7,22 @@ fn snapshot_reader_propagates_each_typed_record_failure_boundary() {
     assert_snapshot_read_failures(&root.0);
 }
 
+#[test]
+fn expanded_snapshot_directories_propagate_malformed_records() {
+    for directory in ["knowledge", "migrations"] {
+        let root = initialize(directory);
+        fs::write(
+            root.0
+                .join(".research-run")
+                .join(directory)
+                .join("bad.json"),
+            b"{}",
+        )
+        .expect("bad expanded record");
+        assert!(!run(&root.0, &["status", "--json"], None).status.success());
+    }
+}
+
 fn seed_each_typed_record(root: &Path) {
     assert!(add_source(root, "source-one", None).status.success());
     super::recovery::add_claim(root);

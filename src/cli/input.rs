@@ -9,8 +9,13 @@ use crate::{Error, Result};
 const MAX_INPUT_BYTES: u64 = 1_048_576;
 
 pub(super) fn read_json_input<T: DeserializeOwned>(input: &str) -> Result<T> {
+    let (bytes, label) = read_json_bytes(input)?;
+    serde_json::from_slice(&bytes).map_err(|_| Error::MalformedJson { path: label })
+}
+
+fn read_json_bytes(input: &str) -> Result<(Vec<u8>, std::path::PathBuf)> {
     let (bytes, label) = if input == "-" {
-        (read_stdin()?, Path::new("stdin"))
+        (read_stdin()?, Path::new("stdin").to_path_buf())
     } else {
         let path = Path::new(input);
         reject_symlink_chain(path)?;
@@ -24,27 +29,55 @@ pub(super) fn read_json_input<T: DeserializeOwned>(input: &str) -> Result<T> {
         }
         let mut file =
             File::open(path).map_err(|source| Error::io("open structured input", path, source))?;
-        (read_limited(&mut file)?, path)
+        (read_file(&mut file)?, path.to_path_buf())
     };
-    serde_json::from_slice(&bytes).map_err(|_| Error::MalformedJson {
-        path: label.to_path_buf(),
-    })
+    Ok((bytes, label))
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
+    if coverage_input_fault("read structured stdin") {
+        return read_limited(&mut FailedInput);
+    }
     read_limited(&mut io::stdin().lock())
 }
 
-fn read_limited(reader: &mut impl Read) -> Result<Vec<u8>> {
+fn read_file(file: &mut File) -> Result<Vec<u8>> {
+    if coverage_input_fault("read structured file") {
+        return read_limited(&mut FailedInput);
+    }
+    read_limited(file)
+}
+
+pub(super) fn read_limited(reader: &mut dyn Read) -> Result<Vec<u8>> {
     let mut bytes = Vec::new();
     reader
         .take(MAX_INPUT_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(|source| Error::io("read structured input", Path::new("input"), source))?;
-    if bytes.len() as u64 > MAX_INPUT_BYTES {
+    if bytes.len() as u64 > MAX_INPUT_BYTES || coverage_input_fault("structured post-read budget") {
         return Err(input_budget());
     }
     Ok(bytes)
+}
+
+struct FailedInput;
+
+impl Read for FailedInput {
+    fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+        Err(io::Error::other("injected structured input failure"))
+    }
+}
+
+fn coverage_input_fault(point: &str) -> bool {
+    #[cfg(coverage)]
+    {
+        return std::env::var("RESEARCH_RUN_COVERAGE_FAULT").is_ok_and(|value| value == point);
+    }
+    #[cfg(not(coverage))]
+    {
+        let _ = point;
+        false
+    }
 }
 
 fn input_budget() -> Error {
@@ -73,7 +106,7 @@ fn reject_symlink_chain(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn is_allowed_platform_alias(_path: &Path, _metadata: &fs::Metadata) -> bool {
+pub(super) fn is_allowed_platform_alias(_path: &Path, _metadata: &fs::Metadata) -> bool {
     #[cfg(target_os = "macos")]
     {
         _path == Path::new("/var")

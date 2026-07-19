@@ -8,6 +8,7 @@ use sha2::{Digest, Sha256};
 use crate::domain::{MAX_INVENTORY_ENTRIES, MaterialClass, MaterialEntry};
 use crate::{Error, Result};
 
+use super::injected_storage_failure;
 use super::path_safety::{absolute_path, reject_symlink_chain};
 use super::storage::{map_io, same_file_identity};
 
@@ -32,17 +33,17 @@ pub(super) fn scan_materials(root: &Path) -> Result<(PathBuf, Vec<MaterialEntry>
     let mut entries = Vec::with_capacity(paths.len());
     for path in paths {
         let (bytes, sha256) = hash_file(&path)?;
-        total = total
-            .checked_add(bytes)
-            .ok_or_else(|| Error::Budget("material inventory byte count overflowed".to_owned()))?;
-        if total > MAX_INVENTORY_BYTES {
+        // File and entry budgets bound this sum far below u64::MAX.
+        total += bytes;
+        if total > MAX_INVENTORY_BYTES || injected_storage_failure("inventory byte budget") {
             return Err(Error::Budget(format!(
                 "material inventory exceeds the {MAX_INVENTORY_BYTES} byte scan budget"
             )));
         }
         let relative = path.strip_prefix(&root).expect("collected path is rooted");
-        let relative = relative
-            .to_str()
+        let relative = (!injected_storage_failure("material path UTF-8"))
+            .then(|| relative.to_str())
+            .flatten()
             .ok_or_else(|| Error::invalid("material path", "must be UTF-8"))?
             .replace(std::path::MAIN_SEPARATOR, "/");
         entries.push(MaterialEntry {
@@ -62,8 +63,8 @@ fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Res
         "read retrofit directory",
         directory,
     )?
-    .collect::<std::io::Result<Vec<_>>>()
-    .map_err(|source| Error::io("read retrofit entry", directory, source))?;
+    .map(|entry| map_io(entry, "read retrofit entry", directory))
+    .collect::<Result<Vec<_>>>()?;
     entries.sort_by_key(std::fs::DirEntry::file_name);
     for entry in entries {
         let path = entry.path();
@@ -95,7 +96,7 @@ fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Res
 }
 
 fn hash_file(path: &Path) -> Result<(u64, String)> {
-    reject_symlink_chain(path)?;
+    reject_material_path(path, "material pre-hash path")?;
     let before = map_io(fs::metadata(path), "inspect material", path)?;
     if before.len() > MAX_INDEXED_FILE_BYTES {
         return Err(Error::Budget(format!(
@@ -113,15 +114,18 @@ fn hash_file(path: &Path) -> Result<(u64, String)> {
         "hash material",
         path,
     )?;
-    if copied > MAX_INDEXED_FILE_BYTES {
+    if copied > MAX_INDEXED_FILE_BYTES || injected_storage_failure("material grew") {
         return Err(Error::Budget(format!(
             "{} grew beyond its budget",
             path.display()
         )));
     }
-    reject_symlink_chain(path)?;
+    reject_material_path(path, "material post-hash path")?;
     let after = map_io(fs::metadata(path), "reinspect material", path)?;
-    if !same_file_identity(&before, &after) || before.len() != after.len() {
+    if !same_file_identity(&before, &after)
+        || before.len() != after.len()
+        || injected_storage_failure("material identity")
+    {
         return Err(Error::AmbiguousEffect(format!(
             "material identity changed while indexing {}",
             path.display()
@@ -130,7 +134,18 @@ fn hash_file(path: &Path) -> Result<(u64, String)> {
     Ok((copied, format!("{:x}", hasher.finalize())))
 }
 
-fn classify_material(path: &str) -> MaterialClass {
+fn reject_material_path(path: &Path, fault: &str) -> Result<()> {
+    if injected_storage_failure(fault) {
+        return Err(Error::io(
+            "inspect material path",
+            path,
+            std::io::Error::other("injected material path failure"),
+        ));
+    }
+    reject_symlink_chain(path)
+}
+
+pub(super) fn classify_material(path: &str) -> MaterialClass {
     let lower = path.to_ascii_lowercase();
     let extension = Path::new(path).extension().and_then(OsStr::to_str);
     if lower.contains("protocol") || lower.contains("method") {

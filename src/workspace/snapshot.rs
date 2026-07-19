@@ -40,6 +40,10 @@ impl Workspace {
         let manifest: ProjectManifest =
             read_json_with_budget(&self.state.join("manifest.json"), &mut budget)?;
         manifest.validate()?;
+        let relationships =
+            self.load_optional_records("relationships", allow_pending, &mut budget)?;
+        let knowledge = self.load_optional_records("knowledge", allow_pending, &mut budget)?;
+        let migrations = self.load_optional_records("migrations", allow_pending, &mut budget)?;
         Ok(Snapshot {
             manifest,
             sources: self.load_records("sources", allow_pending, &mut budget)?,
@@ -48,17 +52,13 @@ impl Workspace {
             experiments: self.load_records("experiments", allow_pending, &mut budget)?,
             reviews: self.load_records("reviews", allow_pending, &mut budget)?,
             inventories: self.load_optional_records("inventories", allow_pending, &mut budget)?,
-            knowledge: self.load_optional_records("knowledge", allow_pending, &mut budget)?,
-            relationships: self.load_optional_records(
-                "relationships",
-                allow_pending,
-                &mut budget,
-            )?,
-            migrations: self.load_optional_records("migrations", allow_pending, &mut budget)?,
+            knowledge,
+            relationships,
+            migrations,
         })
     }
 
-    fn load_optional_records<T>(
+    pub(super) fn load_optional_records<T>(
         &self,
         directory: &str,
         allow_pending: bool,

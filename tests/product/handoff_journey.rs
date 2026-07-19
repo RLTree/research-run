@@ -30,6 +30,30 @@ fn fresh_process_consumes_handoff_without_source_workspace() {
             .iter()
             .any(|item| item["id"] == "observation-negative")
     );
+    let human_inspect = succeeds(
+        &fresh,
+        &[
+            "handoff",
+            "inspect",
+            "--input",
+            handoff_path.to_str().unwrap(),
+            "--human",
+        ],
+    );
+    assert!(String::from_utf8_lossy(&human_inspect.stdout).contains("Research Run context"));
+    let human_create = succeeds(
+        &temporary.0.join("project"),
+        &[
+            "handoff",
+            "create",
+            "--id",
+            "handoff-human",
+            "--generated-at",
+            "2026-07-18T20:06:00Z",
+            "--human",
+        ],
+    );
+    assert!(String::from_utf8_lossy(&human_create.stdout).contains("Research Run context"));
 }
 
 fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
@@ -99,16 +123,35 @@ fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
 fn handoff_inspection_rejects_unknown_versions() {
     let temporary = TempDir::new("handoff-defense");
     let path = temporary.0.join("bad.json");
-    fs::write(
-        &path,
-        br#"{"schema_version":99,"kind":"handoff","id":"bad"}"#,
-    )
-    .unwrap();
+    let fixture = create_handoff_fixture(&temporary);
+    let mut invalid: Value =
+        serde_json::from_slice(&fs::read(fixture).expect("read handoff fixture"))
+            .expect("handoff JSON");
+    invalid["schema_version"] = json!(99);
+    fs::write(&path, serde_json::to_vec(&invalid).unwrap()).unwrap();
     let output = cli(
         &temporary.0,
         &["handoff", "inspect", "--input", path.to_str().unwrap()],
     );
     assert!(!output.status.success());
+    fs::write(&path, b"{").expect("malformed handoff");
+    assert!(
+        !cli(
+            &temporary.0,
+            &["handoff", "inspect", "--input", path.to_str().unwrap()]
+        )
+        .status
+        .success()
+    );
+    fs::remove_file(&path).expect("remove handoff");
+    assert!(
+        !cli(
+            &temporary.0,
+            &["handoff", "inspect", "--input", path.to_str().unwrap()]
+        )
+        .status
+        .success()
+    );
 }
 
 fn add(temporary: &TempDir, project: &std::path::Path, value: Value) {

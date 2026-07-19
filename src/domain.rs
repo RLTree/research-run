@@ -40,5 +40,8 @@ pub trait CanonicalRecord: Serialize + Sized {
 }
 
 #[cfg(test)]
+#[path = "expanded_domain_tests.rs"]
+mod expanded_tests;
+#[cfg(test)]
 #[path = "domain_tests.rs"]
 mod tests;

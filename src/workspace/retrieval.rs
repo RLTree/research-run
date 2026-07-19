@@ -4,7 +4,9 @@ use crate::domain::{KnowledgeKind, KnowledgeState, MAX_LIST_ITEMS};
 use crate::{Error, Result};
 
 use super::Workspace;
-use super::retrieval_items::{projection_items, relationship_items};
+use super::retrieval_canonical::relationship_items;
+use super::retrieval_context::context_from_snapshot;
+use super::retrieval_items::projection_items;
 use super::retrieval_types::{
     ContextBundle, HandoffBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
 };
@@ -135,36 +137,7 @@ impl Workspace {
     pub fn context(&self, query: Option<&str>, limit: usize) -> Result<ContextBundle> {
         let limit = validate_limit(limit)?;
         let snapshot = self.load_snapshot()?;
-        let matches = match query {
-            Some(query) => self.search(query, limit)?.items,
-            None => self.recent(limit)?.items,
-        };
-        let unresolved = self.unresolved(limit)?.items;
-        let blockers = self.blocker_items(limit)?.items;
-        let next_actions = self.next_action_items(limit)?.items;
-        let ids = matches
-            .iter()
-            .map(|item| item.id.as_str())
-            .collect::<BTreeSet<_>>();
-        let mut relationships = relationship_items(&snapshot)
-            .into_iter()
-            .filter(|item| ids.contains(item.from_id.as_str()) || ids.contains(item.to_id.as_str()))
-            .collect::<Vec<_>>();
-        relationships.truncate(limit);
-        Ok(ContextBundle {
-            kind: "context".to_owned(),
-            project_id: snapshot.manifest.project_id,
-            project_name: snapshot.manifest.name,
-            claim_ceiling:
-                "Workspace review only; validation and retrieval do not prove scientific truth."
-                    .to_owned(),
-            scope: query.unwrap_or("recent workspace state").to_owned(),
-            matches,
-            unresolved,
-            blockers,
-            next_actions,
-            relationships,
-        })
+        context_from_snapshot(snapshot, query, limit)
     }
 
     pub fn handoff(
@@ -186,7 +159,7 @@ impl Workspace {
     }
 }
 
-fn unresolved_kind(kind: KnowledgeKind) -> bool {
+pub(super) fn unresolved_kind(kind: KnowledgeKind) -> bool {
     matches!(
         kind,
         KnowledgeKind::ResearchQuestion
@@ -208,7 +181,7 @@ fn validate_limit(limit: usize) -> Result<usize> {
     }
 }
 
-fn validate_query(query: &str) -> Result<String> {
+pub(super) fn validate_query(query: &str) -> Result<String> {
     let query = query.trim();
     if query.is_empty() || query.len() > 256 {
         return Err(Error::invalid(
@@ -219,7 +192,7 @@ fn validate_query(query: &str) -> Result<String> {
     Ok(query.to_lowercase())
 }
 
-fn match_reasons(item: &ProjectionItem, query: &str) -> Vec<String> {
+pub(super) fn match_reasons(item: &ProjectionItem, query: &str) -> Vec<String> {
     [
         ("id", item.id.as_str()),
         ("type", item.subtype.as_str()),

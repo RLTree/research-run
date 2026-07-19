@@ -73,6 +73,17 @@ fn apply_and_repeat_retrofit(
     );
     let repeated: Value = serde_json::from_slice(&repeated.stdout).expect("repeat JSON");
     assert_eq!(repeated["created"], false);
+    let human = succeeds(
+        &temporary.0,
+        &[
+            "retrofit",
+            "apply",
+            project.to_str().expect("project path"),
+            "--input",
+            plan_path.to_str().expect("plan path"),
+        ],
+    );
+    assert!(String::from_utf8_lossy(&human.stdout).contains("Already present"));
 }
 
 fn assert_move_plan(temporary: &TempDir, project: &std::path::Path) {
@@ -105,6 +116,17 @@ fn assert_move_plan(temporary: &TempDir, project: &std::path::Path) {
     );
     let plan_path = temporary.0.join("reconcile-plan.json");
     fs::write(&plan_path, &reconcile_output.stdout).expect("reconcile plan");
+    let wrong_command = cli(
+        &temporary.0,
+        &[
+            "retrofit",
+            "apply",
+            project.to_str().expect("project path"),
+            "--input",
+            plan_path.to_str().expect("plan path"),
+        ],
+    );
+    assert!(!wrong_command.status.success());
     succeeds(
         &temporary.0,
         &[

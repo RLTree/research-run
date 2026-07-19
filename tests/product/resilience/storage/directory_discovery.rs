@@ -169,6 +169,24 @@ fn experiment_review_and_read_commands() -> Vec<Vec<&'static str>> {
         ],
         vec!["validate", "--json"],
         vec!["status", "--json"],
+        vec!["list"],
+        vec!["show", "--kind", "knowledge", "--id", "knowledge-one"],
+        vec!["search", "query"],
+        vec!["recent"],
+        vec!["timeline"],
+        vec!["related", "--kind", "knowledge", "--id", "knowledge-one"],
+        vec!["unresolved"],
+        vec!["blockers"],
+        vec!["next"],
+        vec!["context"],
+        vec![
+            "handoff",
+            "create",
+            "--id",
+            "handoff-one",
+            "--generated-at",
+            "2026-07-18T20:00:00Z",
+        ],
     ]
 }
 

@@ -56,6 +56,17 @@ fn accepted_v01_workspace_migrates_without_rewriting_authority() {
     );
     let repeated: Value = serde_json::from_slice(&repeated.stdout).expect("repeat JSON");
     assert_eq!(repeated["created"], false);
+    let human = succeeds(
+        &temporary.0,
+        &[
+            "migrate",
+            "apply",
+            project.to_str().unwrap(),
+            "--input",
+            plan_path.to_str().unwrap(),
+        ],
+    );
+    assert!(String::from_utf8_lossy(&human.stdout).contains("Already present"));
 }
 
 #[test]

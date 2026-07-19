@@ -13,10 +13,10 @@ pub(super) fn execute(command: InventoryCommand, reconcile: bool) -> Result<()> 
             observed_at,
         } => {
             let plan = if reconcile {
-                Workspace::plan_reconciliation(&path, &name, &id, &observed_at)?
+                Workspace::plan_reconciliation(&path, &name, &id, &observed_at)
             } else {
-                Workspace::plan_retrofit(&path, &name, &id, &observed_at)?
-            };
+                Workspace::plan_retrofit(&path, &name, &id, &observed_at)
+            }?;
             print_json(&plan)
         }
         InventoryCommand::Apply { path, input, json } => {

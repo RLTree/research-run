@@ -1,8 +1,7 @@
 use std::path::Path;
 
 use crate::domain::{
-    CanonicalRecord, FORMAT_VERSION, InventoryPlan, InventorySnapshot, ProjectManifest,
-    ReconciliationKind,
+    FORMAT_VERSION, InventoryPlan, InventorySnapshot, ProjectManifest, ReconciliationKind,
 };
 use crate::{Error, Result};
 
@@ -118,7 +117,6 @@ impl Workspace {
         create_directory_chain(&directory)?;
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
         let snapshot = InventorySnapshot::from(plan.clone());
-        snapshot.validate()?;
         if workspace.record_is_identical("inventories", &snapshot)? {
             return Ok(false);
         }

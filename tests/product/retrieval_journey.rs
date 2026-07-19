@@ -22,6 +22,31 @@ fn retrieval_rejects_empty_queries_and_invalid_limits() {
         vec!["search", "   "],
         vec!["list", "--limit", "0"],
         vec!["recent", "--limit", "257"],
+        vec!["timeline", "--limit", "0"],
+        vec!["unresolved", "--limit", "0"],
+        vec!["blockers", "--limit", "0"],
+        vec!["next", "--limit", "0"],
+        vec![
+            "related",
+            "--kind",
+            "knowledge",
+            "--id",
+            "x",
+            "--limit",
+            "0",
+        ],
+        vec!["context", "--limit", "0"],
+        vec!["context", "--query", "   "],
+        vec![
+            "handoff",
+            "create",
+            "--id",
+            "handoff-invalid",
+            "--generated-at",
+            "2026-07-18T20:00:00Z",
+            "--limit",
+            "0",
+        ],
     ] {
         assert!(!cli(&project, &args).status.success(), "{args:?}");
     }
@@ -30,6 +55,14 @@ fn retrieval_rejects_empty_queries_and_invalid_limits() {
         &["show", "--kind", "knowledge", "--id", "not-present"],
     );
     assert_eq!(missing.status.code(), Some(3));
+    let empty = TempDir::new("retrieval-empty");
+    let empty_project = empty.0.join("project");
+    succeeds(
+        &empty.0,
+        &["init", empty_project.to_str().unwrap(), "--name", "Empty"],
+    );
+    let human = succeeds(&empty_project, &["list", "--human"]);
+    assert!(String::from_utf8_lossy(&human.stdout).contains("- None."));
 }
 
 fn setup(temporary: &TempDir) -> std::path::PathBuf {
@@ -83,6 +116,10 @@ fn setup(temporary: &TempDir) -> std::path::PathBuf {
         "relationship",
         relationship("revision-signal", "analysis-new", "observation-old"),
     );
+    let mut invalidation = relationship("invalidation-question", "analysis-new", "question-open");
+    invalidation["relationship"] = json!("invalidates");
+    invalidation["occurred_at"] = json!("2026-07-18T20:02:30Z");
+    add(temporary, &project, "relationship", invalidation);
     project
 }
 
@@ -106,15 +143,32 @@ fn assert_search_and_show(project: &std::path::Path) {
 
 fn assert_time_and_relationships(project: &std::path::Path) {
     let recent = json_output(project, &["recent", "--limit", "2"]);
-    assert_eq!(recent["items"][0]["id"], "next-repeat");
+    assert_eq!(recent["items"][0]["id"], "revision-signal");
+    assert!(
+        recent["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == "next-repeat")
+    );
     let timeline = json_output(project, &["timeline", "--limit", "2"]);
     assert_eq!(timeline["items"][0]["id"], "question-open");
     let related = json_output(
         project,
         &["related", "--kind", "knowledge", "--id", "analysis-new"],
     );
-    assert_eq!(related[0]["relationship"], "revises");
-    assert_eq!(related[0]["to_id"], "observation-old");
+    let revision = related
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["relationship"] == "revises")
+        .expect("revision relationship");
+    assert_eq!(revision["to_id"], "observation-old");
+    let relationship = json_output(
+        project,
+        &["show", "--kind", "relationship", "--id", "revision-signal"],
+    );
+    assert_eq!(relationship["subtype"], "revises");
 }
 
 fn assert_work_projections(project: &std::path::Path) {
@@ -144,6 +198,33 @@ fn assert_context_and_human(project: &std::path::Path) {
     let human = String::from_utf8(human.stdout).expect("human UTF-8");
     assert!(human.contains("Claim ceiling:"));
     assert!(human.contains("[stale]"));
+    for args in [
+        vec!["list", "--human"],
+        vec![
+            "show",
+            "--kind",
+            "knowledge",
+            "--id",
+            "analysis-new",
+            "--human",
+        ],
+        vec!["search", "signal", "--human"],
+        vec!["recent", "--human"],
+        vec!["timeline", "--human"],
+        vec!["unresolved", "--human"],
+        vec!["blockers", "--human"],
+        vec!["next", "--human"],
+        vec![
+            "related",
+            "--kind",
+            "knowledge",
+            "--id",
+            "analysis-new",
+            "--human",
+        ],
+    ] {
+        assert!(!succeeds(project, &args).stdout.is_empty(), "{args:?}");
+    }
 }
 
 fn json_output(project: &std::path::Path, args: &[&str]) -> Value {

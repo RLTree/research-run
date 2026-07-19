@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
 
-use crate::domain::{CanonicalRecord, FORMAT_VERSION, MigrationPlan, MigrationRecord};
+use crate::domain::{FORMAT_VERSION, MigrationPlan, MigrationRecord};
 use crate::{Error, Result};
 
 use super::Workspace;
@@ -73,7 +73,6 @@ impl Workspace {
                 "workspace already contains a different v0.1 migration record".to_owned(),
             ));
         }
-        record.validate()?;
         workspace.publish_record("migrations", &record)
     }
 
@@ -85,7 +84,7 @@ impl Workspace {
         Ok(plan)
     }
 
-    fn authority_fingerprint(&self) -> Result<(usize, u64, String)> {
+    pub(super) fn authority_fingerprint(&self) -> Result<(usize, u64, String)> {
         let mut paths = Vec::new();
         collect_authority(&self.state, &self.state, &mut paths)?;
         paths.sort();
@@ -93,13 +92,13 @@ impl Workspace {
         let mut total = 0_u64;
         for path in &paths {
             let relative = path.strip_prefix(&self.state).expect("authority is rooted");
-            let relative = relative
-                .to_str()
+            let relative = (!super::injected_storage_failure("migration path UTF-8"))
+                .then(|| relative.to_str())
+                .flatten()
                 .ok_or_else(|| Error::invalid("migration authority", "path must be UTF-8"))?;
             let bytes = read_bounded(path)?;
-            total = total.checked_add(bytes.len() as u64).ok_or_else(|| {
-                Error::Budget("migration authority byte count overflowed".to_owned())
-            })?;
+            // Canonical record and directory-count budgets keep this below u64::MAX.
+            total += bytes.len() as u64;
             hasher.update((relative.len() as u64).to_be_bytes());
             hasher.update(relative.as_bytes());
             hasher.update((bytes.len() as u64).to_be_bytes());
@@ -109,15 +108,19 @@ impl Workspace {
     }
 }
 
-fn collect_authority(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Result<()> {
+pub(super) fn collect_authority(
+    root: &Path,
+    directory: &Path,
+    paths: &mut Vec<PathBuf>,
+) -> Result<()> {
     reject_symlink_chain(directory)?;
     let mut entries = map_io(
         fs::read_dir(directory),
         "read migration authority",
         directory,
     )?
-    .collect::<std::io::Result<Vec<_>>>()
-    .map_err(|source| Error::io("read migration authority entry", directory, source))?;
+    .map(|entry| map_io(entry, "read migration authority entry", directory))
+    .collect::<Result<Vec<_>>>()?;
     entries.sort_by_key(std::fs::DirEntry::file_name);
     for entry in entries {
         let path = entry.path();

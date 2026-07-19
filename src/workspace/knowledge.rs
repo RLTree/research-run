@@ -6,7 +6,7 @@ use crate::domain::{
 use crate::{Error, Result};
 
 use super::write_lock::WorkspaceWriteLock;
-use super::{MAX_RECORDS_PER_KIND, Snapshot, Workspace};
+use super::{MAX_RECORDS_PER_KIND, Snapshot, Workspace, injected_storage_failure};
 
 impl Workspace {
     pub fn add_knowledge(&self, record: &KnowledgeRecord) -> Result<bool> {
@@ -34,7 +34,7 @@ impl Workspace {
         if !entity_exists(&snapshot, &record.to) {
             return Err(unknown_reference("to", &record.to));
         }
-        if is_history(record.relationship) && creates_history_cycle(&snapshot, record) {
+        if is_history(record.relationship) & creates_history_cycle(&snapshot, record) {
             return Err(Error::invalid(
                 "relationship history",
                 "supersession, revision, and invalidation must remain acyclic",
@@ -139,8 +139,14 @@ fn is_history(kind: RelationshipKind) -> bool {
     )
 }
 
-fn ensure_capacity(count: usize, directory: &str) -> Result<()> {
-    if count >= MAX_RECORDS_PER_KIND {
+pub(super) fn ensure_capacity(count: usize, directory: &str) -> Result<()> {
+    if count >= MAX_RECORDS_PER_KIND
+        || injected_storage_failure(if directory == "knowledge" {
+            "knowledge capacity"
+        } else {
+            "relationship capacity"
+        })
+    {
         return Err(Error::Budget(format!(
             "{directory} already reached the {MAX_RECORDS_PER_KIND} record budget"
         )));

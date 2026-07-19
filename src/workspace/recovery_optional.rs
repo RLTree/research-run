@@ -32,12 +32,8 @@ pub(super) fn preflight_optional(
     let mut migration_pending = collect_optional(workspace, "migrations")?;
     let inventories = records_optional(workspace, "inventories", &mut inventory_pending, budget)?;
     let knowledge = records_optional(workspace, "knowledge", &mut knowledge_pending, budget)?;
-    let relationships = records_optional(
-        workspace,
-        "relationships",
-        &mut relationship_pending,
-        budget,
-    )?;
+    let pending = &mut relationship_pending;
+    let relationships = records_optional(workspace, "relationships", pending, budget)?;
     let migrations = records_optional(workspace, "migrations", &mut migration_pending, budget)?;
     Ok(OptionalRecovery {
         inventories,
