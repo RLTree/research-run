@@ -18,10 +18,18 @@ records inside one workspace without silently raising scientific claims.
    output and receipts cannot promote a claim.
 
 Canonical authority lives only in `.research-run/`: one manifest plus source,
-claim, evidence, experiment, and human-review JSON records. A review decision is
+claim, evidence, experiment, human-review, and inventory JSON records. A review decision is
 the only semantic authority that changes a claim assessment. It stores the
 sorted evidence IDs reviewed by the human; status applies it only while that
 binding exactly matches the current claim evidence graph.
+
+Retrofit and reconciliation use the same authority path. A read-only plan scans
+every project file outside `.git/` and `.research-run/`, classifies only from
+path and extension, and binds byte count plus SHA-256. Apply rescans and accepts
+only an exact unchanged plan, then publishes the complete inventory as one
+atomic record. Later reconciliation records added, changed, moved, missing,
+duplicate, or ambiguous material without editing project bytes or converting
+absence into deletion.
 
 ## Proof and governance
 

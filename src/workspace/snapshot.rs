@@ -47,7 +47,25 @@ impl Workspace {
             evidence: self.load_records("evidence", allow_pending, &mut budget)?,
             experiments: self.load_records("experiments", allow_pending, &mut budget)?,
             reviews: self.load_records("reviews", allow_pending, &mut budget)?,
+            inventories: self.load_optional_records("inventories", allow_pending, &mut budget)?,
         })
+    }
+
+    fn load_optional_records<T>(
+        &self,
+        directory: &str,
+        allow_pending: bool,
+        budget: &mut ReadBudget,
+    ) -> Result<Vec<T>>
+    where
+        T: DeserializeOwned + CanonicalRecord,
+    {
+        let path = self.state.join(directory);
+        reject_symlink_chain(&path)?;
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        self.load_records(directory, allow_pending, budget)
     }
 
     pub(super) fn load_records<T>(

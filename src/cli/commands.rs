@@ -10,6 +10,7 @@ use super::arguments::{
     ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, RecoveryArgs, ReviewCommand,
     SourceCommand,
 };
+use super::inventory_commands;
 use super::render::{
     parse_artifact, print_effect, print_human_status, print_json, print_text, terminal_text,
 };
@@ -17,6 +18,8 @@ use super::render::{
 pub(super) fn execute(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Init { path, name } => initialize(&path, &name),
+        Command::Retrofit { command } => inventory_commands::execute(command, false),
+        Command::Reconcile { command } => inventory_commands::execute(command, true),
         Command::Recover(output) => recover(output),
         Command::Source { command } => add_source(command),
         Command::Claim { command } => add_claim(command),

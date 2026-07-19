@@ -105,6 +105,27 @@ The CLI records the claim's current sorted evidence IDs with each review. Adding
 later evidence makes the old decision historical and returns the claim to
 `unreviewed` until another explicit human review covers the changed graph.
 
+## Retrofit an existing project
+
+Planning is read-only and emits authoritative JSON. Keep the plan outside the
+target so writing the plan itself cannot change the candidate it describes:
+
+```console
+research-run retrofit plan existing-project \
+  --name "Existing project" \
+  --id inventory-initial \
+  --observed-at 2026-07-18T20:00:00Z > /tmp/research-run-plan.json
+research-run retrofit apply existing-project \
+  --input /tmp/research-run-plan.json --json
+```
+
+Apply rescans every indexed byte and fails if the project changed after
+planning. It creates only `.research-run/`, never modifies existing project
+files, and repeating the same accepted plan is a no-op. After files change,
+`reconcile plan` compares the current directory with the latest inventory and
+reports added, changed, moved, missing, duplicate, or ambiguous material.
+Ambiguous identity conflicts cannot be applied.
+
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact

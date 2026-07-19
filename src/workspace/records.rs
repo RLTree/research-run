@@ -145,7 +145,7 @@ impl Workspace {
         }
     }
 
-    fn record_is_identical<T: CanonicalRecord + serde::Serialize>(
+    pub(super) fn record_is_identical<T: CanonicalRecord + serde::Serialize>(
         &self,
         directory: &str,
         record: &T,

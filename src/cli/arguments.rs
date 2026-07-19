@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use super::inventory_arguments::InventoryCommand;
 use crate::domain::{Assessment, Authorship, Outcome, SourceProvenance, Stance};
 
 #[derive(Debug, Parser)]
@@ -23,6 +24,16 @@ pub(super) enum Command {
         path: PathBuf,
         #[arg(long)]
         name: String,
+    },
+    /// Inventory a populated project and initialize managed state only on apply.
+    Retrofit {
+        #[command(subcommand)]
+        command: InventoryCommand,
+    },
+    /// Compare current project materials with the last accepted inventory.
+    Reconcile {
+        #[command(subcommand)]
+        command: InventoryCommand,
     },
     /// Manage source records.
     Source {

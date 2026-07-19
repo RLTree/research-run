@@ -5,10 +5,13 @@ use std::sync::atomic::AtomicU64;
 use serde::Serialize;
 
 use crate::domain::{
-    Assessment, Authorship, ClaimRecord, EvidenceLink, ExperimentReceipt, ProjectManifest,
-    ReviewDecision, SourceRecord,
+    Assessment, Authorship, ClaimRecord, EvidenceLink, ExperimentReceipt, InventorySnapshot,
+    ProjectManifest, ReviewDecision, SourceRecord,
 };
 
+mod inventory;
+mod inventory_reconcile;
+mod inventory_scan;
 mod lifecycle;
 mod path_safety;
 mod pending_cleanup;
@@ -18,6 +21,7 @@ mod recovery;
 mod recovery_commit;
 mod recovery_plan;
 mod recovery_preflight;
+mod recovery_review;
 mod references;
 mod snapshot;
 mod status;
@@ -167,6 +171,7 @@ pub(super) struct Snapshot {
     pub(super) evidence: Vec<EvidenceLink>,
     pub(super) experiments: Vec<ExperimentReceipt>,
     pub(super) reviews: Vec<ReviewDecision>,
+    pub(super) inventories: Vec<InventorySnapshot>,
 }
 
 impl Snapshot {
@@ -177,6 +182,7 @@ impl Snapshot {
             ("evidence", self.evidence.len()),
             ("experiment", self.experiments.len()),
             ("review", self.reviews.len()),
+            ("inventory", self.inventories.len()),
         ])
     }
 }

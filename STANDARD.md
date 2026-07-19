@@ -24,6 +24,9 @@ runtime dependency budget is deliberately small:
 - `clap`: typed public CLI parsing and generated help;
 - `serde`: typed domain serialization and deserialization;
 - `serde_json`: deterministic, human-readable canonical JSON.
+- `sha2`: portable SHA-256 material identity for byte-preserving retrofit and
+  reconciliation plans; fingerprints detect exact content identity but do not
+  infer scientific meaning.
 
 No async runtime, database, network client, logging/telemetry stack, temporary
 file crate, schema framework, or UI dependency is justified by the v0.1 job.
@@ -45,6 +48,11 @@ directory publication.
   records per kind; one snapshot or recovery read is bounded to 64 MiB; user
   text is bounded; status is derived with indexed relationships in deterministic
   ID order. These are safety and memory/storage budgets, not scale claims.
+- Retrofit inventories are bounded to 2,048 files, 64 MiB per material, and
+  512 MiB per scan. `.git/` and Research Run's own `.research-run/` authority
+  are the only skipped roots. Every other entry is inspected; symlinks,
+  unsupported filesystem nodes, budget exhaustion, and identity races fail
+  closed.
 - Mutating CLI commands take an operating-system file lock under the canonical
   state root. The lock releases on process exit and serializes supported CLI
   writers; uncooperative concurrent filesystem mutation is not a supported

@@ -11,6 +11,8 @@ mod researcher_journey;
 #[cfg(coverage)]
 #[path = "product/resilience.rs"]
 mod resilience;
+#[path = "product/retrofit_journey.rs"]
+mod retrofit_journey;
 #[path = "product/retry_behavior.rs"]
 mod retry_behavior;
 #[path = "product/review_authority.rs"]

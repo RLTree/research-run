@@ -102,6 +102,50 @@ pub fn validate_workspace_locator(value: &str) -> Result<()> {
     Ok(())
 }
 
+pub(super) fn validate_timestamp(value: &str) -> Result<()> {
+    let bytes = value.as_bytes();
+    let separators = [
+        (4, b'-'),
+        (7, b'-'),
+        (10, b'T'),
+        (13, b':'),
+        (16, b':'),
+        (19, b'Z'),
+    ];
+    if bytes.len() != 20
+        || separators
+            .iter()
+            .any(|(index, expected)| bytes[*index] != *expected)
+        || bytes.iter().enumerate().any(|(index, byte)| {
+            !separators.iter().any(|(position, _)| *position == index) && !byte.is_ascii_digit()
+        })
+    {
+        return Err(Error::invalid(
+            "observed_at",
+            "must use UTC YYYY-MM-DDTHH:MM:SSZ form",
+        ));
+    }
+    for (start, end, maximum) in [
+        (5, 7, 12),
+        (8, 10, 31),
+        (11, 13, 23),
+        (14, 16, 59),
+        (17, 19, 59),
+    ] {
+        let component = value[start..end]
+            .parse::<u32>()
+            .expect("timestamp shape proves ASCII digits");
+        let minimum = u32::from(start == 5 || start == 8);
+        if component < minimum || component > maximum {
+            return Err(Error::invalid(
+                "observed_at",
+                "contains an out-of-range component",
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn slug(name: &str) -> String {
     let mut result = String::new();
     let mut separator = false;

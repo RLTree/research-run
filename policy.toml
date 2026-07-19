@@ -21,6 +21,9 @@ max_snapshot_bytes = 67108864
 max_text_bytes = 65536
 max_list_items = 256
 max_artifact_pointers = 128
+max_inventory_entries = 2048
+max_indexed_material_bytes = 67108864
+max_inventory_scan_bytes = 536870912
 
 [effects]
 parse_before_write = true

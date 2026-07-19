@@ -2,6 +2,8 @@ use clap::Parser;
 
 mod arguments;
 mod commands;
+mod inventory_arguments;
+mod inventory_commands;
 mod render;
 
 use arguments::Cli;

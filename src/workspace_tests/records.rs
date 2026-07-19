@@ -154,6 +154,7 @@ fn review_graph_validation_uses_one_canonical_binding() {
         evidence: vec![evidence("evidence-one", "claim-one", None)],
         experiments: Vec::new(),
         reviews: vec![unknown, cross_claim, incomplete],
+        inventories: Vec::new(),
     };
     let errors = workspace.reference_errors(&snapshot);
     assert!(
@@ -218,6 +219,7 @@ fn reference_validation_reports_every_invalid_relationship() {
             review("review-two", &known_claim.id),
             review("review-missing", "missing-claim"),
         ],
+        inventories: Vec::new(),
     };
     let errors = workspace.reference_errors(&snapshot);
     for expected in [
