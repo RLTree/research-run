@@ -230,9 +230,9 @@ pass.
   withheld until that trust boundary is supplied.
 - 2026-07-19: Candidate `33c2725` changed only the mutation-runner custody
   controls after the current production-source test repair. Its mutation command
-  uses Cargo's test runner with one outer mutation worker, `cargo -j 1`, and the
-  mutation runner jobserver disabled. Live process checks observed one mutation
-  parent, one Cargo child, and one `rustc` child at a time. The preserved run
+  uses Cargo's test runner with one outer mutation worker and `cargo -j 1`, with
+  the mutation-runner jobserver disabled. Separate live process checks observed
+  one mutation parent, one Cargo child, and one `rustc` child at a time. The run
   ended before its selected set completed: its outcome ledger contains the
   passing baseline, 108 caught mutants, and 4 compiler-unviable mutants. This
   is incomplete mutation evidence, not a zero-survivor or package-delta claim;
