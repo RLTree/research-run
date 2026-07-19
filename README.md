@@ -145,6 +145,30 @@ erases the older record. These relationships cannot promote a claim. Claim
 assessment still requires an explicit human `review add` decision bound to the
 current evidence graph.
 
+## Retrieve bounded context
+
+Retrieval commands emit deterministic JSON by default and accept `--human` for
+a compact researcher-facing view:
+
+```console
+research-run list --kind observation --limit 20
+research-run show --kind knowledge --id observation-one
+research-run search "negative control" --limit 20
+research-run recent --limit 20
+research-run timeline --limit 50
+research-run related --kind knowledge --id analysis-one
+research-run unresolved
+research-run blockers
+research-run next
+research-run context --query "binding assay" --limit 20
+```
+
+Search explains which fields matched. Results identify canonical authority and
+keep stale or invalidated records visible instead of silently preferring newer
+prose. Context bundles include the requested matches, unresolved material,
+blockers, next actions, connected relationships, and the scientific claim
+ceiling.
+
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact

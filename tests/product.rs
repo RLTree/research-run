@@ -13,6 +13,8 @@ mod researcher_journey;
 #[cfg(coverage)]
 #[path = "product/resilience.rs"]
 mod resilience;
+#[path = "product/retrieval_journey.rs"]
+mod retrieval_journey;
 #[path = "product/retrofit_journey.rs"]
 mod retrofit_journey;
 #[path = "product/retry_behavior.rs"]

@@ -1,8 +1,7 @@
 use std::path::Path;
 
 use crate::domain::{
-    ClaimRecord, EvidenceLink, ExperimentReceipt, FORMAT_VERSION, KnowledgeRecord,
-    RelationshipRecord, ReviewDecision, SourceRecord,
+    ClaimRecord, EvidenceLink, ExperimentReceipt, FORMAT_VERSION, ReviewDecision, SourceRecord,
 };
 use crate::workspace::Workspace;
 use crate::{Error, Result};
@@ -10,13 +9,13 @@ use crate::{Error, Result};
 use super::arguments::{
     ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, ReviewCommand, SourceCommand,
 };
-use super::input::read_json_input;
 use super::inventory_commands;
 use super::output_arguments::RecoveryArgs;
 use super::render::{
     parse_artifact, print_effect, print_human_status, print_json, print_text, terminal_text,
 };
-use super::structured_arguments::StructuredCommand;
+use super::retrieval_commands;
+use super::structured_commands;
 
 pub(super) fn execute(cli: Cli) -> Result<()> {
     match cli.command {
@@ -29,29 +28,21 @@ pub(super) fn execute(cli: Cli) -> Result<()> {
         Command::Evidence { command } => add_evidence(command),
         Command::Experiment { command } => add_experiment(command),
         Command::Review { command } => add_review(command),
-        Command::Knowledge { command } => add_knowledge(command),
-        Command::Relationship { command } => add_relationship(command),
+        Command::Knowledge { command } => structured_commands::add_knowledge(command),
+        Command::Relationship { command } => structured_commands::add_relationship(command),
+        Command::List(args) => retrieval_commands::list(args),
+        Command::Show(args) => retrieval_commands::show(args),
+        Command::Search(args) => retrieval_commands::search(args),
+        Command::Recent(args) => retrieval_commands::recent(args),
+        Command::Timeline(args) => retrieval_commands::timeline(args),
+        Command::Related(args) => retrieval_commands::related(args),
+        Command::Unresolved(args) => retrieval_commands::unresolved(args),
+        Command::Blockers(args) => retrieval_commands::blockers(args),
+        Command::Next(args) => retrieval_commands::next(args),
+        Command::Context(args) => retrieval_commands::context(args),
         Command::Validate(output) => validate(output.json),
         Command::Status(output) => status(output.json),
     }
-}
-
-fn add_knowledge(command: StructuredCommand) -> Result<()> {
-    let StructuredCommand::Add { input } = command;
-    let record: KnowledgeRecord = read_json_input(&input)?;
-    let workspace = discover_current()?;
-    print_effect("knowledge", &record.id, workspace.add_knowledge(&record)?)
-}
-
-fn add_relationship(command: StructuredCommand) -> Result<()> {
-    let StructuredCommand::Add { input } = command;
-    let record: RelationshipRecord = read_json_input(&input)?;
-    let workspace = discover_current()?;
-    print_effect(
-        "relationship",
-        &record.id,
-        workspace.add_relationship(&record)?,
-    )
 }
 
 fn initialize(path: &Path, name: &str) -> Result<()> {

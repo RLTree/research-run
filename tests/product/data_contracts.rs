@@ -40,6 +40,7 @@ fn every_versioned_schema_is_well_formed_json() {
         "inventory.schema.json",
         "knowledge.schema.json",
         "project-manifest.schema.json",
+        "projection.schema.json",
         "review.schema.json",
         "relationship.schema.json",
         "source.schema.json",

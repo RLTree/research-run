@@ -7,7 +7,11 @@ mod inventory_arguments;
 mod inventory_commands;
 mod output_arguments;
 mod render;
+mod retrieval_arguments;
+mod retrieval_commands;
 mod structured_arguments;
+mod structured_commands;
+mod value_arguments;
 
 use arguments::Cli;
 use commands::execute;
@@ -28,6 +32,8 @@ use commands::{discover_current, inject_current_directory_failure};
 use output_arguments::*;
 #[cfg(test)]
 use render::*;
+#[cfg(test)]
+use value_arguments::*;
 
 #[cfg(test)]
 #[path = "cli_tests.rs"]

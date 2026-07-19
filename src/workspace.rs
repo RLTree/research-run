@@ -25,6 +25,9 @@ mod recovery_plan;
 mod recovery_preflight;
 mod recovery_review;
 mod references;
+mod retrieval;
+mod retrieval_items;
+mod retrieval_types;
 mod snapshot;
 mod status;
 mod storage;
@@ -165,6 +168,10 @@ pub struct RecoveryResult {
     pub recovered: Vec<String>,
     pub discarded_identical: Vec<String>,
 }
+
+pub use retrieval_types::{
+    ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
+};
 
 pub(super) struct Snapshot {
     pub(super) manifest: ProjectManifest,

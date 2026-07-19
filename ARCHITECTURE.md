@@ -41,6 +41,13 @@ contradiction history. They never overwrite their endpoints and never participat
 in claim assessment; `EvidenceLink` plus `ReviewDecision` remain the sole claim
 graph and promotion authority.
 
+Retrieval is a bounded deterministic projection over the same snapshot. `list`,
+`show`, `search`, `recent`, `timeline`, `related`, `unresolved`, `blockers`,
+`next`, and `context` never write. JSON is the automation interface; `--human`
+renders a terminal-neutralized inspection view. Search results name matched
+fields and every item names its canonical authority path plus stale and
+invalidation state.
+
 ## Proof and governance
 
 - `tests/product.rs` routes product journeys, failure/recovery behavior, and

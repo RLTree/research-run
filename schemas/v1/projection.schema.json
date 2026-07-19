@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v1/projection.schema.json",
+  "title": "Research Run Bounded Projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "limit", "total_matches", "items"],
+  "properties": {
+    "kind": { "enum": ["list", "search", "recent", "timeline", "unresolved", "blockers", "next-actions"] },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 256 },
+    "total_matches": { "type": "integer", "minimum": 0 },
+    "items": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "subtype", "title", "summary", "occurred_at", "state", "authority_path", "matched_by", "stale", "invalidated"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "subtype": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "summary": { "type": "string", "maxLength": 512 },
+        "occurred_at": { "type": ["string", "null"] },
+        "state": { "type": ["string", "null"] },
+        "authority_path": { "type": "string", "pattern": "^\\.research-run/" },
+        "matched_by": { "type": "array", "maxItems": 5, "items": { "type": "string" } },
+        "stale": { "type": "boolean" },
+        "invalidated": { "type": "boolean" }
+      }
+    }
+  }
+}
