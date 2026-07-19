@@ -15,6 +15,7 @@ fn identifiers_and_paths_fail_closed() {
     assert!(validate_id("../claim", "id").is_err());
     assert!(validate_workspace_locator("").is_err());
     assert!(validate_workspace_locator("artifacts/summary.txt").is_ok());
+    assert!(validate_workspace_locator(&"x".repeat(65_537)).is_err());
     assert!(validate_workspace_locator("../secret").is_err());
     assert!(validate_workspace_locator("/tmp/secret").is_err());
 }
@@ -58,6 +59,9 @@ fn manifest_validation_rejects_invalid_shapes() {
     let truncated = ProjectManifest::new(&long_name).expect("long manifest");
     assert!(truncated.project_id.len() <= 64);
     assert!(!truncated.project_id.ends_with('-'));
+    let separator_boundary =
+        ProjectManifest::new(&format!("{} z", "a".repeat(63))).expect("separator boundary");
+    assert_eq!(separator_boundary.project_id, "a".repeat(63));
 }
 
 fn source_and_claim_validation_reject_missing_text() {
@@ -160,7 +164,7 @@ fn experiment_and_review_validation_reject_invalid_states() {
         .collect();
     assert!(experiment.validate().is_err());
 
-    let review = ReviewDecision {
+    let mut review = ReviewDecision {
         schema_version: 1,
         kind: "review".to_owned(),
         id: "review-one".to_owned(),
@@ -170,5 +174,10 @@ fn experiment_and_review_validation_reject_invalid_states() {
         rationale: "Rationale".to_owned(),
         reviewer: "Researcher".to_owned(),
     };
+    assert!(review.validate().is_err());
+    review.decision = Assessment::Limited;
+    review.evidence_ids = (0..257)
+        .map(|index| format!("evidence-{index:03}"))
+        .collect();
     assert!(review.validate().is_err());
 }

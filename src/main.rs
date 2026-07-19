@@ -2,10 +2,7 @@
 
 fn main() {
     if let Err(error) = research_run::cli::run() {
-        eprintln!(
-            "error: {}",
-            research_run::cli::terminal_text(&error.to_string())
-        );
+        let _ = research_run::cli::print_error(&error);
         std::process::exit(2);
     }
 }

@@ -49,8 +49,8 @@ standards = "scripts/check-standards"
 dependencies = "scripts/check dependencies"
 mutations = "scripts/check mutations"
 product_artifacts = "scripts/check artifacts"
-production_source_noncomment_lines_max = 300
-test_source_noncomment_lines_max = 400
+production_source_noncomment_lines_max = 250
+test_source_noncomment_lines_max = 250
 function_lines_max = 80
 
 [observations]

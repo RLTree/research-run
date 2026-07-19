@@ -6,6 +6,7 @@ use crate::domain::{
 };
 use crate::{Error, Result};
 
+use super::references::current_review_bindings;
 use super::{
     AiDraftStatus, ClaimStatus, EvidenceStatus, ExperimentStatus, ProjectStatus, Snapshot, Status,
     Workspace,
@@ -47,27 +48,7 @@ impl<'a> StatusIndex<'a> {
                 index.ai_evidence_claims.insert(link.claim_id.as_str());
             }
         }
-        for review in &snapshot.reviews {
-            let mut current = index
-                .evidence_by_claim
-                .get(review.claim_id.as_str())
-                .into_iter()
-                .flatten()
-                .map(|evidence| evidence.id.as_str())
-                .collect::<Vec<_>>();
-            current.sort_unstable();
-            if current
-                == review
-                    .evidence_ids
-                    .iter()
-                    .map(String::as_str)
-                    .collect::<Vec<_>>()
-            {
-                index
-                    .reviews_by_claim
-                    .insert(review.claim_id.as_str(), review);
-            }
-        }
+        index.reviews_by_claim = current_review_bindings(snapshot);
         index.reviewed_claims = index.reviews_by_claim.keys().copied().collect();
         index
     }

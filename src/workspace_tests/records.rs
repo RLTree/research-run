@@ -1,29 +1,14 @@
+use super::super::references::current_review_bindings;
 use super::*;
 
 #[test]
 fn direct_workspace_journey_exercises_every_record_authority() {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Direct journey").expect("initialize");
-    let source = SourceRecord {
-        schema_version: 1,
-        kind: "source".to_owned(),
-        id: "source-one".to_owned(),
-        citation: "Citation".to_owned(),
-        locator: "local:source".to_owned(),
-        provenance: SourceProvenance::Human,
-        notes: String::new(),
-    };
+    let source = source("source-one");
     assert!(workspace.add_source(&source).expect("source"));
     assert!(!workspace.add_source(&source).expect("source retry"));
-    let claim = ClaimRecord {
-        schema_version: 1,
-        kind: "claim".to_owned(),
-        id: "claim-one".to_owned(),
-        text: "Claim".to_owned(),
-        scope: "Scope".to_owned(),
-        owner: "Researcher".to_owned(),
-        authorship: Authorship::Human,
-    };
+    let claim = claim("claim-one");
     assert!(workspace.add_claim(&claim).expect("claim"));
     let experiment = ExperimentReceipt {
         schema_version: 1,
@@ -63,6 +48,7 @@ fn direct_workspace_journey_exercises_every_record_authority() {
         reviewer: "Researcher".to_owned(),
     };
     assert!(workspace.add_review(&review).expect("review"));
+    assert!(!workspace.add_review(&review).expect("review retry"));
     assert!(workspace.validate().valid);
     let status = workspace.status().expect("status");
     assert_eq!(status.claims[0].assessment, Assessment::Limited);
@@ -78,6 +64,16 @@ fn direct_workspace_journey_exercises_every_record_authority() {
         root.canonicalize().expect("canonical root")
     );
     assert!(Workspace::for_recovery(&root).is_ok());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn discovery_stops_at_the_nearest_state_boundary() {
+    let root = temporary();
+    Workspace::initialize(&root, "Outer workspace").expect("outer workspace");
+    let nested = root.join("nested/project");
+    fs::create_dir_all(nested.join(".research-run")).expect("inner state boundary");
+    assert!(Workspace::discover(&nested).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
@@ -135,6 +131,42 @@ fn corrupted_references_block_status_validation_and_recovery() {
     assert!(!workspace.validate().valid);
     assert!(workspace.status().is_err());
     assert!(workspace.recover().is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn review_graph_validation_uses_one_canonical_binding() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Review binding matrix").expect("initialize");
+    let mut reordered = review("review-reordered", "claim-one");
+    reordered.evidence_ids = vec!["evidence-two".to_owned(), "evidence-one".to_owned()];
+    assert!(reordered.validate().is_err());
+
+    let mut unknown = review("review-unknown", "claim-one");
+    unknown.evidence_ids = vec!["evidence-missing".to_owned()];
+    let mut cross_claim = review("review-cross", "claim-two");
+    cross_claim.evidence_ids = vec!["evidence-one".to_owned()];
+    let incomplete = review("review-incomplete", "claim-one");
+    let snapshot = Snapshot {
+        manifest: ProjectManifest::new("Review binding matrix").expect("manifest"),
+        sources: Vec::new(),
+        claims: vec![claim("claim-one"), claim("claim-two")],
+        evidence: vec![evidence("evidence-one", "claim-one", None)],
+        experiments: Vec::new(),
+        reviews: vec![unknown, cross_claim, incomplete],
+    };
+    let errors = workspace.reference_errors(&snapshot);
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("unknown evidence"))
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("belongs to claim"))
+    );
+    assert!(current_review_bindings(&snapshot).is_empty());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

@@ -38,6 +38,12 @@ fn each_review_authority_field_fails_independently() {
             ..review.clone()
         },
         ReviewDecision {
+            evidence_ids: (0..257)
+                .map(|index| format!("evidence-{index:03}"))
+                .collect(),
+            ..review.clone()
+        },
+        ReviewDecision {
             decision: Assessment::Supported,
             ..review.clone()
         },

@@ -2,7 +2,7 @@ use super::{
     AuthorshipArg, ClaimCommand, Cli, Command, EvidenceArgs, EvidenceCommand, ExperimentCommand,
     OutcomeArg, OutputArgs, ProvenanceArg, ReviewArg, ReviewCommand, SourceCommand, StanceArg,
     discover_current, execute, inject_current_directory_failure, parse_artifact,
-    print_human_status, terminal_text,
+    render_human_status, terminal_text,
 };
 use crate::domain::{
     ArtifactLocatorType, Assessment, Authorship, Outcome, SourceProvenance, Stance,
@@ -138,7 +138,7 @@ fn artifact_parser_and_value_arguments_cover_every_semantic_variant() {
 
 #[test]
 fn empty_human_projection_and_current_directory_failure_are_explicit() {
-    print_human_status(&Status {
+    let output = render_human_status(&Status {
         format_version: 1,
         project: ProjectStatus {
             id: "empty-project".to_owned(),
@@ -152,6 +152,10 @@ fn empty_human_projection_and_current_directory_failure_are_explicit() {
         blockers: Vec::new(),
         next_actions: Vec::new(),
     });
+    assert!(output.contains("Research Run: Empty project (empty-project)"));
+    assert!(output.contains("Claims\n- None. Next action: add a claim."));
+    assert!(output.contains("Unreviewed AI drafts\n- None."));
+    assert!(output.contains("Experiments\n- None."));
     inject_current_directory_failure();
     assert!(discover_current().is_err());
 }

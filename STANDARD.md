@@ -51,8 +51,8 @@ directory publication.
   product mode and every read still rechecks opened-file identity.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
-- Production Rust files contain at most 300 noncomment lines, test files at most
-  400, and functions at most 80 physical lines. Splits must own product behavior;
+- Production and hand-authored test Rust files contain at most 250 noncomment
+  lines, and functions at most 80 physical lines. Splits must own product behavior;
   forwarding shells and generic buckets do not satisfy the limit.
 
 ## Required gates

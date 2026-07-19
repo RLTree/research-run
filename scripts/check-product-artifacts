@@ -48,8 +48,17 @@ installed_command status --json | jq -e \
 measure_real() {
   local output_file="$1"
   shift
+  local command_status measured
+  set +e
   { time -p "$@" >/dev/null; } 2>"$output_file"
-  awk '$1 == "real" { print $2; exit }' "$output_file"
+  command_status=$?
+  set -e
+  measured="$(awk '$1 == "real" { print $2; exit }' "$output_file")"
+  if (( command_status != 0 )); then
+    return "$command_status"
+  fi
+  [[ -n "$measured" ]]
+  printf '%s\n' "$measured"
 }
 
 run_repeated() {

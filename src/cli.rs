@@ -7,7 +7,7 @@ mod render;
 use arguments::Cli;
 use commands::execute;
 
-pub use render::terminal_text;
+pub use render::{print_error, terminal_text};
 
 use crate::Result;
 

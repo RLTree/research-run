@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
@@ -10,50 +10,11 @@ use crate::domain::CanonicalRecord;
 use crate::{Error, Result};
 
 use super::path_safety::{ensure_no_pending_effect, reject_symlink_chain};
-use super::storage::{map_io, read_bounded, same_file_identity, sync_directory};
+use super::pending_cleanup::PendingCleanup;
+use super::storage::{map_io, read_bounded, sync_directory};
 #[cfg(any(test, coverage))]
 use super::take_storage_failure;
 use super::{MAX_RECORD_BYTES, TEMP_SEQUENCE, Workspace, injected_storage_failure};
-
-pub(super) struct WorkspaceWriteLock {
-    file: File,
-}
-
-impl WorkspaceWriteLock {
-    pub(super) fn acquire(state: &Path) -> Result<Self> {
-        let path = state.join("write.lock");
-        reject_symlink_chain(&path)?;
-        let file = map_io(
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .truncate(false)
-                .open(&path),
-            "open workspace write lock",
-            &path,
-        )?;
-        map_io(
-            file.try_lock().map_err(Into::into),
-            "acquire workspace write lock",
-            &path,
-        )?;
-        let opened = map_io(file.metadata(), "inspect workspace write lock", &path)?;
-        let current = map_io(fs::metadata(&path), "reinspect workspace write lock", &path)?;
-        if !same_file_identity(&opened, &current) || injected_storage_failure("lock identity") {
-            return Err(Error::AmbiguousEffect(
-                "workspace write lock identity changed during acquisition".to_owned(),
-            ));
-        }
-        Ok(Self { file })
-    }
-}
-
-impl Drop for WorkspaceWriteLock {
-    fn drop(&mut self) {
-        let _ = self.file.unlock();
-    }
-}
 
 impl Workspace {
     pub(super) fn publish_record<T: CanonicalRecord>(
@@ -69,30 +30,41 @@ impl Workspace {
     }
 
     pub(super) fn publish_value(&self, target: &Path, value: &impl Serialize) -> Result<bool> {
-        let mut content = serde_json::to_vec_pretty(value).expect(
-            "Research Run domain records contain only JSON-representable strings, numbers, lists, and enums",
-        );
-        content.push(b'\n');
+        let content = canonical_json_bytes(value);
         self.publish_bytes(target, &content)
     }
 
     pub(super) fn publish_bytes(&self, target: &Path, content: &[u8]) -> Result<bool> {
-        if let Some(created) = inspect_publication(target, content)? {
-            return Ok(created);
+        if !publication_needed(target, content)? {
+            return Ok(false);
         }
         let temporary = pending_path(target);
         let mut cleanup = PendingCleanup::new(temporary.clone());
-        write_pending(&temporary, content)?;
-        if !link_canonical(&temporary, target, content)? {
+        if let Err(error) = write_pending(&temporary, content) {
+            return Err(cleanup.after_failure(error));
+        }
+        let created = match link_canonical(&temporary, target, content) {
+            Ok(created) => created,
+            Err(error) => return Err(cleanup.after_failure(error)),
+        };
+        if !created {
+            cleanup.remove()?;
             return Ok(false);
         }
-        finish_publication(&temporary, target, &mut cleanup)?;
-        cleanup.disarm();
+        finish_publication(&temporary, target)?;
         Ok(true)
     }
 }
 
-fn inspect_publication(target: &Path, content: &[u8]) -> Result<Option<bool>> {
+pub(super) fn canonical_json_bytes(value: &impl Serialize) -> Vec<u8> {
+    let mut content = serde_json::to_vec_pretty(value).expect(
+        "Research Run domain records contain only JSON-representable strings, numbers, lists, and enums",
+    );
+    content.push(b'\n');
+    content
+}
+
+fn publication_needed(target: &Path, content: &[u8]) -> Result<bool> {
     inject_inspection_race(target, content);
     reject_symlink_chain(target)?;
     if content.len() as u64 > MAX_RECORD_BYTES {
@@ -102,10 +74,10 @@ fn inspect_publication(target: &Path, content: &[u8]) -> Result<Option<bool>> {
     }
     if !target.exists() {
         ensure_no_pending_effect(target)?;
-        return Ok(None);
+        return Ok(true);
     }
     if read_bounded(target)? == content {
-        return Ok(Some(false));
+        return Ok(false);
     }
     Err(Error::Conflict(format!(
         "record identity already exists with different content: {}",
@@ -164,9 +136,16 @@ fn pending_path(target: &Path) -> PathBuf {
 }
 
 fn write_pending(path: &Path, content: &[u8]) -> Result<()> {
+    if injected_storage_failure("create pending record") {
+        return Err(Error::io(
+            "create pending record",
+            path,
+            io::Error::other("injected storage failure"),
+        ));
+    }
     let mut file = map_io(
         OpenOptions::new().write(true).create_new(true).open(path),
-        "create pending record",
+        "open pending record",
         path,
     )?;
     map_io(file.write_all(content), "write pending record", path)?;
@@ -174,6 +153,7 @@ fn write_pending(path: &Path, content: &[u8]) -> Result<()> {
 }
 
 fn link_canonical(temporary: &Path, target: &Path, content: &[u8]) -> Result<bool> {
+    inject_pending_cleanup_shape(temporary);
     inject_publication_race(target, content);
     if injected_storage_failure("publish canonical record") {
         return Err(Error::io(
@@ -203,12 +183,24 @@ fn link_canonical(temporary: &Path, target: &Path, content: &[u8]) -> Result<boo
     }
 }
 
-fn finish_publication(temporary: &Path, target: &Path, cleanup: &mut PendingCleanup) -> Result<()> {
+#[cfg(coverage)]
+fn inject_pending_cleanup_shape(temporary: &Path) {
+    if std::env::var("RESEARCH_RUN_COVERAGE_FAULT").as_deref()
+        == Ok("abandoned pending path is directory")
+    {
+        fs::remove_file(temporary).expect("remove injected pending file");
+        fs::create_dir(temporary).expect("create injected pending directory");
+    }
+}
+
+#[cfg(not(coverage))]
+fn inject_pending_cleanup_shape(_temporary: &Path) {}
+
+fn finish_publication(temporary: &Path, target: &Path) -> Result<()> {
     let parent = target
         .parent()
         .expect("pending_path proved the canonical target has a parent");
     if let Err(error) = sync_directory(parent) {
-        cleanup.preserve();
         return Err(Error::AmbiguousEffect(format!(
             "record may be published at {}; directory sync failed: {error}",
             target.display()
@@ -219,7 +211,6 @@ fn finish_publication(temporary: &Path, target: &Path, cleanup: &mut PendingClea
         "remove pending record",
         temporary,
     ) {
-        cleanup.preserve();
         return Err(Error::AmbiguousEffect(format!(
             "record was published at {} but pending file cleanup failed: {error}",
             target.display()
@@ -239,34 +230,13 @@ fn inject_publication_race(target: &Path, content: &[u8]) {
     if take_storage_failure("publish unreadable race") {
         fs::create_dir(target).expect("create injected unreadable publication target");
     }
+    if matches!(
+        std::env::var("RESEARCH_RUN_COVERAGE_FAULT").as_deref(),
+        Ok("remove abandoned pending record" | "sync abandoned pending directory")
+    ) {
+        fs::write(target, content).expect("write injected cleanup publication");
+    }
 }
 
 #[cfg(not(any(test, coverage)))]
 fn inject_publication_race(_target: &Path, _content: &[u8]) {}
-
-pub(super) struct PendingCleanup {
-    path: PathBuf,
-    remove: bool,
-}
-
-impl PendingCleanup {
-    pub(super) fn new(path: PathBuf) -> Self {
-        Self { path, remove: true }
-    }
-
-    pub(super) fn preserve(&mut self) {
-        self.remove = false;
-    }
-
-    pub(super) fn disarm(&mut self) {
-        self.remove = false;
-    }
-}
-
-impl Drop for PendingCleanup {
-    fn drop(&mut self) {
-        if self.remove {
-            let _ = fs::remove_file(&self.path);
-        }
-    }
-}

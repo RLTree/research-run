@@ -6,7 +6,7 @@ use super::validation::{
     required_text, validate_id, validate_record_header, validate_text_list,
     validate_workspace_locator,
 };
-use super::{Assessment, CanonicalRecord, MAX_ARTIFACT_POINTERS, Outcome};
+use super::{Assessment, CanonicalRecord, MAX_ARTIFACT_POINTERS, MAX_LIST_ITEMS, Outcome};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -106,6 +106,11 @@ impl CanonicalRecord for ReviewDecision {
     fn validate(&self) -> Result<()> {
         validate_record_header(self.schema_version, &self.kind, Self::KIND, &self.id)?;
         validate_id(&self.claim_id, "claim_id")?;
+        if self.evidence_ids.len() > MAX_LIST_ITEMS {
+            return Err(Error::Budget(format!(
+                "review evidence_ids exceeds the {MAX_LIST_ITEMS} item budget"
+            )));
+        }
         for evidence_id in &self.evidence_ids {
             validate_id(evidence_id, "evidence_id")?;
         }

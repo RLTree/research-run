@@ -2,12 +2,11 @@ use std::fs::{self, File};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::domain::{
-    ArtifactLocatorType, ArtifactPointer, Assessment, Authorship, ClaimRecord, EvidenceLink,
-    ExperimentReceipt, Outcome, ProjectManifest, ReviewDecision, SourceProvenance, SourceRecord,
-    Stance,
+    ArtifactLocatorType, ArtifactPointer, Assessment, Authorship, CanonicalRecord, ClaimRecord,
+    EvidenceLink, ExperimentReceipt, Outcome, ProjectManifest, ReviewDecision, SourceProvenance,
+    SourceRecord, Stance,
 };
 
-use super::recovery::RecordRecoveryKind;
 use super::{
     MAX_RECORD_BYTES, MAX_SNAPSHOT_BYTES, PendingCleanup, ReadBudget, Snapshot, Workspace,
     WorkspaceWriteLock, create_directory_chain, ensure_no_pending_effect, inject_storage_failure,

@@ -80,6 +80,7 @@ pub(super) fn validate_text_list(values: &[String], field: &str, required: bool)
 }
 
 pub fn validate_workspace_locator(value: &str) -> Result<()> {
+    bounded_text(value, "workspace locator")?;
     let path = Path::new(value);
     if path.is_absolute() || value.is_empty() {
         return Err(Error::invalid(
@@ -121,5 +122,8 @@ pub(super) fn slug(name: &str) -> String {
         result.insert_str(0, "project-");
     }
     result.truncate(64);
+    if result.ends_with('-') {
+        result.pop();
+    }
     result
 }

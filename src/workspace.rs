@@ -11,13 +11,18 @@ use crate::domain::{
 
 mod lifecycle;
 mod path_safety;
+mod pending_cleanup;
 mod publication;
 mod records;
 mod recovery;
+mod recovery_commit;
 mod recovery_plan;
+mod recovery_preflight;
 mod references;
+mod snapshot;
 mod status;
 mod storage;
+mod write_lock;
 
 pub(super) const STATE_DIRECTORY: &str = ".research-run";
 pub(super) const MAX_RECORD_BYTES: u64 = 1_048_576;
@@ -185,6 +190,8 @@ use path_safety::{
     create_directory_chain, ensure_no_pending_effect, interrupted_target_name, reject_symlink_chain,
 };
 #[cfg(test)]
-use publication::{PendingCleanup, WorkspaceWriteLock};
+use pending_cleanup::PendingCleanup;
 #[cfg(test)]
 use storage::{ReadBudget, read_bounded, read_json_with_budget};
+#[cfg(test)]
+use write_lock::WorkspaceWriteLock;

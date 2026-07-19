@@ -1,5 +1,12 @@
 use super::*;
 
+#[path = "capacity/review_records.rs"]
+mod review_records;
+
+use review_records::{
+    assert_capacity_error, claim_value, review_capacity, seed_claims, write_record,
+};
+
 const RECORD_CAPACITY: usize = 10_000;
 
 #[test]
@@ -13,7 +20,7 @@ fn each_write_boundary_rejects_the_first_record_beyond_capacity() {
 
 fn source_capacity() {
     let root = initialize("source-capacity");
-    for index in 0..RECORD_CAPACITY {
+    for index in 0..RECORD_CAPACITY - 1 {
         write_record(
             &root.0,
             "sources",
@@ -25,12 +32,39 @@ fn source_capacity() {
             }),
         );
     }
+    assert!(
+        add_source(&root.0, "source-capacity", None)
+            .status
+            .success()
+    );
     assert_capacity_error(add_source(&root.0, "source-overflow", None));
 }
 
 fn claim_capacity() {
     let root = initialize("claim-capacity");
-    seed_claims(&root.0);
+    seed_claims(&root.0, RECORD_CAPACITY - 1);
+    assert!(
+        run(
+            &root.0,
+            &[
+                "claim",
+                "add",
+                "--id",
+                "claim-capacity",
+                "--text",
+                "Claim",
+                "--scope",
+                "Scope",
+                "--owner",
+                "Owner",
+                "--authorship",
+                "human",
+            ],
+            None,
+        )
+        .status
+        .success()
+    );
     assert_capacity_error(run(
         &root.0,
         &[
@@ -53,7 +87,7 @@ fn claim_capacity() {
 
 fn experiment_capacity() {
     let root = initialize("experiment-capacity");
-    for index in 0..RECORD_CAPACITY {
+    for index in 0..RECORD_CAPACITY - 1 {
         write_record(
             &root.0,
             "experiments",
@@ -66,6 +100,34 @@ fn experiment_capacity() {
             }),
         );
     }
+    assert!(
+        run(
+            &root.0,
+            &[
+                "experiment",
+                "add",
+                "--id",
+                "experiment-capacity",
+                "--question",
+                "Question?",
+                "--method-ref",
+                "method.md",
+                "--observation",
+                "Observed",
+                "--interpretation",
+                "Interpretation",
+                "--limitation",
+                "Limited",
+                "--outcome",
+                "inconclusive",
+                "--next-move",
+                "Repeat",
+            ],
+            None,
+        )
+        .status
+        .success()
+    );
     assert_capacity_error(run(
         &root.0,
         &[
@@ -104,7 +166,7 @@ fn evidence_capacity() {
             "citation": "Citation", "locator": "local:source", "provenance": "human", "notes": ""
         }),
     );
-    for index in 0..RECORD_CAPACITY {
+    for index in 0..RECORD_CAPACITY - 1 {
         write_record(
             &root.0,
             "evidence",
@@ -117,6 +179,30 @@ fn evidence_capacity() {
             }),
         );
     }
+    assert!(
+        run(
+            &root.0,
+            &[
+                "evidence",
+                "add",
+                "--id",
+                "evidence-capacity",
+                "--claim",
+                "claim-one",
+                "--source",
+                "source-one",
+                "--stance",
+                "supports",
+                "--specific-evidence",
+                "Specific",
+                "--authorship",
+                "human",
+            ],
+            None,
+        )
+        .status
+        .success()
+    );
     assert_capacity_error(run(
         &root.0,
         &[
@@ -137,66 +223,4 @@ fn evidence_capacity() {
         ],
         None,
     ));
-}
-
-fn review_capacity() {
-    let root = initialize("review-capacity");
-    seed_claims(&root.0);
-    for index in 0..RECORD_CAPACITY {
-        write_record(
-            &root.0,
-            "reviews",
-            &format!("review-{index}"),
-            json!({
-                "schema_version": 1, "kind": "review", "id": format!("review-{index}"),
-                "claim_id": format!("claim-{index}"), "evidence_ids": [], "decision": "limited",
-                "rationale": "Rationale", "reviewer": "Reviewer"
-            }),
-        );
-    }
-    assert_capacity_error(run(
-        &root.0,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-overflow",
-            "--claim",
-            "claim-0",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Rationale",
-            "--reviewer",
-            "Reviewer",
-        ],
-        None,
-    ));
-}
-
-fn seed_claims(root: &Path) {
-    for index in 0..RECORD_CAPACITY {
-        let id = format!("claim-{index}");
-        write_record(root, "claims", &id, claim_value(&id));
-    }
-}
-
-fn claim_value(id: &str) -> serde_json::Value {
-    json!({
-        "schema_version": 1, "kind": "claim", "id": id, "text": "Claim", "scope": "Scope",
-        "owner": "Owner", "authorship": "human"
-    })
-}
-
-fn write_record(root: &Path, directory: &str, id: &str, value: serde_json::Value) {
-    let path = root
-        .join(".research-run")
-        .join(directory)
-        .join(format!("{id}.json"));
-    fs::write(path, serde_json::to_vec(&value).expect("record JSON")).expect("write record");
-}
-
-fn assert_capacity_error(output: Output) {
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("record budget"));
 }

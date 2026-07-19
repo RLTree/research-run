@@ -59,6 +59,15 @@ for gate in scripts/check scripts/check-coverage scripts/check-standards \
   fi
 done
 
+while IFS= read -r evidence; do
+  if [[ ! -e "$evidence" ]]; then
+    echo "standards obligation failure: mechanized evidence path $evidence is missing" >&2
+    echo "withheld: agent_standard_closure and package_delta_closure" >&2
+    exit 1
+  fi
+done < <(jq -r '[.obligations[], .package_delta.clusters[]]
+  | map(select(.status == "mechanized")) | .[].evidence[]' "$ledger" | sort -u)
+
 if rg -n '/Users/|/home/[^/]+/|Downloads/' AGENTS.md STANDARD.md policy.toml \
   agent-standards docs README.md >/dev/null; then
   echo "authority portability failure: tracked authority contains a host-specific absolute path" >&2
@@ -131,14 +140,6 @@ while IFS= read -r path; do
   fi
 done < <(git status --ignored --short | awk '$1 == "!!" { print $2 }')
 
-while IFS=: read -r path line declaration; do
-  symbol="$(printf '%s\n' "$declaration" | sed -E 's/.*\b(fn|struct|enum|trait|const|static|mod)[[:space:]]+([A-Za-z0-9_]+).*/\2/')"
-  case "$symbol" in
-    reviewer|Status) continue ;;
-  esac
-  check_name "Rust symbol" "$symbol" "$path:$line"
-done < <(rg -n --no-heading '^[[:space:]]*(pub([[:space:]]*\([^)]*\))?[[:space:]]+)?(async[[:space:]]+)?(fn|struct|enum|trait|const|static|mod)[[:space:]]+[A-Za-z0-9_]+' src tests)
-
 check_name "green fixture symbol" "publish_review_decision" "fixtures/namespace/green/review_decision.rs"
 if check_name "red fixture symbol" "phase4_rebind" "fixtures/namespace/red/phase4_rebind.rs" >/dev/null 2>&1; then
   echo "namespace fixture failure: red phase name was accepted" >&2
@@ -149,67 +150,6 @@ if check_name "tamper fixture symbol" "fit_slice" "fixtures/namespace/tamper/exc
   exit 1
 fi
 
-semantic_failure=0
-while IFS= read -r file; do
-  if [[ "$file" == src/*_tests.rs || "$file" == src/*_tests/* || "$file" == tests/* ]]; then
-    cap=400
-    class="test"
-  else
-    cap=300
-    class="production"
-  fi
-  noncomment="$(awk '
-    BEGIN { block=0; count=0 }
-    {
-      line=$0
-      if (block) {
-        if (line ~ /\*\//) { sub(/^.*\*\//, "", line); block=0 } else next
-      }
-      while (line ~ /\/\*/) {
-        before=line; sub(/\/\*.*/, "", before)
-        rest=line; sub(/^.*\/\*/, "", rest)
-        if (rest ~ /\*\//) { sub(/^.*\*\//, "", rest); line=before rest } else { line=before; block=1; break }
-      }
-      sub(/^[[:space:]]+/, "", line)
-      if (line != "" && line !~ /^\/\//) count++
-    }
-    END { print count }
-  ' "$file")"
-  if (( noncomment > cap )); then
-    echo "semantic tree violation: $file has $noncomment noncomment lines; $class Rust files are capped at $cap. Split by owned behavior. withheld: source_compliance and product_cohesion" >&2
-    semantic_failure=1
-  fi
-
-  awk -v file="$file" '
-    function braces(text, opened_text, closed_text) {
-      opened_text=text; closed_text=text
-      return gsub(/{/, "", opened_text) - gsub(/}/, "", closed_text)
-    }
-    BEGIN { active=0; opened=0; depth=0; start=0; name="" }
-    /^[[:space:]]*(pub([[:space:]]*\([^)]*\))?[[:space:]]+)?(async[[:space:]]+)?fn[[:space:]]+[A-Za-z0-9_]+/ {
-      if (!active) {
-        active=1; start=NR; name=$0
-        sub(/^.*fn[[:space:]]+/, "", name); sub(/[^A-Za-z0-9_].*$/, "", name)
-      }
-    }
-    active {
-      delta=braces($0); depth+=delta
-      if ($0 ~ /{/) opened=1
-      if (opened && depth==0) {
-        span=NR-start+1
-        if (span>80) {
-          printf "semantic tree violation: %s:%d function %s spans %d lines; functions are capped at 80. Split by owned behavior. withheld: source_compliance and product_cohesion\n", file, start, name, span > "/dev/stderr"
-          failures=1
-        }
-        active=0; opened=0; depth=0
-      }
-    }
-    END { exit failures }
-  ' "$file" || semantic_failure=1
-done < <(find src tests -type f -name '*.rs' -print | sort)
-
-if (( semantic_failure != 0 )); then
-  exit 1
-fi
+cargo test --locked --test standards_syntax --quiet
 
 echo "standards obligations: 12 source modules and 160 package laws closed; all paths classified; namespace and semantic-tree fixtures passed"

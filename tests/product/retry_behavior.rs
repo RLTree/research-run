@@ -7,10 +7,12 @@ fn identical_retry_is_idempotent_and_conflicting_identity_fails_closed() {
     let temporary = TempDir::new("retry");
     let project = temporary.0.join("project");
     let project_text = project.to_string_lossy();
-    succeeds(
-        &temporary.0,
-        &["init", &project_text, "--name", "Retry test"],
-    );
+    for _ in 0..2 {
+        succeeds(
+            &temporary.0,
+            &["init", &project_text, "--name", "Retry test"],
+        );
+    }
     let first = [
         "source",
         "add",
@@ -25,6 +27,38 @@ fn identical_retry_is_idempotent_and_conflicting_identity_fails_closed() {
     ];
     succeeds(&project, &first);
     succeeds(&project, &first);
+    let claim = [
+        "claim",
+        "add",
+        "--id",
+        "claim-one",
+        "--text",
+        "Claim",
+        "--scope",
+        "Scope",
+        "--owner",
+        "Researcher",
+        "--authorship",
+        "human",
+    ];
+    succeeds(&project, &claim);
+    succeeds(&project, &claim);
+    let review = [
+        "review",
+        "add",
+        "--id",
+        "review-one",
+        "--claim",
+        "claim-one",
+        "--decision",
+        "limited",
+        "--rationale",
+        "Bounded assessment",
+        "--reviewer",
+        "Researcher",
+    ];
+    succeeds(&project, &review);
+    succeeds(&project, &review);
     let conflict = cli(
         &project,
         &[

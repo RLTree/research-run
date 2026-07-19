@@ -10,7 +10,9 @@ use super::arguments::{
     ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, RecoveryArgs, ReviewCommand,
     SourceCommand,
 };
-use super::render::{parse_artifact, print_effect, print_human_status, print_json, terminal_text};
+use super::render::{
+    parse_artifact, print_effect, print_human_status, print_json, print_text, terminal_text,
+};
 
 pub(super) fn execute(cli: Cli) -> Result<()> {
     match cli.command {
@@ -28,26 +30,24 @@ pub(super) fn execute(cli: Cli) -> Result<()> {
 
 fn initialize(path: &Path, name: &str) -> Result<()> {
     let workspace = Workspace::initialize(path, name)?;
-    println!(
+    print_text(&format!(
         "Initialized Research Run workspace at {}",
         terminal_text(&workspace.root().display().to_string())
-    );
-    Ok(())
+    ))
 }
 
 fn recover(output: RecoveryArgs) -> Result<()> {
     let workspace = Workspace::for_recovery(&output.path)?;
     let recovery = workspace.recover()?;
     if output.json {
-        print_json(&recovery);
+        print_json(&recovery)
     } else {
-        println!("Recovered publications: {}", recovery.recovered.len());
-        println!(
-            "Discarded identical pending files: {}",
+        print_text(&format!(
+            "Recovered publications: {}\nDiscarded identical pending files: {}",
+            recovery.recovered.len(),
             recovery.discarded_identical.len()
-        );
+        ))
     }
-    Ok(())
 }
 
 fn add_source(command: SourceCommand) -> Result<()> {
@@ -68,8 +68,7 @@ fn add_source(command: SourceCommand) -> Result<()> {
         notes,
     };
     let workspace = discover_current()?;
-    print_effect("source", &record.id, workspace.add_source(&record)?);
-    Ok(())
+    print_effect("source", &record.id, workspace.add_source(&record)?)
 }
 
 fn add_claim(command: ClaimCommand) -> Result<()> {
@@ -90,8 +89,7 @@ fn add_claim(command: ClaimCommand) -> Result<()> {
         authorship: authorship.into(),
     };
     let workspace = discover_current()?;
-    print_effect("claim", &record.id, workspace.add_claim(&record)?);
-    Ok(())
+    print_effect("claim", &record.id, workspace.add_claim(&record)?)
 }
 
 fn add_evidence(command: EvidenceCommand) -> Result<()> {
@@ -109,8 +107,7 @@ fn add_evidence(command: EvidenceCommand) -> Result<()> {
         authorship: fields.authorship.into(),
     };
     let workspace = discover_current()?;
-    print_effect("evidence", &record.id, workspace.add_evidence(&record)?);
-    Ok(())
+    print_effect("evidence", &record.id, workspace.add_evidence(&record)?)
 }
 
 fn add_experiment(command: ExperimentCommand) -> Result<()> {
@@ -143,8 +140,7 @@ fn add_experiment(command: ExperimentCommand) -> Result<()> {
         artifacts,
     };
     let workspace = discover_current()?;
-    print_effect("experiment", &record.id, workspace.add_experiment(&record)?);
-    Ok(())
+    print_effect("experiment", &record.id, workspace.add_experiment(&record)?)
 }
 
 fn add_review(command: ReviewCommand) -> Result<()> {
@@ -167,30 +163,31 @@ fn add_review(command: ReviewCommand) -> Result<()> {
         rationale,
         reviewer,
     };
-    print_effect("review", &record.id, workspace.add_review(&record)?);
-    Ok(())
+    print_effect("review", &record.id, workspace.add_review(&record)?)
 }
 
 fn validate(json: bool) -> Result<()> {
     let validation = discover_current()?.validate();
     if json {
-        print_json(&validation);
+        print_json(&validation)?;
     } else if validation.valid {
-        println!("Workspace is valid.");
-        println!(
-            "Counts: {}",
+        print_text(&format!(
+            "Workspace is valid.\nCounts: {}",
             validation
                 .counts
                 .iter()
                 .map(|(kind, count)| format!("{kind}={count}"))
                 .collect::<Vec<_>>()
                 .join(", ")
-        );
+        ))?;
     } else {
-        println!("Workspace is invalid:");
-        for error in &validation.errors {
-            println!("- {}", terminal_text(error));
-        }
+        let errors = validation
+            .errors
+            .iter()
+            .map(|error| format!("- {}", terminal_text(error)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        print_text(&format!("Workspace is invalid:\n{errors}"))?;
     }
     if validation.valid {
         Ok(())
@@ -202,11 +199,10 @@ fn validate(json: bool) -> Result<()> {
 fn status(json: bool) -> Result<()> {
     let status = discover_current()?.status()?;
     if json {
-        print_json(&status);
+        print_json(&status)
     } else {
-        print_human_status(&status);
+        print_human_status(&status)
     }
-    Ok(())
 }
 
 pub(super) fn discover_current() -> Result<Workspace> {

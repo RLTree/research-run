@@ -1,11 +1,13 @@
+use std::fs;
+use std::io;
 use std::path::Path;
 
 use crate::domain::ProjectManifest;
 use crate::{Error, Result};
 
 use super::path_safety::{absolute_path, create_directory_chain, reject_symlink_chain};
-use super::publication::WorkspaceWriteLock;
-use super::{STATE_DIRECTORY, Workspace};
+use super::write_lock::WorkspaceWriteLock;
+use super::{STATE_DIRECTORY, Workspace, injected_storage_failure};
 
 impl Workspace {
     pub fn initialize(root: &Path, name: &str) -> Result<Self> {
@@ -32,16 +34,25 @@ impl Workspace {
         reject_symlink_chain(&start)?;
         for candidate in start.ancestors() {
             let state = candidate.join(STATE_DIRECTORY);
-            let manifest = state.join("manifest.json");
-            if manifest.exists() {
-                reject_symlink_chain(&state)?;
-                reject_symlink_chain(&manifest)?;
-                let workspace = Self {
-                    root: candidate.to_path_buf(),
-                    state,
-                };
-                workspace.read_manifest()?;
-                return Ok(workspace);
+            reject_symlink_chain(&state)?;
+            let metadata = if injected_storage_failure("inspect workspace boundary") {
+                Err(io::Error::other("injected storage failure"))
+            } else {
+                fs::symlink_metadata(&state)
+            };
+            match metadata {
+                Ok(_) => {
+                    let manifest = state.join("manifest.json");
+                    reject_symlink_chain(&manifest)?;
+                    let workspace = Self {
+                        root: candidate.to_path_buf(),
+                        state,
+                    };
+                    workspace.read_manifest()?;
+                    return Ok(workspace);
+                }
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                Err(error) => return Err(Error::io("inspect workspace boundary", state, error)),
             }
         }
         Err(Error::NotFound(

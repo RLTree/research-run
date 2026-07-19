@@ -11,6 +11,9 @@ if ! cargo llvm-cov --version >/dev/null 2>&1; then
 fi
 
 cargo llvm-cov clean --workspace
+profile_root="$repo_root/target/llvm-cov-target"
+mkdir -p "$profile_root"
+export LLVM_PROFILE_FILE="$profile_root/research-run-%m-%p.profraw"
 exec cargo llvm-cov --locked --test product \
   --ignore-filename-regex '(_tests(/|\.rs$)|tests/)' \
   --fail-under-lines 100 \

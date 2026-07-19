@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::{Arc, Barrier};
 
 #[test]
 fn bounded_storage_and_directory_shapes_fail_closed() {
@@ -66,16 +67,53 @@ fn bounded_storage_and_directory_shapes_fail_closed() {
     fs::write(&blocking_file, b"file").expect("blocking fixture");
     assert!(create_directory_chain(&blocking_file.join("child")).is_err());
 
-    let cleanup_path = storage_root.join("cleanup.tmp");
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn pending_cleanup_reports_removal_and_directory_sync_failures() {
+    let root = temporary();
+    let cleanup_path = root.join("cleanup.tmp");
     fs::write(&cleanup_path, b"pending").expect("cleanup fixture");
-    drop(PendingCleanup::new(cleanup_path.clone()));
+    PendingCleanup::new(cleanup_path.clone())
+        .remove()
+        .expect("cleanup pending file");
     assert!(!cleanup_path.exists());
     fs::write(&cleanup_path, b"pending").expect("preserve fixture");
-    let mut cleanup = PendingCleanup::new(cleanup_path.clone());
-    cleanup.preserve();
-    drop(cleanup);
+    let _cleanup = PendingCleanup::new(cleanup_path.clone());
     assert!(cleanup_path.exists());
 
+    let cleanup_directory = root.join("cleanup-directory");
+    fs::create_dir(&cleanup_directory).expect("cleanup directory fixture");
+    let mut failed_cleanup = PendingCleanup::new(cleanup_directory.clone());
+    assert!(failed_cleanup.remove().is_err());
+    assert!(cleanup_directory.is_dir());
+
+    let unsynced_cleanup = root.join("unsynced-cleanup.tmp");
+    fs::write(&unsynced_cleanup, b"pending").expect("unsynced cleanup fixture");
+    let mut failed_sync = PendingCleanup::new(unsynced_cleanup.clone());
+    inject_storage_failure("sync record directory");
+    assert!(failed_sync.remove().is_err());
+    assert!(!unsynced_cleanup.exists());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn write_lock_contention_fails_before_a_second_transaction() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Lock contention").expect("initialize");
+    let first = WorkspaceWriteLock::acquire(&workspace.state).expect("first lock");
+    let release = Arc::new(Barrier::new(2));
+    let contender_release = Arc::clone(&release);
+    let state = workspace.state.clone();
+    let contender = std::thread::spawn(move || {
+        contender_release.wait();
+        WorkspaceWriteLock::acquire(&state).is_err()
+    });
+    release.wait();
+    assert!(contender.join().expect("contender result"));
+    drop(first);
+    assert!(WorkspaceWriteLock::acquire(&workspace.state).is_ok());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

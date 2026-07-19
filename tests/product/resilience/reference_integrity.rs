@@ -1,5 +1,8 @@
 use super::*;
 
+#[path = "reference_integrity/command_references.rs"]
+mod command_references;
+
 fn assert_fails(output: Output, context: &str) {
     assert!(
         !output.status.success(),
@@ -132,6 +135,33 @@ fn reject_unknown_and_duplicate_record_references() {
         run(&duplicate_review.0, &["status", "--json"], None),
         "duplicate reviewed claim",
     );
+
+    let cross_claim = initialize("cross-claim-review-reference");
+    claim(&cross_claim.0, "claim-one");
+    claim(&cross_claim.0, "claim-two");
+    evidence(
+        &cross_claim.0,
+        "evidence-two",
+        "claim-two",
+        None,
+        None,
+        Some("artifact.txt"),
+    );
+    write_json(
+        &cross_claim.0.join(".research-run/reviews/review-one.json"),
+        json!({
+            "schema_version": 1, "kind": "review", "id": "review-one",
+            "claim_id": "claim-one", "evidence_ids": ["evidence-two"],
+            "decision": "limited", "rationale": "Rationale", "reviewer": "Reviewer"
+        }),
+    );
+    let output = run(&cross_claim.0, &["validate", "--json"], None);
+    assert_fails(output.clone(), "cross-claim review evidence");
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("belongs to claim claim-two"),
+        "cross-claim diagnostic was not canonical: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
 }
 
 #[cfg(unix)]
@@ -183,171 +213,3 @@ fn reject_symlinked_artifact_references() {
 
 #[cfg(not(unix))]
 fn reject_symlinked_artifact_references() {}
-
-#[test]
-fn installed_commands_reject_missing_references_and_duplicate_reviews() {
-    let root = initialize("command-reference-errors");
-    reject_missing_evidence_references(&root.0);
-    reject_missing_and_duplicate_review_references(&root.0);
-}
-
-fn reject_missing_evidence_references(root: &Path) {
-    let evidence_missing_claim = run(
-        root,
-        &[
-            "evidence",
-            "add",
-            "--id",
-            "evidence-one",
-            "--claim",
-            "claim-missing",
-            "--source",
-            "source-missing",
-            "--stance",
-            "context",
-            "--specific-evidence",
-            "Specific",
-            "--authorship",
-            "human",
-        ],
-        None,
-    );
-    assert_fails(evidence_missing_claim, "missing claim");
-
-    claim(root, "claim-one");
-    let evidence_missing_experiment = run(
-        root,
-        &[
-            "evidence",
-            "add",
-            "--id",
-            "evidence-two",
-            "--claim",
-            "claim-one",
-            "--experiment",
-            "experiment-missing",
-            "--stance",
-            "context",
-            "--specific-evidence",
-            "Specific",
-            "--authorship",
-            "human",
-        ],
-        None,
-    );
-    assert_fails(evidence_missing_experiment, "missing experiment");
-}
-
-fn reject_missing_and_duplicate_review_references(root: &Path) {
-    let missing_review_claim = run(
-        root,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-missing",
-            "--claim",
-            "claim-missing",
-            "--decision",
-            "supported",
-            "--rationale",
-            "Rationale",
-            "--reviewer",
-            "Reviewer",
-        ],
-        None,
-    );
-    assert_fails(missing_review_claim, "missing review claim");
-
-    assert!(
-        run(
-            root,
-            &[
-                "review",
-                "add",
-                "--id",
-                "review-one",
-                "--claim",
-                "claim-one",
-                "--decision",
-                "limited",
-                "--rationale",
-                "Rationale",
-                "--reviewer",
-                "Reviewer",
-            ],
-            None,
-        )
-        .status
-        .success()
-    );
-    let duplicate = run(
-        root,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-two",
-            "--claim",
-            "claim-one",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Second",
-            "--reviewer",
-            "Reviewer",
-        ],
-        None,
-    );
-    assert_fails(duplicate, "duplicate review");
-}
-
-#[test]
-fn installed_reader_rejects_filename_type_and_snapshot_budgets() {
-    let mismatch = initialize("filename-mismatch");
-    write_json(
-        &mismatch.0.join(".research-run/sources/wrong.json"),
-        json!({
-            "schema_version": 1,
-            "kind": "source",
-            "id": "source-one",
-            "citation": "Citation",
-            "locator": "local:source",
-            "provenance": "human",
-            "notes": ""
-        }),
-    );
-    assert_fails(
-        run(&mismatch.0, &["status", "--json"], None),
-        "filename mismatch",
-    );
-
-    let non_file = initialize("non-file-record");
-    fs::create_dir(non_file.0.join(".research-run/sources/directory.json"))
-        .expect("record-shaped directory");
-    assert_fails(
-        run(&non_file.0, &["status", "--json"], None),
-        "non-file record",
-    );
-
-    let too_large = initialize("oversized-read");
-    fs::write(
-        too_large.0.join(".research-run/sources/large.json"),
-        vec![b'x'; 1_048_577],
-    )
-    .expect("oversized record");
-    assert_fails(
-        run(&too_large.0, &["status", "--json"], None),
-        "oversized stored record",
-    );
-
-    let snapshot = initialize("snapshot-budget");
-    assert_fails(
-        run(
-            &snapshot.0,
-            &["status", "--json"],
-            Some("snapshot byte budget"),
-        ),
-        "snapshot byte budget",
-    );
-}
