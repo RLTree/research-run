@@ -186,12 +186,18 @@ pass.
   boundary. No profile was applied; `check-profile` correctly reported the
   absent generated profile, so profile-materialization/check claims are
   inapplicable rather than passed.
-- 2026-07-18: Refreshed UltraGoal source is clean branch
-  `codex/successor-contract-v2-live-product` at
-  `6bd743be095b217ab66ec3417c44e7f6749ff49e`. The installed `ultragoal` runtime
-  is absent, so capability, context, fit inspect/plan, installed activation, and
-  tool-verified fit claims remain withheld. Source guidance alone is the active
-  route for review.
+- 2026-07-18: The live UltraGoal checkout is dirty and was preserved. A clean
+  detached worktree at exact source commit
+  `0355039bf621113e7089c235a298c7a8b085397f` built the CLI through locked offline
+  Cargo. Canonical fit inspection and planning against clean candidate `80657ca`
+  found 67 missing generated files and four conflicts with Research Run-owned
+  authority (`AGENTS.md`, `AGENT_STANDARDS.md`, `ARCHITECTURE.md`, and
+  `scripts/check`), plan digest
+  `sha256:71dd2b2a2bb8246586596de234d9e5cf5b53827ea15446de78b0a0ba4efdd7a2`.
+  The production adapter refuses conflicting plans before effects, so no apply
+  was attempted. Source-built inspect/plan proof is current; package, install,
+  discovery, runtime activation, applied fit, fit receipt, and full fitted
+  governance remain withheld.
 - 2026-07-18: Final-review adversarial findings against candidate `181411a`
   rejected completion. The coherent repair now binds reviews to a SHA-256 digest
   of the exact claim, evidence, referenced source or experiment, and artifact
@@ -225,9 +231,12 @@ pass.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. The repair has current pre-commit
-source, coverage, mutation, dependency, and static-security evidence, but a clean
-exact candidate, package/install journey, final independent review, GitHub, and
-human-authority proof remain pending or withheld on their own surfaces. Release,
-merge, scientific truth, scientific impact, continuance, and unobserved real
-researcher usefulness are outside this run.
+No completion claim is active for this plan. Clean candidate `80657ca` has current
+source, package/install journey, machine-local artifact, and GitHub proof. Its
+coverage and mutation evidence remain bound to predecessor `98082eb`; this
+governance refresh creates later bytes and must pass the affected gates after it
+is committed. The canonical UltraGoal retrofit remains blocked by four protected
+authority conflicts, and final independent review, human-authority proof, and
+audience-bound Product Fitness proof remain pending or withheld on their own
+surfaces. Release, merge, scientific truth, scientific impact, continuance, and
+unobserved real researcher usefulness are outside this run.

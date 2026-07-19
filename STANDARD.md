@@ -152,15 +152,21 @@ source increment.
 
 The recovery repair is exactly commit
 `9e1d411b670eec4d2073cc775d8bf5081f841154`, which passed bounded final Round 2
-signoff. Its UltraGoal 0.0.12 fit plan was `conflicting`: 70 proposed mutations,
-one conflict at Research Run-owned `AGENTS.md`, digest
-`sha256:a9fa6fbc512b6f27abfcc133f9ee4d4a4a87c5ffb37271c1179fcef0a40a7d36`.
-It was not accepted or applied. Source authority is manifest 0.0.12 at commit
-`69787f20adcf0b99c7f3a26f71b35a215fda28d6`; the observed installed cache is
-0.0.11. Building the exact source commit independently failed under its own
-warnings-as-errors policy, so local reproduction of the source CLI and full fit
-verification are unavailable. These facts support source-guided adaptation only;
-installed, discovered, runtime-active, and full fitted-governance claims remain
+signoff. A newer canonical source probe used a clean detached worktree at
+UltraGoal commit `0355039bf621113e7089c235a298c7a8b085397f` and built the `ultragoal`
+binary with `cargo build --locked --offline --package ultragoal --bin ultragoal`.
+Against clean Research Run candidate
+`80657ca065a93a49521f414db891dff775cf45e9`, `fit inspect` and `fit plan`
+classified the retrofit as `conflicting`: 67 missing generated files and four
+conflicts at Research Run-owned `AGENTS.md`, `AGENT_STANDARDS.md`,
+`ARCHITECTURE.md`, and `scripts/check`. The stable plan digest in that clean
+source context was
+`sha256:71dd2b2a2bb8246586596de234d9e5cf5b53827ea15446de78b0a0ba4efdd7a2`.
+UltraGoal's canonical production adapter refuses every conflicting plan before
+effects, so the plan was not accepted or applied. The observed installed cache
+remains 0.0.11 and no installed `ultragoal` command was discovered. These facts
+support a source-built inspection and plan only; package, installed, discovered,
+runtime-active, applied-fit, fit-receipt, and full fitted-governance claims remain
 withheld.
 
 The additional validated source-guidance artifact is
