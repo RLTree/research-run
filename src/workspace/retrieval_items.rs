@@ -112,7 +112,13 @@ fn add_experiments(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
 }
 
 fn add_inventories(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
+    let latest = snapshot
+        .inventories
+        .iter()
+        .max_by(|left, right| (&left.observed_at, &left.id).cmp(&(&right.observed_at, &right.id)))
+        .map(|inventory| inventory.id.as_str());
     for inventory in &snapshot.inventories {
+        let stale = Some(inventory.id.as_str()) != latest;
         let authority = format!(".research-run/inventories/{}.json", inventory.id);
         items.push(item(ItemSpec {
             kind: "inventory",
@@ -123,7 +129,7 @@ fn add_inventories(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
             occurred_at: Some(&inventory.observed_at),
             state: None,
             authority_path: &authority,
-            stale: false,
+            stale,
             invalidated: false,
         }));
         for material in &inventory.entries {
@@ -136,7 +142,7 @@ fn add_inventories(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
                 occurred_at: Some(&inventory.observed_at),
                 state: None,
                 authority_path: &authority,
-                stale: inventory.previous_snapshot_id.is_some(),
+                stale,
                 invalidated: false,
             }));
         }

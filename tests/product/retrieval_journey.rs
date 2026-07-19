@@ -25,6 +25,11 @@ fn retrieval_rejects_empty_queries_and_invalid_limits() {
     ] {
         assert!(!cli(&project, &args).status.success(), "{args:?}");
     }
+    let missing = cli(
+        &project,
+        &["show", "--kind", "knowledge", "--id", "not-present"],
+    );
+    assert_eq!(missing.status.code(), Some(3));
 }
 
 fn setup(temporary: &TempDir) -> std::path::PathBuf {

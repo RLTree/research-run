@@ -76,7 +76,7 @@ fn apply_and_repeat_retrofit(
 }
 
 fn assert_move_plan(temporary: &TempDir, project: &std::path::Path) {
-    let reconcile = succeeds(
+    let reconcile_output = succeeds(
         &temporary.0,
         &[
             "reconcile",
@@ -90,7 +90,8 @@ fn assert_move_plan(temporary: &TempDir, project: &std::path::Path) {
             "2026-07-18T20:01:00Z",
         ],
     );
-    let reconcile: Value = serde_json::from_slice(&reconcile.stdout).expect("reconcile JSON");
+    let reconcile: Value =
+        serde_json::from_slice(&reconcile_output.stdout).expect("reconcile JSON");
     assert!(
         reconcile["changes"]
             .as_array()
@@ -101,6 +102,32 @@ fn assert_move_plan(temporary: &TempDir, project: &std::path::Path) {
                     && change["before"] == "notes/result.md"
                     && change["after"] == "notes/negative-result.md"
             })
+    );
+    let plan_path = temporary.0.join("reconcile-plan.json");
+    fs::write(&plan_path, &reconcile_output.stdout).expect("reconcile plan");
+    succeeds(
+        &temporary.0,
+        &[
+            "reconcile",
+            "apply",
+            project.to_str().expect("project path"),
+            "--input",
+            plan_path.to_str().expect("plan path"),
+            "--json",
+        ],
+    );
+    let listed = succeeds(project, &["list", "--kind", "material", "--limit", "10"]);
+    let listed: Value = serde_json::from_slice(&listed.stdout).expect("material list JSON");
+    let materials = listed["items"].as_array().expect("material items");
+    assert!(
+        materials
+            .iter()
+            .any(|item| { item["id"] == "notes/result.md" && item["stale"] == true })
+    );
+    assert!(
+        materials
+            .iter()
+            .any(|item| { item["id"] == "notes/negative-result.md" && item["stale"] == false })
     );
 }
 
