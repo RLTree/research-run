@@ -52,8 +52,7 @@ fn reconciliation_classifies_every_change_without_inference() {
 
 #[test]
 fn reconciliation_distinguishes_each_fingerprint_and_consumes_only_exact_moves() {
-    let unchanged = material("same", 'a');
-    assert!(reconcile(std::slice::from_ref(&unchanged), &[unchanged.clone()]).is_empty());
+    assert!(reconcile(&[material("same", 'a')], &[material("same", 'a')]).is_empty());
 
     let mut hash_changed = material("same", 'a');
     hash_changed.sha256 = digest('b');

@@ -160,8 +160,8 @@ pass.
 - 2026-07-18: Implemented byte-preserving retrofit/reconciliation, typed
   knowledge and relationships, bounded retrieval, portable handoff, and lossless
   v0.1 migration in coherent commits through `209b12c`.
-- 2026-07-18: Current source proof records 112/112 normal tests, 6,277/6,277
-  unique production regions, 3,209/3,209 executable production lines, 411/411
+- 2026-07-18: Current source proof records 113/113 normal tests, 6,293/6,293
+  unique production regions, 3,217/3,217 executable production lines, 413/413
   production functions, and 116/116 viable selected mutants killed; package,
   install, benchmark, review, GitHub, and completion claims remain pending.
 - 2026-07-18: The requested pre-implementation four-persona round was not run

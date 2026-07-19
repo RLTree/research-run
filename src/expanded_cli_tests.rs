@@ -49,6 +49,11 @@ fn structured_input_reports_non_not_found_metadata_and_open_failures() {
             std::path::Path::new("/var"),
             &metadata
         ));
+        let metadata = fs::symlink_metadata("/tmp").expect("/tmp metadata");
+        assert!(is_allowed_platform_alias(
+            std::path::Path::new("/tmp"),
+            &metadata
+        ));
     }
 }
 

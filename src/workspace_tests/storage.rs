@@ -212,3 +212,9 @@ fn symlinked_paths_are_rejected_at_each_storage_boundary() {
     fs::remove_dir_all(root).expect("remove fixture");
     fs::remove_dir_all(outside).expect("remove fixture");
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn standard_macos_temporary_alias_is_allowed_only_at_its_known_target() {
+    assert!(reject_symlink_chain(std::path::Path::new("/tmp")).is_ok());
+}
