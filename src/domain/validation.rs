@@ -125,13 +125,7 @@ pub(crate) fn validate_timestamp(value: &str) -> Result<()> {
             "must use UTC YYYY-MM-DDTHH:MM:SSZ form",
         ));
     }
-    for (start, end, maximum) in [
-        (5, 7, 12),
-        (8, 10, 31),
-        (11, 13, 23),
-        (14, 16, 59),
-        (17, 19, 59),
-    ] {
+    for (start, end, maximum) in [(5, 7, 12), (11, 13, 23), (14, 16, 59), (17, 19, 59)] {
         let component = value[start..end]
             .parse::<u32>()
             .expect("timestamp shape proves ASCII digits");
@@ -142,6 +136,29 @@ pub(crate) fn validate_timestamp(value: &str) -> Result<()> {
                 "contains an out-of-range component",
             ));
         }
+    }
+    let year = value[0..4]
+        .parse::<u32>()
+        .expect("timestamp shape proves ASCII digits");
+    let month = value[5..7]
+        .parse::<u32>()
+        .expect("timestamp shape proves ASCII digits");
+    let day = value[8..10]
+        .parse::<u32>()
+        .expect("timestamp shape proves ASCII digits");
+    let leap_year =
+        year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400));
+    let maximum_day = match month {
+        2 if leap_year => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    if day == 0 || day > maximum_day {
+        return Err(Error::invalid(
+            "observed_at",
+            "contains an impossible calendar date",
+        ));
     }
     Ok(())
 }

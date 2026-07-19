@@ -12,8 +12,6 @@ use super::{
     Workspace,
 };
 
-const CLAIM_CEILING: &str = "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.";
-
 struct StatusIndex<'a> {
     reviews_by_claim: BTreeMap<&'a str, &'a ReviewDecision>,
     reviewed_claims: BTreeSet<&'a str>,
@@ -23,7 +21,7 @@ struct StatusIndex<'a> {
 }
 
 impl<'a> StatusIndex<'a> {
-    fn build(snapshot: &'a Snapshot) -> Self {
+    fn build(workspace: &Workspace, snapshot: &'a Snapshot) -> Result<Self> {
         let mut index = Self {
             reviews_by_claim: BTreeMap::new(),
             reviewed_claims: BTreeSet::new(),
@@ -48,34 +46,38 @@ impl<'a> StatusIndex<'a> {
                 index.ai_evidence_claims.insert(link.claim_id.as_str());
             }
         }
-        index.reviews_by_claim = current_review_bindings(snapshot);
+        index.reviews_by_claim = current_review_bindings(workspace, snapshot)?;
         index.reviewed_claims = index.reviews_by_claim.keys().copied().collect();
-        index
+        Ok(index)
     }
 }
 
 impl Workspace {
     pub fn status(&self) -> Result<Status> {
         let snapshot = self.load_snapshot()?;
-        if !self.reference_errors(&snapshot).is_empty() {
+        self.status_from_snapshot(&snapshot)
+    }
+
+    pub(super) fn status_from_snapshot(&self, snapshot: &Snapshot) -> Result<Status> {
+        if !self.reference_errors(snapshot).is_empty() {
             return Err(Error::invalid(
                 "workspace",
                 "reference validation failed; run 'research-run validate'",
             ));
         }
         let counts = snapshot.counts();
-        let mut index = StatusIndex::build(&snapshot);
-        let unreviewed_ai_drafts = unreviewed_ai_drafts(&snapshot, &index);
+        let mut index = StatusIndex::build(self, snapshot)?;
+        let unreviewed_ai_drafts = unreviewed_ai_drafts(snapshot, &index);
         let claims = claim_statuses(&snapshot.claims, &mut index);
-        let experiments = experiment_statuses(snapshot.experiments);
+        let experiments = experiment_statuses(snapshot.experiments.clone());
         let (blockers, next_actions) = aggregate_actions(&claims);
         Ok(Status {
             format_version: crate::domain::FORMAT_VERSION,
             project: ProjectStatus {
-                id: snapshot.manifest.project_id,
-                name: snapshot.manifest.name,
+                id: snapshot.manifest.project_id.clone(),
+                name: snapshot.manifest.name.clone(),
             },
-            claim_ceiling: CLAIM_CEILING,
+            claim_ceiling: super::CLAIM_CEILING,
             counts,
             claims,
             experiments,

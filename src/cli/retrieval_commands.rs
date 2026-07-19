@@ -111,7 +111,7 @@ pub(super) fn render_context(bundle: &ContextBundle) -> String {
         terminal_text(&bundle.project_name),
         terminal_text(&bundle.project_id),
         terminal_text(&bundle.scope),
-        bundle.claim_ceiling
+        terminal_text(&bundle.claim_ceiling)
     );
     output.push_str(&render_items("Matches", &bundle.matches));
     output.push_str(&render_items("Unresolved", &bundle.unresolved));

@@ -156,6 +156,8 @@ pub(super) fn add_claim(root: &Path) {
 fn installed_process_exercises_artifact_and_recovery_reference_variants() {
     let root = initialize("reference-variants");
     add_claim(&root.0);
+    fs::create_dir(root.0.join("artifacts")).expect("artifact directory");
+    fs::write(root.0.join("artifacts/result.txt"), b"observation").expect("artifact");
     let output = run(
         &root.0,
         &[
@@ -178,33 +180,53 @@ fn installed_process_exercises_artifact_and_recovery_reference_variants() {
     );
     assert!(output.status.success());
 
-    let review = |id: &str| {
-        serde_json::to_vec_pretty(&json!({
-            "schema_version": 1,
-            "kind": "review",
-            "id": id,
-            "claim_id": "claim-one",
-            "evidence_ids": ["evidence-artifact"],
-            "decision": "supported",
-            "rationale": "Rationale",
-            "reviewer": "Reviewer"
-        }))
-        .expect("review JSON")
-    };
+    assert!(
+        run(
+            &root.0,
+            &[
+                "review",
+                "add",
+                "--id",
+                "review-template",
+                "--claim",
+                "claim-one",
+                "--decision",
+                "supported",
+                "--rationale",
+                "Rationale",
+                "--reviewer",
+                "Reviewer"
+            ],
+            None
+        )
+        .status
+        .success()
+    );
     let reviews = root.0.join(".research-run/reviews");
+    let template = reviews.join("review-template.json");
+    let mut review: serde_json::Value =
+        serde_json::from_slice(&fs::read(&template).expect("review template"))
+            .expect("review JSON");
+    fs::remove_file(template).expect("remove canonical template");
+    review["id"] = json!("review-one");
     fs::write(
         reviews.join(".review-one.json.9.1.tmp"),
-        review("review-one"),
+        serde_json::to_vec_pretty(&review).expect("review one"),
     )
     .expect("pending review one");
+    review["id"] = json!("review-two");
     fs::write(
         reviews.join(".review-two.json.9.2.tmp"),
-        review("review-two"),
+        serde_json::to_vec_pretty(&review).expect("review two"),
     )
     .expect("pending review two");
     let output = run(&root.0, &["recover", "--json"], None);
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("multiple v0.1 reviews"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("duplicate review authority binding"),
+        "{stderr}"
+    );
     assert!(reviews.join(".review-one.json.9.1.tmp").exists());
     assert!(reviews.join(".review-two.json.9.2.tmp").exists());
 }

@@ -2,6 +2,8 @@ use super::*;
 
 #[path = "recovery_transitions/manifest_validation.rs"]
 mod manifest_validation;
+#[path = "recovery_transitions/review_binding.rs"]
+mod review_binding;
 #[path = "recovery_transitions/review_publication.rs"]
 mod review_publication;
 
@@ -128,23 +130,6 @@ fn recovery_batch_propagates_collection_manifest_and_pending_budget_failures() {
         .status
         .success()
     );
-}
-
-#[test]
-fn single_pending_review_recovers_without_false_duplicate() {
-    let root = initialize("single-pending-review");
-    super::recovery::add_claim(&root.0);
-    pending(
-        &root.0,
-        "reviews",
-        "review-one",
-        json!({
-            "schema_version": 1, "kind": "review", "id": "review-one",
-            "claim_id": "claim-one", "evidence_ids": [], "decision": "limited",
-            "rationale": "Rationale", "reviewer": "Reviewer"
-        }),
-    );
-    assert!(run(&root.0, &["recover", "--json"], None).status.success());
 }
 
 #[test]

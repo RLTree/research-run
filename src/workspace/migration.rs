@@ -7,10 +7,10 @@ use sha2::{Digest, Sha256};
 use crate::domain::{FORMAT_VERSION, MigrationPlan, MigrationRecord};
 use crate::{Error, Result};
 
-use super::Workspace;
 use super::path_safety::{absolute_path, create_directory_chain, reject_symlink_chain};
 use super::storage::{ReadBudget, map_io, read_bounded, read_json_with_budget};
 use super::write_lock::WorkspaceWriteLock;
+use super::{Workspace, injected_storage_failure};
 
 impl Workspace {
     pub fn plan_migration(root: &Path, id: &str, migrated_at: &str) -> Result<MigrationPlan> {
@@ -18,6 +18,12 @@ impl Workspace {
         let workspace = Self::at_exact_root(&root)?.ok_or_else(|| {
             Error::NotFound("migration requires an existing v0.1 workspace".to_owned())
         })?;
+        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
+        if injected_storage_failure("migration fingerprint under lock") {
+            return Err(Error::AmbiguousEffect(
+                "migration authority recheck interrupted after lock acquisition".to_owned(),
+            ));
+        }
         let manifest = workspace.read_manifest()?;
         let (authority_files, authority_bytes, authority_sha256) =
             workspace.authority_fingerprint()?;
@@ -43,6 +49,12 @@ impl Workspace {
         let workspace = Self::at_exact_root(&root)?.ok_or_else(|| {
             Error::NotFound("migration requires an existing v0.1 workspace".to_owned())
         })?;
+        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
+        if injected_storage_failure("migration fingerprint under lock") {
+            return Err(Error::AmbiguousEffect(
+                "migration authority recheck interrupted after lock acquisition".to_owned(),
+            ));
+        }
         let manifest = workspace.read_manifest()?;
         if manifest.project_id != plan.project_id {
             return Err(Error::Conflict(
@@ -61,7 +73,6 @@ impl Workspace {
             ));
         }
         let record = MigrationRecord::from(plan);
-        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
         for directory in ["inventories", "knowledge", "relationships", "migrations"] {
             create_directory_chain(&workspace.state.join(directory))?;
         }

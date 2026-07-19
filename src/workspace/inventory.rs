@@ -88,15 +88,6 @@ impl Workspace {
 
     pub fn apply_inventory_plan(root: &Path, plan: InventoryPlan) -> Result<bool> {
         plan.validate()?;
-        if plan
-            .changes
-            .iter()
-            .any(|change| change.kind == ReconciliationKind::Conflict)
-        {
-            return Err(Error::Conflict(
-                "reconciliation contains ambiguous identity conflicts".to_owned(),
-            ));
-        }
         let (root, current) = scan_materials(root)?;
         if current != plan.entries {
             return Err(Error::Conflict(
@@ -116,6 +107,15 @@ impl Workspace {
         let directory = workspace.state.join("inventories");
         create_directory_chain(&directory)?;
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
+        let (_, locked_entries) = scan_materials(&root)?;
+        if super::injected_storage_failure("materials changed under lock")
+            || locked_entries != plan.entries
+        {
+            return Err(Error::Conflict(
+                "project materials changed while acquiring inventory authority; create a fresh plan"
+                    .to_owned(),
+            ));
+        }
         let snapshot = InventorySnapshot::from(plan.clone());
         if workspace.record_is_identical("inventories", &snapshot)? {
             return Ok(false);
@@ -124,6 +124,24 @@ impl Workspace {
         if latest.as_ref().map(|value| value.id.as_str()) != plan.previous_snapshot_id.as_deref() {
             return Err(Error::Conflict(
                 "inventory authority changed after planning; create a fresh plan".to_owned(),
+            ));
+        }
+        let expected_changes = latest
+            .as_ref()
+            .map(|snapshot| reconcile(&snapshot.entries, &locked_entries))
+            .unwrap_or_default();
+        if plan.changes != expected_changes {
+            return Err(Error::Conflict(
+                "inventory reconciliation changes do not match current canonical authority"
+                    .to_owned(),
+            ));
+        }
+        if expected_changes
+            .iter()
+            .any(|change| change.kind == ReconciliationKind::Conflict)
+        {
+            return Err(Error::Conflict(
+                "reconciliation contains ambiguous identity conflicts".to_owned(),
             ));
         }
         workspace.publish_record("inventories", &snapshot)

@@ -29,9 +29,53 @@ fn read_json_bytes(input: &str) -> Result<(Vec<u8>, std::path::PathBuf)> {
         }
         let mut file =
             File::open(path).map_err(|source| Error::io("open structured input", path, source))?;
-        (read_file(&mut file)?, path.to_path_buf())
+        let opened = if coverage_input_fault("inspect opened structured input") {
+            Err(io::Error::other("injected opened-input metadata failure"))
+        } else {
+            file.metadata()
+        }
+        .map_err(|source| Error::io("inspect opened structured input", path, source))?;
+        if coverage_input_fault("structured input identity after open")
+            || !same_file_identity(&metadata, &opened)
+        {
+            return Err(Error::AmbiguousEffect(format!(
+                "structured input identity changed while opening {}",
+                path.display()
+            )));
+        }
+        let bytes = read_file(&mut file)?;
+        inject_structured_symlink_after_read(path);
+        reject_symlink_chain(path)?;
+        let current = if coverage_input_fault("reinspect structured input") {
+            Err(io::Error::other("injected input reinspection failure"))
+        } else {
+            fs::metadata(path)
+        }
+        .map_err(|source| Error::io("reinspect structured input", path, source))?;
+        if coverage_input_fault("structured input identity after read")
+            || !same_file_identity(&opened, &current)
+            || coverage_input_fault("structured input length after read")
+            || bytes.len() as u64 != opened.len()
+        {
+            return Err(Error::AmbiguousEffect(format!(
+                "structured input identity changed while reading {}",
+                path.display()
+            )));
+        }
+        (bytes, path.to_path_buf())
     };
     Ok((bytes, label))
+}
+
+#[cfg(unix)]
+fn same_file_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    left.dev() == right.dev() && left.ino() == right.ino()
+}
+
+#[cfg(not(unix))]
+fn same_file_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
+    left.len() == right.len() && left.modified().ok() == right.modified().ok()
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
@@ -69,6 +113,10 @@ impl Read for FailedInput {
 }
 
 fn coverage_input_fault(point: &str) -> bool {
+    #[cfg(test)]
+    if crate::workspace::take_storage_failure(point) {
+        return true;
+    }
     #[cfg(coverage)]
     {
         return std::env::var("RESEARCH_RUN_COVERAGE_FAULT").is_ok_and(|value| value == point);
@@ -79,6 +127,20 @@ fn coverage_input_fault(point: &str) -> bool {
         false
     }
 }
+
+#[cfg(all(any(test, coverage), unix))]
+fn inject_structured_symlink_after_read(path: &Path) {
+    use std::os::unix::fs::symlink;
+
+    if coverage_input_fault("structured input symlink after read") {
+        let destination = path.with_extension("post-read");
+        fs::rename(path, &destination).expect("move injected structured input");
+        symlink(destination, path).expect("create injected structured input symlink");
+    }
+}
+
+#[cfg(not(all(any(test, coverage), unix)))]
+fn inject_structured_symlink_after_read(_path: &Path) {}
 
 fn input_budget() -> Error {
     Error::Budget(format!(

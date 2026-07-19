@@ -1,17 +1,23 @@
 use crate::domain::Assessment;
 
-use super::Snapshot;
 use super::references::current_review_bindings;
 use super::retrieval_items::{ItemSpec, enum_name, item};
 use super::retrieval_types::{ProjectionItem, RelationshipProjection};
+use super::{Snapshot, Workspace};
 
-pub(super) fn add_canonical(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
+pub(super) fn add_canonical(
+    workspace: &Workspace,
+    snapshot: &Snapshot,
+    items: &mut Vec<ProjectionItem>,
+) -> crate::Result<()> {
+    let reviews = current_review_bindings(workspace, snapshot)?;
     add_sources(snapshot, items);
-    add_claims(snapshot, items);
+    add_claims(snapshot, &reviews, items);
     add_evidence(snapshot, items);
     add_experiments(snapshot, items);
-    add_reviews(snapshot, items);
+    add_reviews(snapshot, &reviews, items);
     add_relationships(snapshot, items);
+    Ok(())
 }
 
 pub(super) fn relationship_items(snapshot: &Snapshot) -> Vec<RelationshipProjection> {
@@ -51,8 +57,11 @@ fn add_sources(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
     }
 }
 
-fn add_claims(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
-    let reviews = current_review_bindings(snapshot);
+fn add_claims<'a>(
+    snapshot: &'a Snapshot,
+    reviews: &std::collections::BTreeMap<&'a str, &'a crate::domain::ReviewDecision>,
+    items: &mut Vec<ProjectionItem>,
+) {
     for record in &snapshot.claims {
         let assessment = reviews
             .get(record.id.as_str())
@@ -128,7 +137,15 @@ fn add_experiments(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
     }
 }
 
-fn add_reviews(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
+fn add_reviews<'a>(
+    snapshot: &'a Snapshot,
+    reviews: &std::collections::BTreeMap<&'a str, &'a crate::domain::ReviewDecision>,
+    items: &mut Vec<ProjectionItem>,
+) {
+    let current_ids = reviews
+        .values()
+        .map(|review| review.id.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
     for record in &snapshot.reviews {
         items.push(item(ItemSpec {
             kind: "review",
@@ -139,7 +156,7 @@ fn add_reviews(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
             occurred_at: None,
             state: Some(&enum_name(&record.decision)),
             authority_path: &format!(".research-run/reviews/{}.json", record.id),
-            stale: false,
+            stale: !current_ids.contains(record.id.as_str()),
             invalidated: false,
         }));
     }

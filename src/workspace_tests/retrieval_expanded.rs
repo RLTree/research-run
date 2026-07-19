@@ -60,6 +60,12 @@ fn add_retrieval_evidence(workspace: &Workspace) {
         "evidence-experiment".to_owned(),
         "evidence-source".to_owned(),
     ];
+    decision.subject_sha256 = Some(
+        workspace
+            .review_subject_binding("claim-one")
+            .expect("binding")
+            .1,
+    );
     workspace.add_review(&decision).expect("review");
 }
 

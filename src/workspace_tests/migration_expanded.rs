@@ -32,6 +32,10 @@ fn migration_planning_and_application_fail_closed_at_authority_boundaries() {
     let workspace = Workspace::initialize(&root, "Migration").expect("initialize");
     let plan =
         Workspace::plan_migration(&root, "migration-one", "2026-07-18T20:00:00Z").expect("plan");
+    inject_storage_failure("open workspace write lock");
+    assert!(Workspace::plan_migration(&root, "migration-lock", "2026-07-18T20:00:00Z").is_err());
+    inject_storage_failure("migration fingerprint under lock");
+    assert!(Workspace::plan_migration(&root, "migration-fault", "2026-07-18T20:00:00Z").is_err());
     let path = root.join("migration-plan.json");
     fs::write(&path, serde_json::to_vec_pretty(&plan).unwrap()).expect("plan file");
     assert_eq!(
@@ -87,8 +91,13 @@ fn migration_authority_propagates_storage_and_path_failures() {
     }
     let plan =
         Workspace::plan_migration(&root, "migration-one", "2026-07-18T20:00:00Z").expect("plan");
-    inject_storage_failure("open workspace write lock");
-    assert!(Workspace::apply_migration(&root, plan).is_err());
+    for point in [
+        "open workspace write lock",
+        "migration fingerprint under lock",
+    ] {
+        inject_storage_failure(point);
+        assert!(Workspace::apply_migration(&root, plan.clone()).is_err());
+    }
     assert_authority_symlink(&workspace, &root);
     fs::remove_dir_all(root).expect("remove fixture");
 }

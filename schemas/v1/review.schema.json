@@ -4,7 +4,7 @@
   "title": "Research Run ReviewDecision v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "kind", "id", "claim_id", "decision", "rationale", "reviewer"],
+  "required": ["schema_version", "kind", "id", "claim_id", "subject_sha256", "decision", "rationale", "reviewer"],
   "properties": {
     "schema_version": { "const": 1 },
     "kind": { "const": "review" },
@@ -15,6 +15,7 @@
       "uniqueItems": true,
       "items": { "$ref": "types.schema.json#/$defs/id" }
     },
+    "subject_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "decision": { "enum": ["unsupported", "limited", "supported", "contradicted"] },
     "rationale": { "$ref": "types.schema.json#/$defs/text" },
     "reviewer": { "$ref": "types.schema.json#/$defs/text" }

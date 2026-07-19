@@ -56,6 +56,7 @@ fn knowledge_relations_resolve_every_entity_kind_and_remain_idempotent() {
         .expect("evidence");
     let mut decision = review("review-one", "claim-one");
     decision.evidence_ids = vec!["evidence-one".to_owned()];
+    decision.subject_sha256 = Some(workspace.review_subject_binding("claim-one").unwrap().1);
     workspace.add_review(&decision).expect("review");
     workspace
         .add_knowledge(&knowledge("knowledge-one"))

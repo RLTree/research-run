@@ -160,7 +160,7 @@
         "STANDARD.md",
         "policy.toml"
       ],
-      "reason": "Bounded decision-boundary review cadence and claim ceilings are explicit."
+      "reason": "Bounded decision-boundary review cadence and claim ceilings are explicit; this classification does not assert that a human completion review has occurred."
     },
     {
       "id": "standards-gardening",
@@ -197,10 +197,10 @@
       "module": "09",
       "status": "mechanized",
       "evidence": [
-        "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md",
-        "tests/product/researcher_journey.rs"
+        "agent-standards/product-fitness-disposition.json",
+        "scripts/check-standards"
       ],
-      "reason": "The kickoff owns the job, outcomes, claim ceiling, and representative journey for the current v0.1 product claim."
+      "reason": "A typed disposition withholds real-use and continuance claims until audience-bound human evidence exists; install and journey tests cannot substitute."
     },
     {
       "id": "plugin-activation-distribution",

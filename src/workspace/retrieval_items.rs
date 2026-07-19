@@ -2,14 +2,17 @@ use std::collections::BTreeSet;
 
 use crate::domain::RelationshipKind;
 
-use super::Snapshot;
 use super::retrieval_canonical::add_canonical;
 use super::retrieval_types::ProjectionItem;
+use super::{Snapshot, Workspace};
 
-pub(super) fn projection_items(snapshot: &Snapshot) -> Vec<ProjectionItem> {
+pub(super) fn projection_items(
+    workspace: &Workspace,
+    snapshot: &Snapshot,
+) -> crate::Result<Vec<ProjectionItem>> {
     let (stale, invalidated) = history_flags(snapshot);
     let mut items = Vec::new();
-    add_canonical(snapshot, &mut items);
+    add_canonical(workspace, snapshot, &mut items)?;
     for record in &snapshot.knowledge {
         items.push(item(ItemSpec {
             kind: "knowledge",
@@ -26,7 +29,7 @@ pub(super) fn projection_items(snapshot: &Snapshot) -> Vec<ProjectionItem> {
     }
     add_inventories(snapshot, &mut items);
     items.sort_by(|left, right| (&left.kind, &left.id).cmp(&(&right.kind, &right.id)));
-    items
+    Ok(items)
 }
 
 fn add_inventories(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {

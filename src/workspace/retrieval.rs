@@ -5,7 +5,9 @@ use crate::{Error, Result};
 
 use super::Workspace;
 use super::retrieval_canonical::relationship_items;
-use super::retrieval_context::context_from_snapshot;
+use super::retrieval_context::{
+    claim_blockers, claim_next_actions, context_from_snapshot, sort_and_truncate,
+};
 use super::retrieval_items::projection_items;
 use super::retrieval_types::{
     ContextBundle, HandoffBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
@@ -14,7 +16,8 @@ use super::retrieval_types::{
 impl Workspace {
     pub fn list(&self, kind: Option<&str>, limit: usize) -> Result<ProjectionResult> {
         let limit = validate_limit(limit)?;
-        let mut items = projection_items(&self.load_snapshot()?);
+        let snapshot = self.load_snapshot()?;
+        let mut items = projection_items(self, &snapshot)?;
         if let Some(kind) = kind {
             items.retain(|item| item.kind == kind || item.subtype == kind);
         }
@@ -22,7 +25,8 @@ impl Workspace {
     }
 
     pub fn show(&self, kind: &str, id: &str) -> Result<ProjectionItem> {
-        let mut matches = projection_items(&self.load_snapshot()?)
+        let snapshot = self.load_snapshot()?;
+        let mut matches = projection_items(self, &snapshot)?
             .into_iter()
             .filter(|item| item.kind == kind && item.id == id);
         let item = matches
@@ -39,7 +43,8 @@ impl Workspace {
     pub fn search(&self, query: &str, limit: usize) -> Result<ProjectionResult> {
         let limit = validate_limit(limit)?;
         let query = validate_query(query)?;
-        let items = projection_items(&self.load_snapshot()?)
+        let snapshot = self.load_snapshot()?;
+        let items = projection_items(self, &snapshot)?
             .into_iter()
             .filter_map(|mut item| {
                 item.matched_by = match_reasons(&item, &query);
@@ -51,7 +56,8 @@ impl Workspace {
 
     pub fn recent(&self, limit: usize) -> Result<ProjectionResult> {
         let limit = validate_limit(limit)?;
-        let mut items = projection_items(&self.load_snapshot()?);
+        let snapshot = self.load_snapshot()?;
+        let mut items = projection_items(self, &snapshot)?;
         items.retain(|item| item.occurred_at.is_some());
         items.sort_by(|left, right| {
             (&right.occurred_at, &right.kind, &right.id).cmp(&(
@@ -65,7 +71,8 @@ impl Workspace {
 
     pub fn timeline(&self, limit: usize) -> Result<ProjectionResult> {
         let limit = validate_limit(limit)?;
-        let mut items = projection_items(&self.load_snapshot()?);
+        let snapshot = self.load_snapshot()?;
+        let mut items = projection_items(self, &snapshot)?;
         items.retain(|item| item.occurred_at.is_some());
         items.sort_by(|left, right| {
             (&left.occurred_at, &left.kind, &left.id).cmp(&(
@@ -101,12 +108,33 @@ impl Workspace {
     }
 
     pub fn blocker_items(&self, limit: usize) -> Result<ProjectionResult> {
-        self.knowledge_subset("blockers", limit, |kind| kind == KnowledgeKind::Blocker)
+        let limit = validate_limit(limit)?;
+        let snapshot = self.load_snapshot()?;
+        let mut items = self.knowledge_items(&snapshot, |kind| kind == KnowledgeKind::Blocker)?;
+        items.extend(claim_blockers(&self.status_from_snapshot(&snapshot)?));
+        let total_matches = items.len();
+        sort_and_truncate(&mut items, limit);
+        Ok(ProjectionResult {
+            kind: "blockers",
+            limit,
+            total_matches,
+            items,
+        })
     }
 
     pub fn next_action_items(&self, limit: usize) -> Result<ProjectionResult> {
-        self.knowledge_subset("next-actions", limit, |kind| {
-            kind == KnowledgeKind::NextAction
+        let limit = validate_limit(limit)?;
+        let snapshot = self.load_snapshot()?;
+        let mut items =
+            self.knowledge_items(&snapshot, |kind| kind == KnowledgeKind::NextAction)?;
+        items.extend(claim_next_actions(&self.status_from_snapshot(&snapshot)?));
+        let total_matches = items.len();
+        sort_and_truncate(&mut items, limit);
+        Ok(ProjectionResult {
+            kind: "next-actions",
+            limit,
+            total_matches,
+            items,
         })
     }
 
@@ -118,6 +146,15 @@ impl Workspace {
     ) -> Result<ProjectionResult> {
         let limit = validate_limit(limit)?;
         let snapshot = self.load_snapshot()?;
+        let items = self.knowledge_items(&snapshot, predicate)?;
+        Ok(result(output_kind, items, limit))
+    }
+
+    fn knowledge_items(
+        &self,
+        snapshot: &super::Snapshot,
+        predicate: impl Fn(KnowledgeKind) -> bool,
+    ) -> Result<Vec<ProjectionItem>> {
         let selected = snapshot
             .knowledge
             .iter()
@@ -127,17 +164,17 @@ impl Workspace {
             })
             .map(|record| record.id.as_str())
             .collect::<BTreeSet<_>>();
-        let items = projection_items(&snapshot)
+        let items = projection_items(self, snapshot)?
             .into_iter()
             .filter(|item| item.kind == "knowledge" && selected.contains(item.id.as_str()))
             .collect();
-        Ok(result(output_kind, items, limit))
+        Ok(items)
     }
 
     pub fn context(&self, query: Option<&str>, limit: usize) -> Result<ContextBundle> {
         let limit = validate_limit(limit)?;
         let snapshot = self.load_snapshot()?;
-        context_from_snapshot(snapshot, query, limit)
+        context_from_snapshot(self, snapshot, query, limit)
     }
 
     pub fn handoff(

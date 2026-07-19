@@ -2,7 +2,7 @@ use std::fs;
 
 use serde_json::{Value, json};
 
-use super::researcher_journey::{TempDir, cli, succeeds};
+use super::researcher_journey::{TempDir, succeeds};
 
 #[test]
 fn fresh_process_consumes_handoff_without_source_workspace() {
@@ -24,6 +24,17 @@ fn fresh_process_consumes_handoff_without_source_workspace() {
     assert_eq!(inspected["context"]["blockers"][0]["id"], "blocker-reagent");
     assert_eq!(inspected["context"]["next_actions"][0]["id"], "next-order");
     let matches = inspected["context"]["matches"].as_array().unwrap();
+    for (kind, id) in [
+        ("claim", "claim-assay"),
+        ("evidence", "evidence-assay"),
+        ("review", "review-assay"),
+    ] {
+        assert!(
+            matches
+                .iter()
+                .any(|item| item["kind"] == kind && item["id"] == id)
+        );
+    }
     assert!(matches.iter().any(|item| item["id"] == "decision-assay"));
     assert!(
         matches
@@ -56,7 +67,7 @@ fn fresh_process_consumes_handoff_without_source_workspace() {
     assert!(String::from_utf8_lossy(&human_create.stdout).contains("Research Run context"));
 }
 
-fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
+pub(super) fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
     let project = temporary.0.join("project");
     succeeds(
         &temporary.0,
@@ -67,6 +78,7 @@ fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
             "Handoff project",
         ],
     );
+    add_research_graph(&project);
     for (id, kind, title, at) in [
         (
             "decision-assay",
@@ -119,38 +131,74 @@ fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
     handoff_path
 }
 
-#[test]
-fn handoff_inspection_rejects_unknown_versions() {
-    let temporary = TempDir::new("handoff-defense");
-    let path = temporary.0.join("bad.json");
-    let fixture = create_handoff_fixture(&temporary);
-    let mut invalid: Value =
-        serde_json::from_slice(&fs::read(fixture).expect("read handoff fixture"))
-            .expect("handoff JSON");
-    invalid["schema_version"] = json!(99);
-    fs::write(&path, serde_json::to_vec(&invalid).unwrap()).unwrap();
-    let output = cli(
-        &temporary.0,
-        &["handoff", "inspect", "--input", path.to_str().unwrap()],
+fn add_research_graph(project: &std::path::Path) {
+    succeeds(
+        project,
+        &[
+            "source",
+            "add",
+            "--id",
+            "source-assay",
+            "--citation",
+            "Synthetic assay note",
+            "--locator",
+            "local:assay",
+            "--provenance",
+            "human",
+        ],
     );
-    assert!(!output.status.success());
-    fs::write(&path, b"{").expect("malformed handoff");
-    assert!(
-        !cli(
-            &temporary.0,
-            &["handoff", "inspect", "--input", path.to_str().unwrap()]
-        )
-        .status
-        .success()
+    succeeds(
+        project,
+        &[
+            "claim",
+            "add",
+            "--id",
+            "claim-assay",
+            "--text",
+            "Assay B is preferred.",
+            "--scope",
+            "Synthetic fixture",
+            "--owner",
+            "Example Researcher",
+            "--authorship",
+            "human",
+        ],
     );
-    fs::remove_file(&path).expect("remove handoff");
-    assert!(
-        !cli(
-            &temporary.0,
-            &["handoff", "inspect", "--input", path.to_str().unwrap()]
-        )
-        .status
-        .success()
+    succeeds(
+        project,
+        &[
+            "evidence",
+            "add",
+            "--id",
+            "evidence-assay",
+            "--claim",
+            "claim-assay",
+            "--source",
+            "source-assay",
+            "--stance",
+            "limits",
+            "--specific-evidence",
+            "Synthetic evidence is bounded.",
+            "--authorship",
+            "human",
+        ],
+    );
+    succeeds(
+        project,
+        &[
+            "review",
+            "add",
+            "--id",
+            "review-assay",
+            "--claim",
+            "claim-assay",
+            "--decision",
+            "limited",
+            "--rationale",
+            "Reviewed within the synthetic fixture.",
+            "--reviewer",
+            "Example Researcher",
+        ],
     );
 }
 

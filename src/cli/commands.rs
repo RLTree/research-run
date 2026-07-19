@@ -174,13 +174,14 @@ fn add_review(command: ReviewCommand) -> Result<()> {
         reviewer,
     } = command;
     let workspace = discover_current()?;
-    let evidence_ids = workspace.claim_evidence_ids(&claim)?;
+    let (evidence_ids, subject_sha256) = workspace.review_subject_binding(&claim)?;
     let record = ReviewDecision {
         schema_version: FORMAT_VERSION,
         kind: "review".to_owned(),
         id,
         claim_id: claim,
         evidence_ids,
+        subject_sha256: Some(subject_sha256),
         decision: decision.into(),
         rationale,
         reviewer,

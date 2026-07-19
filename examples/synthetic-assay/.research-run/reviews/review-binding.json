@@ -2,6 +2,7 @@
   "claim_id": "claim-binding",
   "decision": "limited",
   "evidence_ids": ["evidence-paper", "evidence-repeat"],
+  "subject_sha256": "39ab34184f14760f7d057bca74f7f734ea264fb1198d956792d93f89ef2d2e55",
   "id": "review-binding",
   "kind": "review",
   "rationale": "The source supports the claim, but the negative repeat limits it.",

@@ -89,7 +89,7 @@ impl Workspace {
             ));
         }
         let errors = self.reference_errors(&snapshot);
-        validate_pending_review_graphs(&snapshot, &review_pending)?;
+        validate_pending_review_graphs(self, &snapshot, &review_pending)?;
         if errors.is_empty() && !injected_storage_failure("recovered references") {
             Ok(RecoveryBatch {
                 manifest: manifest_pending,

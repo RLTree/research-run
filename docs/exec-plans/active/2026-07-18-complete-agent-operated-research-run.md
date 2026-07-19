@@ -192,10 +192,42 @@ pass.
   is absent, so capability, context, fit inspect/plan, installed activation, and
   tool-verified fit claims remain withheld. Source guidance alone is the active
   route for review.
+- 2026-07-18: Final-review adversarial findings against candidate `181411a`
+  rejected completion. The coherent repair now binds reviews to a SHA-256 digest
+  of the exact claim, evidence, referenced source or experiment, and artifact
+  bytes; stale same-ID authority no longer promotes a claim or appears current
+  in retrieval and handoff projections.
+- 2026-07-18: The repair also rechecks inventory and migration authority under
+  their write locks, rejects structured-input identity and length races,
+  validates Gregorian calendar dates, deeply validates portable handoffs,
+  derives claim blockers and next actions, and makes standards classifications
+  exact and tamper-tested. The superseded kickoff moved to
+  `docs/exec-plans/completed/`; this is the sole active plan.
+- 2026-07-18: Pre-commit repair proof passes 132/132 normal nextest cases,
+  7,077/7,077 unique production regions, 3,576/3,576 executable production
+  lines, 455/455 production functions, and bounded mutation with 180 viable
+  mutants killed, 18 compiler-unviable, and zero missed or timed out. Format,
+  check, doc tests, Clippy, standards, dependency audit/deny, gitleaks, and
+  actionlint also pass. Package, install, benchmark, final review, GitHub, and
+  completion proof must be refreshed after the repair commit freezes exact
+  bytes.
+- 2026-07-18: A typed Product Fitness disposition withholds real-use fitness,
+  daily-driver usefulness, continuance, and research-impact claims because no
+  audience-bound human-use evidence exists. Source tests, installed journeys,
+  package proof, benchmarks, and generic reviewer approval are explicitly
+  non-substitutes.
+- 2026-07-18: Human-only claim promotion remains an external authority blocker.
+  This repository has no configured user-controlled signing or approval
+  mechanism that can distinguish a human decision from an agent with the same
+  filesystem and CLI authority. The product enforces explicit typed review and
+  exact semantic binding, but human provenance and final human signoff remain
+  withheld until that trust boundary is supplied.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. Prior accepted behavior is present,
-but all new and final claims remain withheld pending a clean exact candidate and
-fresh proof on their own surfaces. Release, merge, scientific truth, scientific
-impact, and unobserved real researcher usefulness are outside this run.
+No completion claim is active for this plan. The repair has current pre-commit
+source, coverage, mutation, dependency, and static-security evidence, but a clean
+exact candidate, package/install journey, final independent review, GitHub, and
+human-authority proof remain pending or withheld on their own surfaces. Release,
+merge, scientific truth, scientific impact, continuance, and unobserved real
+researcher usefulness are outside this run.

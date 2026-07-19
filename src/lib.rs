@@ -4,6 +4,10 @@ pub mod cli;
 pub mod domain;
 pub mod workspace;
 
+#[cfg(test)]
+#[path = "domain_calendar_tests.rs"]
+mod domain_calendar_tests;
+
 use std::error::Error as StdError;
 use std::fmt;
 use std::io;

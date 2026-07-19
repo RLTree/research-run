@@ -32,6 +32,7 @@ mod retrieval_canonical;
 mod retrieval_context;
 mod retrieval_items;
 mod retrieval_types;
+mod review_binding;
 mod snapshot;
 mod status;
 mod storage;
@@ -41,6 +42,7 @@ pub(super) const STATE_DIRECTORY: &str = ".research-run";
 pub(super) const MAX_RECORD_BYTES: u64 = 1_048_576;
 pub(super) const MAX_RECORDS_PER_KIND: usize = 10_000;
 pub(super) const MAX_SNAPSHOT_BYTES: u64 = 64 * 1_048_576;
+pub const CLAIM_CEILING: &str = "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.";
 pub(super) static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 #[cfg(all(coverage, not(test)))]
 static COVERAGE_FAULT_OCCURRENCE: AtomicU64 = AtomicU64::new(0);
@@ -60,7 +62,7 @@ pub(super) fn inject_storage_failure(point: &'static str) {
 }
 
 #[cfg(test)]
-pub(super) fn take_storage_failure(point: &str) -> bool {
+pub(crate) fn take_storage_failure(point: &str) -> bool {
     STORAGE_FAILURE.with_borrow_mut(|failure| match failure.as_mut() {
         Some((target, remaining)) if *target == point && *remaining == 1 => {
             failure.take();

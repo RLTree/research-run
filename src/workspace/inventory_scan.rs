@@ -106,7 +106,7 @@ fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Res
     Ok(())
 }
 
-fn hash_file(path: &Path) -> Result<(u64, String)> {
+pub(super) fn hash_file(path: &Path) -> Result<(u64, String)> {
     reject_material_path(path, "material pre-hash path")?;
     let before = map_io(fs::metadata(path), "inspect material", path)?;
     if before.len() > MAX_INDEXED_FILE_BYTES {
@@ -116,6 +116,14 @@ fn hash_file(path: &Path) -> Result<(u64, String)> {
         )));
     }
     let mut file = map_io(File::open(path), "open material", path)?;
+    let opened = map_io(file.metadata(), "inspect opened material", path)?;
+    if !same_file_identity(&before, &opened) || injected_storage_failure("material opened identity")
+    {
+        return Err(Error::AmbiguousEffect(format!(
+            "material identity changed while opening {}",
+            path.display()
+        )));
+    }
     let mut hasher = Sha256::new();
     let copied = map_io(
         std::io::copy(
@@ -133,8 +141,10 @@ fn hash_file(path: &Path) -> Result<(u64, String)> {
     }
     reject_material_path(path, "material post-hash path")?;
     let after = map_io(fs::metadata(path), "reinspect material", path)?;
-    if !same_file_identity(&before, &after)
+    if !same_file_identity(&opened, &after)
         || before.len() != after.len()
+        || copied != opened.len()
+        || injected_storage_failure("material copied length")
         || injected_storage_failure("material identity")
     {
         return Err(Error::AmbiguousEffect(format!(

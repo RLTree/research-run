@@ -59,6 +59,60 @@ fn structured_input_reports_non_not_found_metadata_and_open_failures() {
 
 #[cfg(unix)]
 #[test]
+fn structured_input_rejects_a_post_open_symlink_swap() {
+    let root = std::env::temp_dir().join(format!("research-run-input-race-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir(&root).expect("input race root");
+    let path = root.join("record.json");
+    fs::write(&path, b"{}").expect("input record");
+    crate::workspace::inject_storage_failure("structured input symlink after read");
+    assert!(read_json_input::<serde_json::Value>(path.to_str().unwrap()).is_err());
+    fs::remove_file(&path).expect("remove injected symlink");
+    fs::remove_file(path.with_extension("post-read")).expect("remove injected target");
+    fs::remove_dir(root).expect("remove input race root");
+}
+
+#[test]
+fn structured_input_rejects_identity_changes_during_open_and_read() {
+    let root = std::env::temp_dir().join(format!(
+        "research-run-input-identity-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir(&root).expect("input identity root");
+    let path = root.join("record.json");
+    fs::write(&path, b"{}").expect("input record");
+    for fault in [
+        "inspect opened structured input",
+        "structured input identity after open",
+        "reinspect structured input",
+        "structured input identity after read",
+        "structured input length after read",
+    ] {
+        crate::workspace::inject_storage_failure(fault);
+        assert!(read_json_input::<serde_json::Value>(path.to_str().unwrap()).is_err());
+    }
+    fs::remove_dir_all(root).expect("remove input identity root");
+}
+
+#[test]
+fn structured_input_file_size_accepts_the_limit_and_rejects_the_next_byte() {
+    let root = std::env::temp_dir().join(format!("research-run-input-size-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir(&root).expect("input size root");
+    let path = root.join("record.json");
+    let mut bytes = b"{}".to_vec();
+    bytes.resize(1_048_576, b' ');
+    fs::write(&path, &bytes).expect("limit input");
+    assert!(read_json_input::<serde_json::Value>(path.to_str().unwrap()).is_ok());
+    bytes.push(b' ');
+    fs::write(&path, &bytes).expect("over-limit input");
+    assert!(read_json_input::<serde_json::Value>(path.to_str().unwrap()).is_err());
+    fs::remove_dir_all(root).expect("remove input size root");
+}
+
+#[cfg(unix)]
+#[test]
 fn structured_input_symlink_chain_distinguishes_absence_errors_and_links() {
     use std::os::unix::fs::symlink;
 

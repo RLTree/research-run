@@ -30,6 +30,23 @@ fn valid_pending_records_recover_in_dependency_order() {
     evidence.experiment_id = None;
     let mut review = review("review-one", &claim.id);
     review.evidence_ids = vec![evidence.id.clone()];
+    let prospective = Snapshot {
+        manifest: workspace.read_manifest().expect("manifest"),
+        sources: vec![source.clone()],
+        claims: vec![claim.clone()],
+        experiments: vec![experiment.clone()],
+        evidence: vec![evidence.clone()],
+        reviews: Vec::new(),
+        inventories: Vec::new(),
+        knowledge: Vec::new(),
+        relationships: Vec::new(),
+        migrations: Vec::new(),
+    };
+    review.subject_sha256 = Some(
+        workspace
+            .review_subject_sha256(&prospective, &claim.id)
+            .expect("binding"),
+    );
     for (directory, filename, bytes) in [
         (
             "sources",
@@ -66,6 +83,22 @@ fn valid_pending_records_recover_in_dependency_order() {
     let result = workspace.recover().expect("recover records");
     assert_eq!(result.recovered.len(), 5);
     assert!(workspace.validate().valid);
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn pending_review_rejects_a_stale_subject_digest() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Pending stale review").expect("initialize");
+    workspace.add_claim(&claim("claim-one")).expect("claim");
+    let mut stale = review("review-stale", "claim-one");
+    stale.subject_sha256 = Some("a".repeat(64));
+    fs::write(
+        workspace.state.join("reviews/.review-stale.json.9.1.tmp"),
+        serde_json::to_vec_pretty(&stale).expect("review"),
+    )
+    .expect("pending review");
+    assert!(workspace.recover().is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

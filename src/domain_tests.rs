@@ -170,6 +170,7 @@ fn experiment_and_review_validation_reject_invalid_states() {
         id: "review-one".to_owned(),
         claim_id: "claim-one".to_owned(),
         evidence_ids: Vec::new(),
+        subject_sha256: None,
         decision: Assessment::Unreviewed,
         rationale: "Rationale".to_owned(),
         reviewer: "Researcher".to_owned(),

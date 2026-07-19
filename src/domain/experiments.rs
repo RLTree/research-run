@@ -91,6 +91,8 @@ pub struct ReviewDecision {
     pub claim_id: String,
     #[serde(default)]
     pub evidence_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_sha256: Option<String>,
     pub decision: Assessment,
     pub rationale: String,
     pub reviewer: String,
@@ -118,6 +120,17 @@ impl CanonicalRecord for ReviewDecision {
             return Err(Error::invalid(
                 "review evidence_ids",
                 "must be sorted and unique",
+            ));
+        }
+        if let Some(digest) = &self.subject_sha256
+            && (digest.len() != 64
+                || !digest
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
+        {
+            return Err(Error::invalid(
+                "review subject_sha256",
+                "must be a lowercase SHA-256 digest",
             ));
         }
         if self.decision == Assessment::Unreviewed {

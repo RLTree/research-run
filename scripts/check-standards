@@ -5,6 +5,19 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
 ledger="agent-standards/obligations.json"
+expected="agent-standards/expected-classifications.json"
+
+validate_classifications() {
+  jq -e --slurpfile expected "$expected" '
+    ([.package_delta.clusters[] | {key: .id, value: .status}] | from_entries)
+      == $expected[0].cluster_status and
+    ([.obligations[] | {key: .id, value: .status}] | from_entries)
+      == $expected[0].obligation_status and
+    ([.obligations[] | {key: .id, value: .evidence}] | from_entries)
+      == $expected[0].obligation_evidence
+  ' "$1" >/dev/null
+}
+
 jq -e '
   .schema_version == 1 and
   (.source.commit == "69787f20adcf0b99c7f3a26f71b35a215fda28d6") and
@@ -36,19 +49,91 @@ jq -e '
     (.evidence | index("scripts/check-product-artifacts")))) and
   all(.package_delta.clusters[];
     (.status == "mechanized" and
+      (.evidence | type == "array") and (.evidence | length > 0) and
+      all(.evidence[]; type == "string" and length > 0) and
       any(.evidence[]; test("^(scripts/|tests/|src/|Cargo\\.toml|rust-toolchain\\.toml|schemas/)"))) or
-    (.status == "not_applicable" and (.reason | length > 40))) and
+    (.status == "not_applicable" and (.evidence | type == "array") and
+      all(.evidence[]; type == "string" and length > 0) and (.reason | length > 40))) and
+  ([.package_delta.clusters[] | {key: .id, value: .status}] | from_entries) == {
+    "typed-authority-proof-and-agent-legibility":"mechanized",
+    "rust-correctness-security-performance":"mechanized",
+    "minimal-local-gold-stack":"mechanized",
+    "distribution-receipt-control-plane":"not_applicable",
+    "rust-untriggered-specialists-and-release":"not_applicable",
+    "gold-stack-untriggered-services-and-release":"not_applicable",
+    "typescript-ui-overlay":"not_applicable"
+  } and
   ([.package_delta.clusters[].status] | index("in_progress") | not) and
   (.obligations | length == 12) and
   ([.obligations[].module] | unique | length == 12) and
   all(.obligations[];
-    (.status == "mechanized" and (.evidence | length > 0)) or
-    (.status == "not_applicable" and (.reason | length > 20)))
+    (.status == "mechanized" and (.evidence | type == "array") and
+      (.evidence | length > 0) and all(.evidence[]; type == "string" and length > 0)) or
+    (.status == "not_applicable" and (.evidence | type == "array") and
+      all(.evidence[]; type == "string" and length > 0) and (.reason | length > 20))) and
+  ([.obligations[] | {key: .id, value: .status}] | from_entries) == {
+    "namespace-progressive-disclosure":"mechanized",
+    "boundaries-validation-enforcement":"mechanized",
+    "execplans-worktrees-orchestration":"mechanized",
+    "security-reliability-product-cohesion":"mechanized",
+    "review-completion":"mechanized",
+    "standards-gardening":"mechanized",
+    "cli-authority-proof-surfaces":"mechanized",
+    "observability-repair-loop":"not_applicable",
+    "product-success-quality-in-use":"mechanized",
+    "plugin-activation-distribution":"not_applicable",
+    "research-improvement-quality-gates":"mechanized",
+    "tool-risk-runtime-substrates":"mechanized"
+  }
 ' "$ledger" >/dev/null || {
   echo "standards obligation failure: every UltraGoal 0.0.12 module must be uniquely classified, with executable evidence or a concrete repository-specific non-applicability reason" >&2
   echo "withheld: agent_standard_closure and material_completion" >&2
   exit 1
 }
+validate_classifications "$ledger" || {
+  echo "standards obligation failure: an obligation status or evidence binding differs from the reviewed classification contract" >&2
+  echo "withheld: agent_standard_closure and material_completion" >&2
+  exit 1
+}
+
+jq -e '
+  .schema_version == 1 and
+  .kind == "product-fitness-disposition" and
+  .claim_id == "research-run-v0.1-real-use-fitness" and
+  .status == "withheld" and
+  .owner == "human product-fitness reviewer" and
+  (.reason | length > 40) and
+  (.affected_claims | type == "array" and length == 4) and
+  (.required_follow_up | contains("actor-disjoint Product Fitness review")) and
+  (.accepted_non_substitutes == [
+    "source tests", "installed journey", "package proof", "benchmark",
+    "generic reviewer approval"
+  ]) and
+  (.claim_ceiling | contains("real-use fitness, continuance, and research impact remain withheld"))
+' agent-standards/product-fitness-disposition.json >/dev/null || {
+  echo "product fitness failure: real-use claims require a complete typed withholding disposition or fresh audience-bound proof" >&2
+  echo "withheld: product_fitness, continuance, research_impact, and material_completion" >&2
+  exit 1
+}
+
+tampered_ledger="$(mktemp "${TMPDIR:-/tmp}/research-run-standards.XXXXXX")"
+trap 'rm -f "$tampered_ledger"' EXIT
+for red_transform in fixtures/standards/red/*.jq; do
+  jq -f "$red_transform" "$ledger" > "$tampered_ledger"
+  if validate_classifications "$tampered_ledger"; then
+    echo "standards fixture failure: $red_transform bypassed exact classification validation" >&2
+    echo "withheld: agent_standard_closure and material_completion" >&2
+    exit 1
+  fi
+done
+
+shopt -s nullglob
+active_plans=(docs/exec-plans/active/*.md)
+if [[ "${#active_plans[@]}" -ne 1 || "${active_plans[0]}" != "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md" ]]; then
+  echo "standards obligation failure: exactly one named current ExecPlan must exist" >&2
+  echo "withheld: execution_authority and material_completion" >&2
+  exit 1
+fi
 
 for gate in scripts/check scripts/check-coverage scripts/check-standards \
   scripts/check-dependencies scripts/check-mutations scripts/check-product-artifacts; do
@@ -59,6 +144,9 @@ for gate in scripts/check scripts/check-coverage scripts/check-standards \
   fi
 done
 
+evidence_paths="$(jq -er '[.obligations[], .package_delta.clusters[]]
+  | map(select(.status == "mechanized"))
+  | map(.evidence[]) | unique | .[]' "$ledger")"
 while IFS= read -r evidence; do
   case "$evidence" in
     /*|..|../*|*/..|*/../*)
@@ -88,8 +176,7 @@ while IFS= read -r evidence; do
     echo "withheld: agent_standard_closure and package_delta_closure" >&2
     exit 1
   fi
-done < <(jq -r '[.obligations[], .package_delta.clusters[]]
-  | map(select(.status == "mechanized")) | .[].evidence[]' "$ledger" | sort -u)
+done <<< "$evidence_paths"
 
 if rg -n '/Users/|/home/[^/]+/|Downloads/' AGENTS.md STANDARD.md policy.toml \
   agent-standards docs README.md >/dev/null; then
@@ -175,4 +262,4 @@ fi
 
 cargo test --locked --test standards_syntax --quiet
 
-echo "standards obligations: 12 source modules and 160 package laws closed; all paths classified; namespace and semantic-tree fixtures passed"
+echo "standards classifications: 12 source modules and 160 package laws validated; product-fitness withholding, paths, namespace, and semantic-tree fixtures passed"

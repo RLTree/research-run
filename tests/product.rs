@@ -2,6 +2,8 @@
 mod data_contracts;
 #[path = "product/domain_boundaries.rs"]
 mod domain_boundaries;
+#[path = "product/handoff_defense.rs"]
+mod handoff_defense;
 #[path = "product/handoff_journey.rs"]
 mod handoff_journey;
 #[path = "product/identifier_validation.rs"]
