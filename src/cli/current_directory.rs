@@ -6,12 +6,14 @@ use crate::{Error, Result};
 
 pub(super) fn discover_current() -> Result<Workspace> {
     #[cfg(test)]
+    let system_current = std::env::current_dir();
+    #[cfg(test)]
     let current = if let Some(path) = take_current_directory_override() {
         Ok(path)
     } else if take_current_directory_failure() {
         Err(std::io::Error::other("injected current directory failure"))
     } else {
-        std::env::current_dir()
+        system_current
     };
     #[cfg(all(coverage, not(test)))]
     let current = if take_current_directory_failure() {
