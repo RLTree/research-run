@@ -50,6 +50,8 @@ fn recover_experiment_and_artifact_evidence(root: &Path) {
         Some("artifacts/result.txt"),
     );
     assert!(run(root, &["recover", "--json"], None).status.success());
+    fs::create_dir(root.join("artifacts")).expect("artifact directory");
+    fs::write(root.join("artifacts/result.txt"), b"observation").expect("artifact");
 }
 
 fn reject_second_review_during_recovery(root: &Path) {
@@ -75,20 +77,17 @@ fn reject_second_review_during_recovery(root: &Path) {
         .status
         .success()
     );
-    let pending = root.join(".research-run/reviews/.review-two.json.9.1.tmp");
+    let reviews = root.join(".research-run/reviews");
+    let pending = reviews.join(".review-two.json.9.1.tmp");
+    let mut second: serde_json::Value =
+        serde_json::from_slice(&fs::read(reviews.join("review-one.json")).expect("current review"))
+            .expect("review JSON");
+    second["id"] = json!("review-two");
+    second["decision"] = json!("limited");
+    second["rationale"] = json!("Second");
     fs::write(
         &pending,
-        serde_json::to_vec_pretty(&json!({
-            "schema_version": 1,
-            "kind": "review",
-            "id": "review-two",
-            "claim_id": "claim-one",
-            "evidence_ids": ["evidence-artifact-recovered", "evidence-experiment"],
-            "decision": "limited",
-            "rationale": "Second",
-            "reviewer": "Reviewer"
-        }))
-        .expect("review JSON"),
+        serde_json::to_vec_pretty(&second).expect("review JSON"),
     )
     .expect("pending review");
     let output = run(root, &["recover", "--json"], None);

@@ -4,9 +4,18 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
+export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
+export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
+coverage_jobs="${RESEARCH_RUN_COVERAGE_JOBS:-1}"
+
 if ! cargo llvm-cov --version >/dev/null 2>&1; then
   echo "coverage blocker: cargo-llvm-cov is not installed" >&2
   echo "withheld: exact_source_coverage and full_fitted_governance" >&2
+  exit 2
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  echo "coverage blocker: jq is not installed" >&2
   exit 2
 fi
 
@@ -14,8 +23,48 @@ cargo llvm-cov clean --workspace
 profile_root="$repo_root/target/llvm-cov-target"
 mkdir -p "$profile_root"
 export LLVM_PROFILE_FILE="$profile_root/research-run-%m-%p.profraw"
-exec cargo llvm-cov --locked --test product \
-  --ignore-filename-regex '(_tests(/|\.rs$)|tests/)' \
-  --fail-under-lines 100 \
-  --fail-under-functions 100 \
-  --fail-under-regions 100
+report="$profile_root/source-coverage.json"
+cargo llvm-cov --locked --all-targets --no-report --jobs "$coverage_jobs"
+cargo llvm-cov report --json --output-path "$report"
+
+# Count each production source coordinate once. LLVM emits duplicate mappings for
+# generic monomorphs and the cfg(test) library build; a covered source region must
+# not become "missed" merely because an unused duplicate codegen copy exists.
+coverage="$(jq -c --arg src "$repo_root/src/" '
+  def production:
+    startswith($src) and (test("(_tests(/|\\.rs$)|tests/)") | not);
+  ([.data[0].functions[] as $function | $function.regions[] as $region
+    | {file: $function.filenames[$region[5]],
+       key: ([$function.filenames[$region[5]], $region[0], $region[1],
+              $region[2], $region[3], $region[7]] | join(":")),
+       count: $region[4]}
+    | select(.file | production)] | group_by(.key)) as $regions
+  | ([.data[0].files[] as $file | $file.segments[]
+      | {file: $file.filename, key: ([$file.filename, .[0]] | join(":")),
+         count: .[2], has_count: .[3]}
+      | select(.has_count and (.file | production))] | group_by(.key)) as $lines
+  | ([.data[0].functions[] as $function
+      | {file: $function.filenames[$function.regions[0][5]],
+         key: ([$function.filenames[$function.regions[0][5]],
+                $function.regions[0][0], $function.regions[0][1],
+                $function.regions[0][2], $function.regions[0][3]] | join(":")),
+         count: $function.count}
+      | select(.file | production)] | group_by(.key)) as $functions
+  | {regions: {total: ($regions | length),
+               missed: ([$regions[] | select((map(.count) | max) == 0)] | length)},
+     lines: {total: ($lines | length),
+             missed: ([$lines[] | select((map(.count) | max) == 0)] | length)},
+     functions: {total: ($functions | length),
+                 missed: ([$functions[] | select((map(.count) | max) == 0)] | length)}}
+' "$report")"
+
+if ! jq -e '.regions.missed == 0 and .lines.missed == 0 and .functions.missed == 0' \
+  <<<"$coverage" >/dev/null; then
+  echo "authoritative production-source coverage failed: $coverage" >&2
+  exit 1
+fi
+
+jq -r '"authoritative production-source coverage: "
+  + "regions \(.regions.total)/\(.regions.total), "
+  + "lines \(.lines.total)/\(.lines.total), "
+  + "functions \(.functions.total)/\(.functions.total)"' <<<"$coverage"

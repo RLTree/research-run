@@ -37,12 +37,16 @@ fn direct_workspace_journey_exercises_every_record_authority() {
         authorship: Authorship::Human,
     };
     assert!(workspace.add_evidence(&evidence).expect("evidence"));
+    let (_, digest) = workspace
+        .review_subject_binding(&claim.id)
+        .expect("review binding");
     let review = ReviewDecision {
         schema_version: 1,
         kind: "review".to_owned(),
         id: "review-one".to_owned(),
         claim_id: claim.id.clone(),
         evidence_ids: vec![evidence.id.clone()],
+        subject_sha256: Some(digest),
         decision: Assessment::Limited,
         rationale: "Bounded rationale".to_owned(),
         reviewer: "Researcher".to_owned(),
@@ -109,14 +113,17 @@ fn semantic_reference_failures_leave_no_effect() {
     experiment_link.experiment_id = Some("missing".to_owned());
     assert!(workspace.add_evidence(&experiment_link).is_err());
 
-    workspace
-        .add_review(&review("review-one", &claim.id))
-        .expect("review");
-    assert!(
+    let mut first_review = review("review-one", &claim.id);
+    first_review.subject_sha256 = Some(
         workspace
-            .add_review(&review("review-two", &claim.id))
-            .is_err()
+            .review_subject_binding(&claim.id)
+            .expect("binding")
+            .1,
     );
+    workspace.add_review(&first_review).expect("review");
+    let mut second_review = review("review-two", &claim.id);
+    second_review.subject_sha256 = first_review.subject_sha256.clone();
+    assert!(workspace.add_review(&second_review).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
@@ -154,6 +161,10 @@ fn review_graph_validation_uses_one_canonical_binding() {
         evidence: vec![evidence("evidence-one", "claim-one", None)],
         experiments: Vec::new(),
         reviews: vec![unknown, cross_claim, incomplete],
+        inventories: Vec::new(),
+        knowledge: Vec::new(),
+        relationships: Vec::new(),
+        migrations: Vec::new(),
     };
     let errors = workspace.reference_errors(&snapshot);
     assert!(
@@ -166,7 +177,11 @@ fn review_graph_validation_uses_one_canonical_binding() {
             .iter()
             .any(|error| error.contains("belongs to claim"))
     );
-    assert!(current_review_bindings(&snapshot).is_empty());
+    assert!(
+        current_review_bindings(&workspace, &snapshot)
+            .expect("bindings")
+            .is_empty()
+    );
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
@@ -218,13 +233,17 @@ fn reference_validation_reports_every_invalid_relationship() {
             review("review-two", &known_claim.id),
             review("review-missing", "missing-claim"),
         ],
+        inventories: Vec::new(),
+        knowledge: Vec::new(),
+        relationships: Vec::new(),
+        migrations: Vec::new(),
     };
     let errors = workspace.reference_errors(&snapshot);
     for expected in [
         "unknown source reference",
         "unknown experiment reference",
         "workspace path",
-        "multiple v0.1 reviews",
+        "duplicate review authority binding",
         "unknown claim reference",
     ] {
         assert!(

@@ -13,7 +13,9 @@ use crate::{Error, Result};
 
 use super::publication::canonical_json_bytes;
 use super::recovery_commit::commit_recovery;
+use super::recovery_optional::{OptionalRecovery, preflight_optional};
 use super::recovery_plan::PendingRecord;
+use super::recovery_review::validate_pending_review_graphs;
 use super::storage::{ReadBudget, parse_json, read_bounded, read_json_with_budget};
 use super::{RecoveryResult, Snapshot, Workspace, injected_storage_failure};
 
@@ -24,17 +26,20 @@ pub(super) struct RecoveryBatch {
     experiments: Vec<PendingRecord>,
     evidence: Vec<PendingRecord>,
     reviews: Vec<PendingRecord>,
+    inventories: Vec<PendingRecord>,
+    knowledge: Vec<PendingRecord>,
+    relationships: Vec<PendingRecord>,
+    migrations: Vec<PendingRecord>,
 }
 
 impl Workspace {
     pub(super) fn preflight_recovery_batch(&self) -> Result<RecoveryBatch> {
         let mut manifest_pending = self.collect_recovery_pending(&self.state)?;
-        let mut source_pending = self.collect_recovery_pending(&self.state.join("sources"))?;
-        let mut claim_pending = self.collect_recovery_pending(&self.state.join("claims"))?;
-        let mut experiment_pending =
-            self.collect_recovery_pending(&self.state.join("experiments"))?;
-        let mut evidence_pending = self.collect_recovery_pending(&self.state.join("evidence"))?;
-        let mut review_pending = self.collect_recovery_pending(&self.state.join("reviews"))?;
+        let mut source_pending = collect_named(self, "sources")?;
+        let mut claim_pending = collect_named(self, "claims")?;
+        let mut experiment_pending = collect_named(self, "experiments")?;
+        let mut evidence_pending = collect_named(self, "evidence")?;
+        let mut review_pending = collect_named(self, "reviews")?;
         let mut budget = ReadBudget::default();
         let manifest = canonical_manifest(self, &mut manifest_pending, &mut budget)?;
         let sources =
@@ -55,6 +60,16 @@ impl Workspace {
         )?;
         let reviews =
             canonical_records::<ReviewDecision>(self, "reviews", &mut review_pending, &mut budget)?;
+        let OptionalRecovery {
+            inventories,
+            knowledge,
+            relationships,
+            migrations,
+            inventory_pending,
+            knowledge_pending,
+            relationship_pending,
+            migration_pending,
+        } = preflight_optional(self, &mut budget)?;
         let snapshot = Snapshot {
             manifest,
             sources,
@@ -62,6 +77,10 @@ impl Workspace {
             experiments,
             evidence,
             reviews,
+            inventories,
+            knowledge,
+            relationships,
+            migrations,
         };
         if injected_storage_failure("final snapshot load") {
             return Err(Error::invalid(
@@ -70,7 +89,7 @@ impl Workspace {
             ));
         }
         let errors = self.reference_errors(&snapshot);
-        validate_pending_review_graphs(&snapshot, &review_pending)?;
+        validate_pending_review_graphs(self, &snapshot, &review_pending)?;
         if errors.is_empty() && !injected_storage_failure("recovered references") {
             Ok(RecoveryBatch {
                 manifest: manifest_pending,
@@ -79,6 +98,10 @@ impl Workspace {
                 experiments: experiment_pending,
                 evidence: evidence_pending,
                 reviews: review_pending,
+                inventories: inventory_pending,
+                knowledge: knowledge_pending,
+                relationships: relationship_pending,
+                migrations: migration_pending,
             })
         } else {
             Err(Error::invalid(
@@ -92,6 +115,10 @@ impl Workspace {
     }
 }
 
+fn collect_named(workspace: &Workspace, name: &str) -> Result<Vec<PendingRecord>> {
+    workspace.collect_recovery_pending(&workspace.state.join(name))
+}
+
 impl RecoveryBatch {
     pub(super) fn publish(self, workspace: &Workspace, result: &mut RecoveryResult) -> Result<()> {
         commit_recovery(&workspace.state, self.manifest, result)?;
@@ -101,52 +128,15 @@ impl RecoveryBatch {
             ("experiments", self.experiments),
             ("evidence", self.evidence),
             ("reviews", self.reviews),
+            ("inventories", self.inventories),
+            ("knowledge", self.knowledge),
+            ("relationships", self.relationships),
+            ("migrations", self.migrations),
         ] {
             commit_recovery(&workspace.state.join(directory), pending, result)?;
         }
         Ok(())
     }
-}
-
-fn validate_pending_review_graphs(snapshot: &Snapshot, pending: &[PendingRecord]) -> Result<()> {
-    let mut current = BTreeMap::<&str, Vec<&str>>::new();
-    for evidence in &snapshot.evidence {
-        current
-            .entry(evidence.claim_id.as_str())
-            .or_default()
-            .push(evidence.id.as_str());
-    }
-    for ids in current.values_mut() {
-        ids.sort_unstable();
-    }
-    for review in &snapshot.reviews {
-        let mut pending_review = false;
-        for record in pending {
-            if record.target.file_stem().and_then(OsStr::to_str) == Some(review.id.as_str()) {
-                pending_review = true;
-                break;
-            }
-        }
-        if !pending_review {
-            continue;
-        }
-        let evidence = current
-            .get(review.claim_id.as_str())
-            .map(Vec::as_slice)
-            .unwrap_or_default();
-        if !review
-            .evidence_ids
-            .iter()
-            .map(String::as_str)
-            .eq(evidence.iter().copied())
-        {
-            return Err(Error::invalid(
-                "review evidence_ids",
-                "must exactly match the current claim evidence graph",
-            ));
-        }
-    }
-    Ok(())
 }
 
 fn canonical_manifest(
@@ -179,7 +169,7 @@ fn canonical_manifest(
     candidate.ok_or_else(|| Error::NotFound("recovery requires a project manifest".to_owned()))
 }
 
-fn canonical_records<T>(
+pub(super) fn canonical_records<T>(
     workspace: &Workspace,
     directory: &str,
     pending: &mut [PendingRecord],

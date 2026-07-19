@@ -21,6 +21,9 @@ max_snapshot_bytes = 67108864
 max_text_bytes = 65536
 max_list_items = 256
 max_artifact_pointers = 128
+max_inventory_entries = 2048
+max_indexed_material_bytes = 67108864
+max_inventory_scan_bytes = 536870912
 
 [effects]
 parse_before_write = true
@@ -76,12 +79,15 @@ bounded_targeted_reviews_max = 1
 [governance_source]
 name = "harness-ultragoal"
 manifest_version = "0.0.12"
-source_commit = "69787f20adcf0b99c7f3a26f71b35a215fda28d6"
+source_commit = "0355039bf621113e7089c235a298c7a8b085397f"
 installed_cache_version_observed = "0.0.11"
-fit_candidate = "9e1d411b670eec4d2073cc775d8bf5081f841154"
+fit_candidate = "80657ca065a93a49521f414db891dff775cf45e9"
 fit_classification = "conflicting"
-fit_mutations = 70
-fit_conflict = "AGENTS.md"
-fit_plan_sha256 = "a9fa6fbc512b6f27abfcc133f9ee4d4a4a87c5ffb37271c1179fcef0a40a7d36"
-exact_source_build = "failed_warnings_as_errors"
+fit_missing_files = 67
+fit_conflicts = ["AGENTS.md", "AGENT_STANDARDS.md", "ARCHITECTURE.md", "scripts/check"]
+fit_plan_sha256 = "71dd2b2a2bb8246586596de234d9e5cf5b53827ea15446de78b0a0ba4efdd7a2"
+fit_authorization_sha256 = "73463cb8e7e579c4a8fa67254f1f781786ed055246ea44f6989ca7dcc13f63ea"
+fit_authority_manifest_sha256 = "7351910b9bb9b5bb45dd14b20c53730dfeebffc1ee4162ae2d8ec686dc51b762"
+exact_source_build = "passed_locked_offline_source_only"
+fit_apply = "withheld_conflicting_authority"
 full_activation = false

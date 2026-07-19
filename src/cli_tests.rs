@@ -1,8 +1,9 @@
 use super::{
-    AuthorshipArg, ClaimCommand, Cli, Command, EvidenceArgs, EvidenceCommand, ExperimentCommand,
-    OutcomeArg, OutputArgs, ProvenanceArg, ReviewArg, ReviewCommand, SourceCommand, StanceArg,
-    discover_current, execute, inject_current_directory_failure, parse_artifact,
-    render_human_status, terminal_text,
+    AuthorshipArg, ClaimCommand, Cli, Command, ContextArgs, EvidenceArgs, EvidenceCommand,
+    ExperimentCommand, HandoffCommand, LimitArgs, ListArgs, OutcomeArg, OutputArgs, ProvenanceArg,
+    RelatedArgs, ReviewArg, ReviewCommand, SearchArgs, ShowArgs, SourceCommand, StanceArg,
+    discover_current, execute, inject_current_directory, inject_current_directory_failure,
+    parse_artifact, render_human_status, terminal_text,
 };
 use crate::domain::{
     ArtifactLocatorType, Assessment, Authorship, Outcome, SourceProvenance, Stance,
@@ -78,6 +79,53 @@ fn every_current_workspace_command_propagates_discovery_failure() {
     });
     assert_discovery_failure(Command::Validate(OutputArgs { json: true }));
     assert_discovery_failure(Command::Status(OutputArgs { json: true }));
+    assert_retrieval_discovery_failures();
+}
+
+fn assert_retrieval_discovery_failures() {
+    assert_discovery_failure(Command::List(ListArgs {
+        kind: None,
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Show(ShowArgs {
+        kind: "knowledge".to_owned(),
+        id: "knowledge-one".to_owned(),
+        human: false,
+    }));
+    assert_discovery_failure(Command::Search(SearchArgs {
+        query: "query".to_owned(),
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Recent(limit_args()));
+    assert_discovery_failure(Command::Timeline(limit_args()));
+    assert_discovery_failure(Command::Unresolved(limit_args()));
+    assert_discovery_failure(Command::Blockers(limit_args()));
+    assert_discovery_failure(Command::Next(limit_args()));
+    assert_discovery_failure(Command::Related(RelatedArgs {
+        kind: "knowledge".to_owned(),
+        id: "knowledge-one".to_owned(),
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Context(ContextArgs {
+        query: None,
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Handoff {
+        command: HandoffCommand::Create {
+            id: "handoff-one".to_owned(),
+            generated_at: "2026-07-18T20:00:00Z".to_owned(),
+            query: None,
+            limit: 10,
+            human: false,
+        },
+    });
+}
+
+fn limit_args() -> LimitArgs {
+    LimitArgs {
+        limit: 10,
+        human: false,
+    }
 }
 
 #[test]
@@ -156,6 +204,35 @@ fn empty_human_projection_and_current_directory_failure_are_explicit() {
     assert!(output.contains("Claims\n- None. Next action: add a claim."));
     assert!(output.contains("Unreviewed AI drafts\n- None."));
     assert!(output.contains("Experiments\n- None."));
+    assert!(matches!(
+        discover_current(),
+        Ok(_) | Err(crate::Error::NotFound(_))
+    ));
     inject_current_directory_failure();
-    assert!(discover_current().is_err());
+    assert!(matches!(
+        discover_current(),
+        Err(crate::Error::Io {
+            action: "read current directory",
+            ..
+        })
+    ));
+    let root = empty_directory();
+    inject_current_directory(&root);
+    assert!(matches!(discover_current(), Err(crate::Error::NotFound(_))));
+    std::fs::remove_dir(root).expect("remove empty directory");
+}
+
+fn empty_directory() -> std::path::PathBuf {
+    for attempt in 0..128 {
+        let root = std::env::temp_dir().join(format!(
+            "research-run-cli-empty-{}-{attempt}",
+            std::process::id()
+        ));
+        match std::fs::create_dir(&root) {
+            Ok(()) => return root,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => panic!("empty directory: {error}"),
+        }
+    }
+    panic!("unable to allocate empty directory")
 }

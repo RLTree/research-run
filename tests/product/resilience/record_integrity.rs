@@ -103,6 +103,7 @@ fn review(id: &str) -> ReviewDecision {
         id: id.to_owned(),
         claim_id: "claim-one".to_owned(),
         evidence_ids: Vec::new(),
+        subject_sha256: None,
         decision: Assessment::Limited,
         rationale: "Rationale".to_owned(),
         reviewer: "Reviewer".to_owned(),

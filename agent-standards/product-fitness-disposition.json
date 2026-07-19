@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "kind": "product-fitness-disposition",
+  "claim_id": "research-run-v0.1-real-use-fitness",
+  "status": "withheld",
+  "owner": "human product-fitness reviewer",
+  "reason": "No audience-bound human-use or repeated-use evidence exists for the exact candidate.",
+  "affected_claims": [
+    "real-use fitness",
+    "daily-driver usefulness",
+    "continuance",
+    "research outcome improvement"
+  ],
+  "required_follow_up": "Observe a consenting researcher completing the critical unfamiliar-project journey with an exact-candidate installed binary, record recovery burden and outcome evidence, then obtain an actor-disjoint Product Fitness review.",
+  "accepted_non_substitutes": [
+    "source tests",
+    "installed journey",
+    "package proof",
+    "benchmark",
+    "generic reviewer approval"
+  ],
+  "claim_ceiling": "Source, package, install, deterministic journey, and single-machine benchmark observations may support only their own surfaces; real-use fitness, continuance, and research impact remain withheld."
+}

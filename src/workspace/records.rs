@@ -6,9 +6,10 @@ use crate::domain::{
 use crate::{Error, Result};
 
 use super::publication::canonical_json_bytes;
+use super::references::claim_evidence_ids;
 use super::storage::read_bounded;
 use super::write_lock::WorkspaceWriteLock;
-use super::{MAX_RECORDS_PER_KIND, Snapshot, ValidationResult, Workspace};
+use super::{MAX_RECORDS_PER_KIND, ValidationResult, Workspace};
 
 impl Workspace {
     pub fn add_source(&self, record: &SourceRecord) -> Result<bool> {
@@ -107,8 +108,17 @@ impl Workspace {
                 "must exactly match the current claim evidence graph",
             ));
         }
+        let expected_digest = self.review_subject_sha256(&snapshot, &record.claim_id)?;
+        if record.subject_sha256.as_deref() != Some(expected_digest.as_str()) {
+            return Err(Error::invalid(
+                "review subject_sha256",
+                "must exactly bind the current claim, evidence, and referenced authority",
+            ));
+        }
         if snapshot.reviews.iter().any(|review| {
-            review.claim_id == record.claim_id && review.evidence_ids == record.evidence_ids
+            review.claim_id == record.claim_id
+                && review.evidence_ids == record.evidence_ids
+                && review.subject_sha256 == record.subject_sha256
         }) {
             return Err(Error::Conflict(format!(
                 "claim {} already has a v0.1 review decision for this evidence graph",
@@ -130,7 +140,8 @@ impl Workspace {
         match self.load_snapshot() {
             Ok(snapshot) => {
                 let counts = snapshot.counts();
-                let errors = self.reference_errors(&snapshot);
+                let mut errors = self.reference_errors(&snapshot);
+                errors.extend(self.review_binding_errors(&snapshot));
                 ValidationResult {
                     valid: errors.is_empty(),
                     errors,
@@ -145,7 +156,7 @@ impl Workspace {
         }
     }
 
-    fn record_is_identical<T: CanonicalRecord + serde::Serialize>(
+    pub(super) fn record_is_identical<T: CanonicalRecord + serde::Serialize>(
         &self,
         directory: &str,
         record: &T,
@@ -159,17 +170,6 @@ impl Workspace {
         }
         Ok(read_bounded(&target)? == canonical_json_bytes(record))
     }
-}
-
-fn claim_evidence_ids(snapshot: &Snapshot, claim_id: &str) -> Vec<String> {
-    let mut ids = snapshot
-        .evidence
-        .iter()
-        .filter(|evidence| evidence.claim_id == claim_id)
-        .map(|evidence| evidence.id.clone())
-        .collect::<Vec<_>>();
-    ids.sort();
-    ids
 }
 
 fn ensure_record_capacity(count: usize, directory: &str) -> Result<()> {

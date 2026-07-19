@@ -15,6 +15,9 @@ fn identifiers_and_paths_fail_closed() {
     assert!(validate_id("../claim", "id").is_err());
     assert!(validate_workspace_locator("").is_err());
     assert!(validate_workspace_locator("artifacts/summary.txt").is_ok());
+    assert!(validate_workspace_locator("./artifacts/summary.txt").is_err());
+    assert!(validate_workspace_locator("artifacts//summary.txt").is_err());
+    assert!(validate_workspace_locator("artifacts/./summary.txt").is_err());
     assert!(validate_workspace_locator(&"x".repeat(65_537)).is_err());
     assert!(validate_workspace_locator("../secret").is_err());
     assert!(validate_workspace_locator("/tmp/secret").is_err());
@@ -170,6 +173,7 @@ fn experiment_and_review_validation_reject_invalid_states() {
         id: "review-one".to_owned(),
         claim_id: "claim-one".to_owned(),
         evidence_ids: Vec::new(),
+        subject_sha256: None,
         decision: Assessment::Unreviewed,
         rationale: "Rationale".to_owned(),
         reviewer: "Researcher".to_owned(),

@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 
 use research_run::Error;
 
-use super::initialize;
+use super::{TempDir, initialize, run};
 
 #[test]
 fn public_errors_render_without_exposing_hidden_state() {
@@ -53,6 +53,117 @@ fn public_errors_render_without_exposing_hidden_state() {
         } else {
             assert!(error.source().is_none());
         }
+    }
+}
+
+#[test]
+fn structured_input_read_failures_propagate_from_file_and_stdin() {
+    let root = initialize("structured-input-faults");
+    let input = root.0.join("knowledge.json");
+    std::fs::write(
+        &input,
+        br#"{"schema_version":1,"kind":"knowledge","id":"knowledge-one","record_type":"observation","title":"Observation","body":"Body","occurred_at":"2026-07-18T20:00:00Z","state":"open","authorship":"human"}"#,
+    )
+    .expect("structured input");
+    assert!(
+        !run(
+            &root.0,
+            &["knowledge", "add", "--input", input.to_str().unwrap()],
+            Some("read structured file"),
+        )
+        .status
+        .success()
+    );
+    assert!(
+        !run(
+            &root.0,
+            &["knowledge", "add", "--input", input.to_str().unwrap()],
+            Some("structured post-read budget"),
+        )
+        .status
+        .success()
+    );
+    assert!(
+        !run(
+            &root.0,
+            &["knowledge", "add", "--input", "-"],
+            Some("read structured stdin"),
+        )
+        .status
+        .success()
+    );
+}
+
+#[test]
+fn expanded_command_wrappers_propagate_owned_failures() {
+    let outside = TempDir::new("expanded-wrapper-faults");
+    let knowledge = outside.0.join("knowledge.json");
+    std::fs::write(
+        &knowledge,
+        br#"{"schema_version":1,"kind":"knowledge","id":"knowledge-one","record_type":"observation","title":"Observation","body":"Body","occurred_at":"2026-07-18T20:00:00Z","state":"open","authorship":"human"}"#,
+    )
+    .expect("knowledge input");
+    let relationship = outside.0.join("relationship.json");
+    std::fs::write(
+        &relationship,
+        br#"{"schema_version":1,"kind":"relationship","id":"relationship-one","relationship":"related-to","from":{"kind":"knowledge","id":"knowledge-one"},"to":{"kind":"knowledge","id":"knowledge-two"},"rationale":"Rationale","occurred_at":"2026-07-18T20:00:00Z","authorship":"human"}"#,
+    )
+    .expect("relationship input");
+    for args in [
+        vec!["knowledge", "add", "--input", knowledge.to_str().unwrap()],
+        vec![
+            "relationship",
+            "add",
+            "--input",
+            relationship.to_str().unwrap(),
+        ],
+    ] {
+        assert!(!run(&outside.0, &args, None).status.success(), "{args:?}");
+    }
+    std::fs::remove_file(&relationship).expect("remove relationship input");
+    assert!(
+        !run(
+            &outside.0,
+            &[
+                "relationship",
+                "add",
+                "--input",
+                relationship.to_str().unwrap(),
+            ],
+            None,
+        )
+        .status
+        .success()
+    );
+
+    let malformed = outside.0.join("malformed.json");
+    std::fs::write(&malformed, b"{").expect("malformed plan");
+    for args in [
+        vec![
+            "retrofit",
+            "apply",
+            ".",
+            "--input",
+            malformed.to_str().unwrap(),
+        ],
+        vec![
+            "migrate",
+            "apply",
+            ".",
+            "--input",
+            malformed.to_str().unwrap(),
+        ],
+        vec![
+            "migrate",
+            "plan",
+            ".",
+            "--id",
+            "migration-one",
+            "--migrated-at",
+            "2026-07-18T20:00:00Z",
+        ],
+    ] {
+        assert!(!run(&outside.0, &args, None).status.success(), "{args:?}");
     }
 }
 

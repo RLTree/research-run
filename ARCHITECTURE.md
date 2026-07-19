@@ -18,10 +18,48 @@ records inside one workspace without silently raising scientific claims.
    output and receipts cannot promote a claim.
 
 Canonical authority lives only in `.research-run/`: one manifest plus source,
-claim, evidence, experiment, and human-review JSON records. A review decision is
+claim, evidence, experiment, human-review, inventory, typed knowledge, and
+relationship JSON records. A review decision is
 the only semantic authority that changes a claim assessment. It stores the
 sorted evidence IDs reviewed by the human; status applies it only while that
 binding exactly matches the current claim evidence graph.
+
+Retrofit and reconciliation use the same authority path. A read-only plan scans
+every project file outside `.git/` and `.research-run/`, classifies only from
+path and extension, and binds byte count plus SHA-256. Apply rescans and accepts
+only an exact unchanged plan, then publishes the complete inventory as one
+atomic record. Later reconciliation records added, changed, moved, missing,
+duplicate, or ambiguous material without editing project bytes or converting
+absence into deletion.
+
+Knowledge records cover goals, research questions, hypotheses, protocols,
+methods, observations, measurements, analyses, interpretations, decisions,
+risks, blockers, uncertainties, contradictions, next actions, plans,
+presentations, and session summaries. Relationships append explicit dependency,
+provenance, revision, supersession, invalidation, resolution, blocking, and
+contradiction history. They never overwrite their endpoints and never participate
+in claim assessment; `EvidenceLink` plus `ReviewDecision` remain the sole claim
+graph and promotion authority.
+
+Retrieval is a bounded deterministic projection over one canonical snapshot per
+command. `list`,
+`show`, `search`, `recent`, `timeline`, `related`, `unresolved`, `blockers`,
+`next`, and `context` never write. JSON is the automation interface; `--human`
+renders a terminal-neutralized inspection view. Search results name matched
+fields and every item names its canonical authority path plus stale and
+invalidation state.
+
+`handoff create` wraps a bounded context projection in a versioned portable
+envelope with an operator-supplied identity and UTC generation time. `handoff
+inspect` validates and renders that envelope without requiring the originating
+workspace. The envelope is a projection and cannot promote or replace canonical
+records.
+
+Migration keeps the accepted v0.1 JSON format intact. A read-only plan hashes
+the sorted canonical authority paths and bytes into one SHA-256 boundary. Apply
+rechecks that fingerprint under the workspace lock, creates only missing
+extended record directories, and appends one migration record. It does not
+rewrite, delete, or reinterpret an existing record.
 
 ## Proof and governance
 

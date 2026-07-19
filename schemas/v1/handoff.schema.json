@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v1/handoff.schema.json",
+  "title": "Research Run Handoff Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "generated_at", "context"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "handoff" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "generated_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "project_id", "project_name", "claim_ceiling", "scope", "matches", "unresolved", "blockers", "next_actions", "relationships"],
+      "properties": {
+        "kind": { "const": "context" },
+        "project_id": { "$ref": "types.schema.json#/$defs/id" },
+        "project_name": { "type": "string", "minLength": 1 },
+        "claim_ceiling": { "const": "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity." },
+        "scope": { "type": "string", "minLength": 1 },
+        "matches": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
+        "unresolved": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
+        "blockers": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
+        "next_actions": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
+        "relationships": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/relationship" } }
+      }
+    }
+  },
+  "$defs": {
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "relationship", "from_kind", "from_id", "to_kind", "to_id", "rationale", "occurred_at", "authority_path"],
+      "properties": {
+        "id": { "$ref": "types.schema.json#/$defs/id" },
+        "relationship": { "enum": ["related-to", "depends-on", "derived-from", "uses", "supersedes", "revises", "invalidates", "resolves", "blocks", "contradicts"] },
+        "from_kind": { "enum": ["source", "claim", "evidence", "experiment", "review", "knowledge", "inventory"] },
+        "from_id": { "$ref": "types.schema.json#/$defs/id" },
+        "to_kind": { "enum": ["source", "claim", "evidence", "experiment", "review", "knowledge", "inventory"] },
+        "to_id": { "$ref": "types.schema.json#/$defs/id" },
+        "rationale": { "$ref": "types.schema.json#/$defs/text" },
+        "occurred_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+        "authority_path": { "type": "string", "pattern": "^\\.research-run/" }
+      }
+    }
+  }
+}

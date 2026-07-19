@@ -63,3 +63,5 @@ mod locking;
 mod projection;
 #[path = "workspace_defense/recovery.rs"]
 mod recovery;
+#[path = "workspace_defense/review_binding.rs"]
+mod review_binding;

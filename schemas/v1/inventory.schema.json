@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v1/inventory.schema.json",
+  "title": "Research Run Inventory Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "project_name",
+    "project_id",
+    "observed_at",
+    "previous_snapshot_id",
+    "entries",
+    "changes"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "inventory" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "project_name": { "type": "string", "minLength": 1, "maxLength": 65536 },
+    "project_id": { "$ref": "types.schema.json#/$defs/id" },
+    "observed_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "previous_snapshot_id": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "types.schema.json#/$defs/id" }
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/material" }
+    },
+    "changes": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/change" }
+    }
+  },
+  "$defs": {
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "class", "bytes", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "maxLength": 65536 },
+        "class": {
+          "enum": [
+            "note",
+            "protocol",
+            "source",
+            "experiment",
+            "observation",
+            "analysis",
+            "decision",
+            "artifact",
+            "plan",
+            "presentation",
+            "unknown"
+          ]
+        },
+        "bytes": { "type": "integer", "minimum": 0, "maximum": 67108864 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "before", "after", "detail"],
+      "properties": {
+        "kind": {
+          "enum": ["added", "changed", "moved", "missing", "duplicate", "conflict"]
+        },
+        "before": { "type": ["string", "null"] },
+        "after": { "type": ["string", "null"] },
+        "detail": { "type": "string", "minLength": 1, "maxLength": 65536 }
+      }
+    }
+  }
+}

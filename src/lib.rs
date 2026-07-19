@@ -4,6 +4,10 @@ pub mod cli;
 pub mod domain;
 pub mod workspace;
 
+#[cfg(test)]
+#[path = "domain_calendar_tests.rs"]
+mod domain_calendar_tests;
+
 use std::error::Error as StdError;
 use std::fmt;
 use std::io;
@@ -44,6 +48,16 @@ impl Error {
         Self::Invalid {
             context: context.into(),
             reason: reason.into(),
+        }
+    }
+
+    pub const fn exit_code(&self) -> i32 {
+        match self {
+            Self::Io { .. } => 1,
+            Self::Invalid { .. } | Self::MalformedJson { .. } => 2,
+            Self::NotFound(_) => 3,
+            Self::Conflict(_) | Self::AmbiguousEffect(_) => 4,
+            Self::Budget(_) => 5,
         }
     }
 }

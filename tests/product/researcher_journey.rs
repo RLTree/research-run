@@ -215,4 +215,22 @@ fn assert_limited_status(project: &Path) {
         status["experiments"][0]["observations"][0],
         status["experiments"][0]["interpretation"]
     );
+    let evidence: Value = serde_json::from_slice(
+        &succeeds(
+            project,
+            &["show", "--kind", "evidence", "--id", "evidence-repeat"],
+        )
+        .stdout,
+    )
+    .expect("evidence projection");
+    assert_eq!(evidence["subtype"], "contradicts");
+    let review: Value = serde_json::from_slice(
+        &succeeds(
+            project,
+            &["show", "--kind", "review", "--id", "review-binding"],
+        )
+        .stdout,
+    )
+    .expect("review projection");
+    assert_eq!(review["state"], "limited");
 }

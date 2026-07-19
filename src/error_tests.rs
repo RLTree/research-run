@@ -23,3 +23,19 @@ fn typed_errors_render_without_record_bodies() {
         assert!(error.source().is_none());
     }
 }
+
+#[test]
+fn typed_errors_have_stable_meaningful_exit_codes() {
+    assert_eq!(
+        Error::io("read", "record.json", io::Error::other("failure")).exit_code(),
+        1
+    );
+    assert_eq!(Error::invalid("record", "bad shape").exit_code(), 2);
+    assert_eq!(Error::NotFound("missing".to_owned()).exit_code(), 3);
+    assert_eq!(Error::Conflict("conflict".to_owned()).exit_code(), 4);
+    assert_eq!(
+        Error::AmbiguousEffect("ambiguous".to_owned()).exit_code(),
+        4
+    );
+    assert_eq!(Error::Budget("budget".to_owned()).exit_code(), 5);
+}

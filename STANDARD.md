@@ -24,6 +24,9 @@ runtime dependency budget is deliberately small:
 - `clap`: typed public CLI parsing and generated help;
 - `serde`: typed domain serialization and deserialization;
 - `serde_json`: deterministic, human-readable canonical JSON.
+- `sha2`: portable SHA-256 material identity for byte-preserving retrofit and
+  reconciliation plans; fingerprints detect exact content identity but do not
+  infer scientific meaning.
 
 No async runtime, database, network client, logging/telemetry stack, temporary
 file crate, schema framework, or UI dependency is justified by the v0.1 job.
@@ -45,12 +48,26 @@ directory publication.
   records per kind; one snapshot or recovery read is bounded to 64 MiB; user
   text is bounded; status is derived with indexed relationships in deterministic
   ID order. These are safety and memory/storage budgets, not scale claims.
+- Retrofit inventories are bounded to 2,048 files, 64 MiB per material, and
+  512 MiB per scan. `.git/` and Research Run's own `.research-run/` authority
+  are the only skipped roots. Every other entry is inspected; symlinks,
+  unsupported filesystem nodes, budget exhaustion, and identity races fail
+  closed.
 - Mutating CLI commands take an operating-system file lock under the canonical
   state root. The lock releases on process exit and serializes supported CLI
   writers; uncooperative concurrent filesystem mutation is not a supported
   product mode and every read still rechecks opened-file identity.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
+- Typed knowledge records are append-only. `revises`, `supersedes`, and
+  `invalidates` relationships require knowledge endpoints and must remain
+  acyclic. Generic relationships may describe a contradiction or dependency,
+  but cannot affect claim assessment; only the existing evidence graph plus an
+  explicit human review decision can do that.
+- v0.1 migration is lossless adoption, not schema reinterpretation. It binds
+  all canonical JSON paths and bytes before effects, rechecks them under the
+  write lock, creates only missing record directories, and appends one migration
+  record. Existing canonical bytes are never rewritten or deleted.
 - Production and hand-authored test Rust files contain at most 250 noncomment
   lines, and functions at most 80 physical lines. Splits must own product behavior;
   forwarding shells and generic buckets do not satisfy the limit.
@@ -72,17 +89,22 @@ scripts/check artifacts
 candidate source, dependency, security, mutation, package, install, journey, and
 observation gate and runs only when a claim can move. `scripts/check
 coverage` requires `cargo-llvm-cov` and enforces 100% line, function, and region
-coverage over the single production-shaped `product` integration target, with
-all production files retained in the denominator. Unit tests run through
-nextest and doctests run through Cargo as separate correctness surfaces.
+coverage over every target with every production file retained in the
+denominator. The checker counts each source coordinate once because LLVM emits
+duplicate mappings for generic monomorphs and the separate `cfg(test)` library
+build; every unique production region, line, and function must execute at least
+once. Unit tests run through nextest and doctests run through Cargo as separate
+correctness surfaces.
 `scripts/check-standards`
 validates all 12 source-guidance modules plus contextual namespace red, green,
 and tamper fixtures plus semantic-tree limits. `scripts/check dependencies`
 requires zero duplicate dependency versions, current RustSec audit and Cargo Deny
 passes, and a valid ephemeral CycloneDX inventory. `scripts/check mutations`
-tests a bounded set covering typed parsing, claim promotion, path confinement,
-locking, publication, recovery, and terminal neutralization; every viable mutant
-must be killed and compiler-rejected mutants remain explicitly classified.
+tests a bounded set covering typed parsing and validation, claim promotion, path
+confinement, locking, publication, recovery, inventory/reconciliation,
+knowledge/history, migration, retrieval, handoff validation, and terminal
+neutralization; every viable mutant must be killed and compiler-rejected mutants
+remain explicitly classified.
 `scripts/check artifacts` requires a clean commit, builds and installs the Cargo
 package, exercises the installed researcher journey, and emits machine-local
 latency, size, install-footprint, and target-growth observations. There is no
@@ -130,15 +152,21 @@ source increment.
 
 The recovery repair is exactly commit
 `9e1d411b670eec4d2073cc775d8bf5081f841154`, which passed bounded final Round 2
-signoff. Its UltraGoal 0.0.12 fit plan was `conflicting`: 70 proposed mutations,
-one conflict at Research Run-owned `AGENTS.md`, digest
-`sha256:a9fa6fbc512b6f27abfcc133f9ee4d4a4a87c5ffb37271c1179fcef0a40a7d36`.
-It was not accepted or applied. Source authority is manifest 0.0.12 at commit
-`69787f20adcf0b99c7f3a26f71b35a215fda28d6`; the observed installed cache is
-0.0.11. Building the exact source commit independently failed under its own
-warnings-as-errors policy, so local reproduction of the source CLI and full fit
-verification are unavailable. These facts support source-guided adaptation only;
-installed, discovered, runtime-active, and full fitted-governance claims remain
+signoff. A newer canonical source probe used a clean detached worktree at
+UltraGoal commit `0355039bf621113e7089c235a298c7a8b085397f` and built the `ultragoal`
+binary with `cargo build --locked --offline --package ultragoal --bin ultragoal`.
+Against clean Research Run candidate
+`80657ca065a93a49521f414db891dff775cf45e9`, `fit inspect` and `fit plan`
+classified the retrofit as `conflicting`: 67 missing generated files and four
+conflicts at Research Run-owned `AGENTS.md`, `AGENT_STANDARDS.md`,
+`ARCHITECTURE.md`, and `scripts/check`. The stable plan digest in that clean
+source context was
+`sha256:71dd2b2a2bb8246586596de234d9e5cf5b53827ea15446de78b0a0ba4efdd7a2`.
+UltraGoal's canonical production adapter refuses every conflicting plan before
+effects, so the plan was not accepted or applied. The observed installed cache
+remains 0.0.11 and no installed `ultragoal` command was discovered. These facts
+support a source-built inspection and plan only; package, installed, discovered,
+runtime-active, applied-fit, fit-receipt, and full fitted-governance claims remain
 withheld.
 
 The additional validated source-guidance artifact is

@@ -37,8 +37,14 @@ fn every_versioned_schema_is_well_formed_json() {
         "claim.schema.json",
         "evidence.schema.json",
         "experiment.schema.json",
+        "handoff.schema.json",
+        "inventory.schema.json",
+        "knowledge.schema.json",
+        "migration.schema.json",
         "project-manifest.schema.json",
+        "projection.schema.json",
         "review.schema.json",
+        "relationship.schema.json",
         "source.schema.json",
         "status.schema.json",
         "types.schema.json",
@@ -48,6 +54,18 @@ fn every_versioned_schema_is_well_formed_json() {
     .map(str::to_owned)
     .collect::<BTreeSet<_>>();
     assert_eq!(names, expected, "v1 schema authority changed");
+}
+
+#[test]
+fn projection_timestamps_use_the_shared_utc_contract() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/v1");
+    let projection: Value = serde_json::from_slice(
+        &fs::read(root.join("projection.schema.json")).expect("projection schema"),
+    )
+    .expect("projection schema JSON");
+    let timestamp = &projection["$defs"]["item"]["properties"]["occurred_at"]["oneOf"];
+    assert_eq!(timestamp[0]["$ref"], "types.schema.json#/$defs/timestamp");
+    assert_eq!(timestamp[1]["type"], "null");
 }
 
 #[test]

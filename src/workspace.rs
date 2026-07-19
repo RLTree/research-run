@@ -5,20 +5,34 @@ use std::sync::atomic::AtomicU64;
 use serde::Serialize;
 
 use crate::domain::{
-    Assessment, Authorship, ClaimRecord, EvidenceLink, ExperimentReceipt, ProjectManifest,
-    ReviewDecision, SourceRecord,
+    Assessment, Authorship, ClaimRecord, EvidenceLink, ExperimentReceipt, InventorySnapshot,
+    KnowledgeRecord, MigrationRecord, ProjectManifest, RelationshipRecord, ReviewDecision,
+    SourceRecord,
 };
 
+mod inventory;
+mod inventory_reconcile;
+mod inventory_scan;
+mod knowledge;
 mod lifecycle;
+mod migration;
 mod path_safety;
 mod pending_cleanup;
 mod publication;
 mod records;
 mod recovery;
 mod recovery_commit;
+mod recovery_optional;
 mod recovery_plan;
 mod recovery_preflight;
+mod recovery_review;
 mod references;
+mod retrieval;
+mod retrieval_canonical;
+mod retrieval_context;
+mod retrieval_items;
+mod retrieval_types;
+mod review_binding;
 mod snapshot;
 mod status;
 mod storage;
@@ -28,29 +42,37 @@ pub(super) const STATE_DIRECTORY: &str = ".research-run";
 pub(super) const MAX_RECORD_BYTES: u64 = 1_048_576;
 pub(super) const MAX_RECORDS_PER_KIND: usize = 10_000;
 pub(super) const MAX_SNAPSHOT_BYTES: u64 = 64 * 1_048_576;
+pub const CLAIM_CEILING: &str = "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.";
 pub(super) static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 #[cfg(all(coverage, not(test)))]
 static COVERAGE_FAULT_OCCURRENCE: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(test)]
 thread_local! {
-    static STORAGE_FAILURE: std::cell::RefCell<Option<&'static str>> = const { std::cell::RefCell::new(None) };
+    static STORAGE_FAILURE: std::cell::RefCell<Option<(&'static str, u64)>> = const { std::cell::RefCell::new(None) };
 }
 
 #[cfg(test)]
 pub(super) fn inject_storage_failure(point: &'static str) {
-    STORAGE_FAILURE.with_borrow_mut(|failure| *failure = Some(point));
+    let (point, occurrence) = point
+        .rsplit_once('#')
+        .and_then(|(point, occurrence)| occurrence.parse().ok().map(|count| (point, count)))
+        .unwrap_or((point, 1));
+    STORAGE_FAILURE.with_borrow_mut(|failure| *failure = Some((point, occurrence)));
 }
 
 #[cfg(test)]
-pub(super) fn take_storage_failure(point: &str) -> bool {
-    STORAGE_FAILURE.with_borrow_mut(|failure| {
-        if failure.as_deref() == Some(point) {
+pub(crate) fn take_storage_failure(point: &str) -> bool {
+    STORAGE_FAILURE.with_borrow_mut(|failure| match failure.as_mut() {
+        Some((target, remaining)) if *target == point && *remaining == 1 => {
             failure.take();
             true
-        } else {
+        }
+        Some((target, remaining)) if *target == point => {
+            *remaining -= 1;
             false
         }
+        _ => false,
     })
 }
 
@@ -160,6 +182,10 @@ pub struct RecoveryResult {
     pub discarded_identical: Vec<String>,
 }
 
+pub use retrieval_types::{
+    ContextBundle, HandoffBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
+};
+
 pub(super) struct Snapshot {
     pub(super) manifest: ProjectManifest,
     pub(super) sources: Vec<SourceRecord>,
@@ -167,6 +193,10 @@ pub(super) struct Snapshot {
     pub(super) evidence: Vec<EvidenceLink>,
     pub(super) experiments: Vec<ExperimentReceipt>,
     pub(super) reviews: Vec<ReviewDecision>,
+    pub(super) inventories: Vec<InventorySnapshot>,
+    pub(super) knowledge: Vec<KnowledgeRecord>,
+    pub(super) relationships: Vec<RelationshipRecord>,
+    pub(super) migrations: Vec<MigrationRecord>,
 }
 
 impl Snapshot {
@@ -177,6 +207,10 @@ impl Snapshot {
             ("evidence", self.evidence.len()),
             ("experiment", self.experiments.len()),
             ("review", self.reviews.len()),
+            ("inventory", self.inventories.len()),
+            ("knowledge", self.knowledge.len()),
+            ("relationship", self.relationships.len()),
+            ("migration", self.migrations.len()),
         ])
     }
 }

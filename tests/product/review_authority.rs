@@ -8,6 +8,7 @@ fn each_review_authority_field_fails_independently() {
         id: "review-one".to_owned(),
         claim_id: "claim-one".to_owned(),
         evidence_ids: Vec::new(),
+        subject_sha256: Some("a".repeat(64)),
         decision: Assessment::Limited,
         rationale: "Rationale".to_owned(),
         reviewer: "Reviewer".to_owned(),
@@ -41,6 +42,10 @@ fn each_review_authority_field_fails_independently() {
             evidence_ids: (0..257)
                 .map(|index| format!("evidence-{index:03}"))
                 .collect(),
+            ..review.clone()
+        },
+        ReviewDecision {
+            subject_sha256: Some("A".repeat(64)),
             ..review.clone()
         },
         ReviewDecision {

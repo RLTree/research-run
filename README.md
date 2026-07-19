@@ -105,6 +105,107 @@ The CLI records the claim's current sorted evidence IDs with each review. Adding
 later evidence makes the old decision historical and returns the claim to
 `unreviewed` until another explicit human review covers the changed graph.
 
+Automation can distinguish failure classes by exit status: `1` is local I/O,
+`2` is malformed or invalid input, `3` is not found, `4` is conflicting or
+ambiguous authority, and `5` is budget exhaustion. Successful commands return
+`0`. Error text is diagnostic only; callers should branch on the status.
+
+## Retrofit an existing project
+
+Planning is read-only and emits authoritative JSON. Keep the plan outside the
+target so writing the plan itself cannot change the candidate it describes:
+
+```console
+research-run retrofit plan existing-project \
+  --name "Existing project" \
+  --id inventory-initial \
+  --observed-at 2026-07-18T20:00:00Z > /tmp/research-run-plan.json
+research-run retrofit apply existing-project \
+  --input /tmp/research-run-plan.json --json
+```
+
+Apply rescans every indexed byte and fails if the project changed after
+planning. It creates only `.research-run/`, never modifies existing project
+files, and repeating the same accepted plan is a no-op. After files change,
+`reconcile plan` compares the current directory with the latest inventory and
+reports added, changed, moved, missing, duplicate, or ambiguous material.
+Ambiguous identity conflicts cannot be applied.
+
+## Capture typed project knowledge
+
+Nontrivial records use JSON files or standard input so an agent can inspect the
+complete mutation before applying it:
+
+```console
+research-run knowledge add --input observation.json
+research-run relationship add --input revision.json
+```
+
+Knowledge types include goals, research questions, hypotheses, protocols,
+methods, observations, measurements, analyses, interpretations, decisions,
+risks, blockers, uncertainties, contradictions, next actions, plans,
+presentations, and session summaries. Relationships are append-only and typed;
+revision, supersession, and invalidation history remains acyclic and never
+erases the older record. These relationships cannot promote a claim. Claim
+assessment still requires an explicit human `review add` decision bound to the
+current evidence graph.
+
+## Retrieve bounded context
+
+Retrieval commands emit deterministic JSON by default and accept `--human` for
+a compact researcher-facing view:
+
+```console
+research-run list --kind observation --limit 20
+research-run show --kind knowledge --id observation-one
+research-run search "negative control" --limit 20
+research-run recent --limit 20
+research-run timeline --limit 50
+research-run related --kind knowledge --id analysis-one
+research-run unresolved
+research-run blockers
+research-run next
+research-run context --query "binding assay" --limit 20
+```
+
+Search explains which fields matched. Results identify canonical authority and
+keep stale or invalidated records visible instead of silently preferring newer
+prose. Context bundles include the requested matches, unresolved material,
+blockers, next actions, connected relationships, and the scientific claim
+ceiling.
+
+Create a portable session handoff and validate it from a fresh directory:
+
+```console
+research-run handoff create \
+  --id handoff-current \
+  --generated-at 2026-07-18T20:05:00Z \
+  --limit 50 > /tmp/research-run-handoff.json
+research-run handoff inspect \
+  --input /tmp/research-run-handoff.json --human
+```
+
+The handoff includes recent or query-matched state, important authority paths,
+unresolved questions, blockers, next actions, relationships, and the claim
+ceiling. It is a portable projection, not claim or workspace authority.
+
+## Migrate an accepted v0.1 workspace
+
+Migration adopts the extended directory shape without rewriting v0.1 records:
+
+```console
+research-run migrate plan existing-project \
+  --id migration-v01 \
+  --migrated-at 2026-07-18T21:00:00Z > /tmp/research-run-migration.json
+research-run migrate apply existing-project \
+  --input /tmp/research-run-migration.json --json
+```
+
+The plan binds every canonical v0.1 JSON byte into a sorted aggregate SHA-256.
+Apply fails if authority changed, creates only missing extended record
+directories, and appends a migration record. Repeating the same accepted plan is
+a no-op.
+
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact

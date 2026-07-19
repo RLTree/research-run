@@ -3,8 +3,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::domain::{
     ArtifactLocatorType, ArtifactPointer, Assessment, Authorship, CanonicalRecord, ClaimRecord,
-    EvidenceLink, ExperimentReceipt, Outcome, ProjectManifest, ReviewDecision, SourceProvenance,
-    SourceRecord, Stance,
+    EntityKind, EntityRef, EvidenceLink, ExperimentReceipt, KnowledgeKind, KnowledgeRecord,
+    KnowledgeState, Outcome, ProjectManifest, RelationshipKind, RelationshipRecord, ReviewDecision,
+    SourceProvenance, SourceRecord, Stance,
 };
 
 use super::{
@@ -21,6 +22,7 @@ fn temporary() -> std::path::PathBuf {
         std::process::id(),
         COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
+    let _ = fs::remove_dir_all(&path);
     fs::create_dir(&path).expect("temporary directory");
     path
 }
@@ -71,6 +73,7 @@ fn review(id: &str, claim_id: &str) -> ReviewDecision {
         id: id.to_owned(),
         claim_id: claim_id.to_owned(),
         evidence_ids: Vec::new(),
+        subject_sha256: None,
         decision: Assessment::Limited,
         rationale: "Bounded rationale".to_owned(),
         reviewer: "Researcher".to_owned(),
@@ -93,9 +96,89 @@ fn experiment(id: &str) -> ExperimentReceipt {
     }
 }
 
+#[test]
+fn non_history_relationship_may_close_a_history_path() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Relationship semantics").expect("initialize");
+    let knowledge = |id: &str| KnowledgeRecord {
+        schema_version: 1,
+        kind: "knowledge".to_owned(),
+        id: id.to_owned(),
+        record_type: KnowledgeKind::Observation,
+        title: id.to_owned(),
+        body: "Retained history".to_owned(),
+        occurred_at: "2026-07-18T20:00:00Z".to_owned(),
+        state: KnowledgeState::Open,
+        authorship: Authorship::Human,
+    };
+    workspace.add_knowledge(&knowledge("old")).expect("old");
+    workspace.add_knowledge(&knowledge("new")).expect("new");
+    let relation =
+        |id: &str, relationship: RelationshipKind, from: &str, to: &str| RelationshipRecord {
+            schema_version: 1,
+            kind: "relationship".to_owned(),
+            id: id.to_owned(),
+            relationship,
+            from: EntityRef {
+                kind: EntityKind::Knowledge,
+                id: from.to_owned(),
+            },
+            to: EntityRef {
+                kind: EntityKind::Knowledge,
+                id: to.to_owned(),
+            },
+            rationale: "Typed relation".to_owned(),
+            occurred_at: "2026-07-18T20:00:00Z".to_owned(),
+            authorship: Authorship::Human,
+        };
+    workspace
+        .add_relationship(&relation(
+            "revision",
+            RelationshipKind::Revises,
+            "new",
+            "old",
+        ))
+        .expect("history edge");
+    workspace
+        .add_relationship(&relation(
+            "related",
+            RelationshipKind::RelatedTo,
+            "old",
+            "new",
+        ))
+        .expect("non-history edge");
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[path = "workspace_tests/handoff_expanded.rs"]
+mod handoff_expanded;
+#[path = "workspace_tests/handoff_validation.rs"]
+mod handoff_validation;
+#[path = "workspace_tests/inventory_expanded.rs"]
+mod inventory_expanded;
+#[path = "workspace_tests/inventory_failure_expanded.rs"]
+mod inventory_failure_expanded;
+#[path = "workspace_tests/inventory_tamper.rs"]
+mod inventory_tamper;
+#[path = "workspace_tests/knowledge_expanded.rs"]
+mod knowledge_expanded;
+#[path = "workspace_tests/migration_expanded.rs"]
+mod migration_expanded;
+#[path = "workspace_tests/migration_failure_expanded.rs"]
+mod migration_failure_expanded;
 #[path = "workspace_tests/records.rs"]
 mod records;
 #[path = "workspace_tests/recovery.rs"]
 mod recovery;
+#[path = "workspace_tests/retrieval_boundaries.rs"]
+mod retrieval_boundaries;
+#[path = "workspace_tests/retrieval_expanded.rs"]
+mod retrieval_expanded;
+#[path = "workspace_tests/retrieval_failure_expanded.rs"]
+mod retrieval_failure_expanded;
+#[path = "workspace_tests/review_binding_expanded.rs"]
+mod review_binding_expanded;
+#[path = "workspace_tests/snapshot_expanded.rs"]
+mod snapshot_expanded;
 #[path = "workspace_tests/storage.rs"]
 mod storage;

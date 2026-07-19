@@ -7,22 +7,44 @@ use crate::workspace::Workspace;
 use crate::{Error, Result};
 
 use super::arguments::{
-    ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, RecoveryArgs, ReviewCommand,
-    SourceCommand,
+    ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, ReviewCommand, SourceCommand,
 };
+use super::current_directory::discover_current;
+use super::handoff_commands;
+use super::inventory_commands;
+use super::migration_commands;
+use super::output_arguments::RecoveryArgs;
 use super::render::{
     parse_artifact, print_effect, print_human_status, print_json, print_text, terminal_text,
 };
+use super::retrieval_commands;
+use super::structured_commands;
 
 pub(super) fn execute(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Init { path, name } => initialize(&path, &name),
+        Command::Retrofit { command } => inventory_commands::execute(command, false),
+        Command::Reconcile { command } => inventory_commands::execute(command, true),
+        Command::Migrate { command } => migration_commands::execute(command),
         Command::Recover(output) => recover(output),
         Command::Source { command } => add_source(command),
         Command::Claim { command } => add_claim(command),
         Command::Evidence { command } => add_evidence(command),
         Command::Experiment { command } => add_experiment(command),
         Command::Review { command } => add_review(command),
+        Command::Knowledge { command } => structured_commands::add_knowledge(command),
+        Command::Relationship { command } => structured_commands::add_relationship(command),
+        Command::List(args) => retrieval_commands::list(args),
+        Command::Show(args) => retrieval_commands::show(args),
+        Command::Search(args) => retrieval_commands::search(args),
+        Command::Recent(args) => retrieval_commands::recent(args),
+        Command::Timeline(args) => retrieval_commands::timeline(args),
+        Command::Related(args) => retrieval_commands::related(args),
+        Command::Unresolved(args) => retrieval_commands::unresolved(args),
+        Command::Blockers(args) => retrieval_commands::blockers(args),
+        Command::Next(args) => retrieval_commands::next(args),
+        Command::Context(args) => retrieval_commands::context(args),
+        Command::Handoff { command } => handoff_commands::execute(command),
         Command::Validate(output) => validate(output.json),
         Command::Status(output) => status(output.json),
     }
@@ -152,13 +174,14 @@ fn add_review(command: ReviewCommand) -> Result<()> {
         reviewer,
     } = command;
     let workspace = discover_current()?;
-    let evidence_ids = workspace.claim_evidence_ids(&claim)?;
+    let (evidence_ids, subject_sha256) = workspace.review_subject_binding(&claim)?;
     let record = ReviewDecision {
         schema_version: FORMAT_VERSION,
         kind: "review".to_owned(),
         id,
         claim_id: claim,
         evidence_ids,
+        subject_sha256: Some(subject_sha256),
         decision: decision.into(),
         rationale,
         reviewer,
@@ -203,39 +226,4 @@ fn status(json: bool) -> Result<()> {
     } else {
         print_human_status(&status)
     }
-}
-
-pub(super) fn discover_current() -> Result<Workspace> {
-    #[cfg(any(test, coverage))]
-    let current = if take_current_directory_failure() {
-        Err(std::io::Error::other("injected current directory failure"))
-    } else {
-        std::env::current_dir()
-    };
-    #[cfg(not(any(test, coverage)))]
-    let current = std::env::current_dir();
-    match current {
-        Ok(current) => Workspace::discover(&current),
-        Err(error) => Err(Error::io("read current directory", ".", error)),
-    }
-}
-
-#[cfg(test)]
-thread_local! {
-    static CURRENT_DIRECTORY_FAILURE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-#[cfg(test)]
-pub(super) fn inject_current_directory_failure() {
-    CURRENT_DIRECTORY_FAILURE.set(true);
-}
-
-#[cfg(test)]
-fn take_current_directory_failure() -> bool {
-    CURRENT_DIRECTORY_FAILURE.replace(false)
-}
-
-#[cfg(all(coverage, not(test)))]
-fn take_current_directory_failure() -> bool {
-    std::env::var("RESEARCH_RUN_COVERAGE_FAULT").as_deref() == Ok("current directory")
 }

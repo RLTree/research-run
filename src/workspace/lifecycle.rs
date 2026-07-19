@@ -20,7 +20,17 @@ impl Workspace {
             root,
         };
         create_directory_chain(&workspace.state)?;
-        for directory in ["sources", "claims", "evidence", "experiments", "reviews"] {
+        for directory in [
+            "sources",
+            "claims",
+            "evidence",
+            "experiments",
+            "reviews",
+            "inventories",
+            "knowledge",
+            "relationships",
+            "migrations",
+        ] {
             let path = workspace.state.join(directory);
             create_directory_chain(&path)?;
         }

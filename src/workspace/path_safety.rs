@@ -113,8 +113,14 @@ pub(super) fn reject_symlink_chain(path: &Path) -> Result<()> {
 fn is_allowed_platform_alias(_path: &Path, _metadata: &fs::Metadata) -> bool {
     #[cfg(target_os = "macos")]
     {
-        _path == Path::new("/var")
-            && fs::read_link(_path).is_ok_and(|target| target == Path::new("private/var"))
+        let expected = if _path == Path::new("/var") {
+            Some(Path::new("private/var"))
+        } else if _path == Path::new("/tmp") {
+            Some(Path::new("private/tmp"))
+        } else {
+            None
+        };
+        expected.is_some_and(|expected| fs::read_link(_path).is_ok_and(|target| target == expected))
     }
     #[cfg(not(target_os = "macos"))]
     {

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Error, Result};
 
 use super::validation::{
-    required_text, validate_id, validate_record_header, validate_text_list,
+    required_text, validate_hex_digest, validate_id, validate_record_header, validate_text_list,
     validate_workspace_locator,
 };
 use super::{Assessment, CanonicalRecord, MAX_ARTIFACT_POINTERS, MAX_LIST_ITEMS, Outcome};
@@ -91,6 +91,8 @@ pub struct ReviewDecision {
     pub claim_id: String,
     #[serde(default)]
     pub evidence_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_sha256: Option<String>,
     pub decision: Assessment,
     pub rationale: String,
     pub reviewer: String,
@@ -119,6 +121,9 @@ impl CanonicalRecord for ReviewDecision {
                 "review evidence_ids",
                 "must be sorted and unique",
             ));
+        }
+        if let Some(digest) = &self.subject_sha256 {
+            validate_hex_digest(digest, "review subject_sha256")?;
         }
         if self.decision == Assessment::Unreviewed {
             return Err(Error::invalid(

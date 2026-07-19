@@ -1,8 +1,16 @@
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 
-use crate::domain::{Assessment, Authorship, Outcome, SourceProvenance, Stance};
+use super::handoff_arguments::HandoffCommand;
+use super::inventory_arguments::InventoryCommand;
+use super::migration_arguments::MigrationCommand;
+use super::output_arguments::{OutputArgs, RecoveryArgs};
+use super::retrieval_arguments::{
+    ContextArgs, LimitArgs, ListArgs, RelatedArgs, SearchArgs, ShowArgs,
+};
+use super::structured_arguments::StructuredCommand;
+use super::value_arguments::{AuthorshipArg, OutcomeArg, ProvenanceArg, ReviewArg, StanceArg};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -23,6 +31,21 @@ pub(super) enum Command {
         path: PathBuf,
         #[arg(long)]
         name: String,
+    },
+    /// Inventory a populated project and initialize managed state only on apply.
+    Retrofit {
+        #[command(subcommand)]
+        command: InventoryCommand,
+    },
+    /// Compare current project materials with the last accepted inventory.
+    Reconcile {
+        #[command(subcommand)]
+        command: InventoryCommand,
+    },
+    /// Adopt an accepted v0.1 workspace without rewriting canonical records.
+    Migrate {
+        #[command(subcommand)]
+        command: MigrationCommand,
     },
     /// Manage source records.
     Source {
@@ -48,6 +71,41 @@ pub(super) enum Command {
     Review {
         #[command(subcommand)]
         command: ReviewCommand,
+    },
+    /// Add typed goals, questions, methods, observations, analyses, and work state.
+    Knowledge {
+        #[command(subcommand)]
+        command: StructuredCommand,
+    },
+    /// Connect canonical records with a typed append-only relationship.
+    Relationship {
+        #[command(subcommand)]
+        command: StructuredCommand,
+    },
+    /// List bounded canonical and indexed workspace records.
+    List(ListArgs),
+    /// Show one canonical record projection by kind and id.
+    Show(ShowArgs),
+    /// Search deterministic bounded record text with match explanations.
+    Search(SearchArgs),
+    /// Show newest timestamped records first.
+    Recent(LimitArgs),
+    /// Show timestamped records in chronological order.
+    Timeline(LimitArgs),
+    /// Show typed relationships connected to one record.
+    Related(RelatedArgs),
+    /// Show open questions, risks, uncertainties, and contradictions.
+    Unresolved(LimitArgs),
+    /// Show open typed blockers.
+    Blockers(LimitArgs),
+    /// Show open typed next actions.
+    Next(LimitArgs),
+    /// Build a bounded fresh-agent context projection.
+    Context(ContextArgs),
+    /// Create or inspect a portable fresh-agent handoff bundle.
+    Handoff {
+        #[command(subcommand)]
+        command: HandoffCommand,
     },
     /// Validate canonical records, references, budgets, and paths.
     Validate(OutputArgs),
@@ -152,107 +210,4 @@ pub(super) enum ReviewCommand {
         #[arg(long)]
         reviewer: String,
     },
-}
-
-#[derive(Debug, Args)]
-pub(super) struct OutputArgs {
-    #[arg(long)]
-    pub(super) json: bool,
-}
-
-#[derive(Debug, Args)]
-pub(super) struct RecoveryArgs {
-    #[arg(default_value = ".")]
-    pub(super) path: PathBuf,
-    #[arg(long)]
-    pub(super) json: bool,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(super) enum ProvenanceArg {
-    Human,
-    Imported,
-    Ai,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(super) enum AuthorshipArg {
-    Human,
-    Ai,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(super) enum StanceArg {
-    Supports,
-    Limits,
-    Contradicts,
-    Context,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(super) enum OutcomeArg {
-    Positive,
-    Negative,
-    Ambiguous,
-    Inconclusive,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(super) enum ReviewArg {
-    Unsupported,
-    Limited,
-    Supported,
-    Contradicted,
-}
-
-impl From<ProvenanceArg> for SourceProvenance {
-    fn from(value: ProvenanceArg) -> Self {
-        match value {
-            ProvenanceArg::Human => Self::Human,
-            ProvenanceArg::Imported => Self::Imported,
-            ProvenanceArg::Ai => Self::Ai,
-        }
-    }
-}
-
-impl From<AuthorshipArg> for Authorship {
-    fn from(value: AuthorshipArg) -> Self {
-        match value {
-            AuthorshipArg::Human => Self::Human,
-            AuthorshipArg::Ai => Self::Ai,
-        }
-    }
-}
-
-impl From<StanceArg> for Stance {
-    fn from(value: StanceArg) -> Self {
-        match value {
-            StanceArg::Supports => Self::Supports,
-            StanceArg::Limits => Self::Limits,
-            StanceArg::Contradicts => Self::Contradicts,
-            StanceArg::Context => Self::Context,
-        }
-    }
-}
-
-impl From<OutcomeArg> for Outcome {
-    fn from(value: OutcomeArg) -> Self {
-        match value {
-            OutcomeArg::Positive => Self::Positive,
-            OutcomeArg::Negative => Self::Negative,
-            OutcomeArg::Ambiguous => Self::Ambiguous,
-            OutcomeArg::Inconclusive => Self::Inconclusive,
-        }
-    }
-}
-
-impl From<ReviewArg> for Assessment {
-    fn from(value: ReviewArg) -> Self {
-        match value {
-            ReviewArg::Unsupported => Self::Unsupported,
-            ReviewArg::Limited => Self::Limited,
-            ReviewArg::Supported => Self::Supported,
-            ReviewArg::Contradicted => Self::Contradicted,
-        }
-    }
 }

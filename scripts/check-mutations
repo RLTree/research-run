@@ -4,20 +4,23 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
-selection='parse_artifact|validate_id|reject_symlink_chain|WorkspaceWriteLock::acquire|Workspace::publish_bytes|inspect_publication|link_canonical|Workspace::preflight_recovery|commit_recovery|terminal_text|source_requires_review|claim_assessment'
-# Capacity is independently proven at its exact 10,000-record boundary. It does
-# not exercise this selected semantic set and would consume each mutant timeout.
-mutation_tests='not test(/capacity/)'
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
+export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
+export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
+mutation_jobs="${RESEARCH_RUN_MUTATION_JOBS:-1}"
 
+selection='parse_artifact|validate_id|validate_timestamp|read_json_bytes|reject_symlink_chain|WorkspaceWriteLock::acquire|Workspace::publish_bytes|inspect_publication|link_canonical|Workspace::preflight_recovery|commit_recovery|terminal_text|source_requires_review|claim_assessment|InventoryPlan::validate|MigrationPlan::validate|KnowledgeRecord::validate|RelationshipRecord::validate|scan_materials|enforce_file_count|add_inventory_bytes|reconcile|review_subject_sha256|review_binding_errors|hash_evidence_authority|current_review_bindings|Workspace::add_knowledge|Workspace::add_relationship|Workspace::apply_inventory_plan|Workspace::apply_migration|Workspace::context|Workspace::search|HandoffBundle::validate'
 RUSTFLAGS='--cfg coverage --check-cfg=cfg(coverage)' cargo mutants \
   --cap-lints true \
-  --test-tool nextest \
-  --jobs 4 \
+  --test-tool cargo \
+  --cargo-arg=-j \
+  --cargo-arg=1 \
+  --jobs "$mutation_jobs" \
+  --jobserver false \
   --timeout 60 \
   --build-timeout 60 \
   --baseline run \
-  --re "$selection" \
-  -- --test product -E "$mutation_tests"
+  --re "$selection"
 
 outcomes="mutants.out/outcomes.json"
 jq -e '
