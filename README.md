@@ -101,14 +101,18 @@ synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
 Review decisions are local assertions made by the CLI user; v0.1 has no account
 system or identity verification. Treat Git review and repository access controls
 as the human-authorship boundary.
+The CLI records the claim's current sorted evidence IDs with each review. Adding
+later evidence makes the old decision historical and returns the claim to
+`unreviewed` until another explicit human review covers the changed graph.
 
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact
 gates. Use `scripts/check fast` during implementation and `scripts/check full`
 when a source or package claim can move. `scripts/check coverage` is the separate
-100%-line source-coverage authority and requires `cargo-llvm-cov`; a test pass is
-not a coverage pass. Source, tests, package creation, local install, runtime
+100% line/function/region source-coverage authority and requires
+`cargo-llvm-cov`; a test pass is not a coverage pass. Source, tests, package
+creation, local install, runtime
 journey, CI, pull request, release, and real researcher use are separate proof
 surfaces. v0.1 does not include a GUI, service, sync, telemetry, database, LLM
 provider, or generic workflow engine.

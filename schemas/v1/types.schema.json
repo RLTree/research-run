@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "types.schema.json",
-  "title": "Research Run shared v1 types",
+  "title": "Research Run v1 value types",
   "$defs": {
     "id": {
       "type": "string",

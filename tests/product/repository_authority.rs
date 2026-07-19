@@ -15,6 +15,7 @@ fn router_reaches_every_current_authority_surface() {
     let agents = read("AGENTS.md");
     for required in [
         "STANDARD.md",
+        "ARCHITECTURE.md",
         "policy.toml",
         "AGENT_STANDARDS.md",
         "docs/exec-plans/active/",
@@ -53,6 +54,9 @@ fn policy_preserves_review_and_proof_claim_ceilings() {
         "exact_source_build = \"failed_warnings_as_errors\"",
         "full_activation = false",
         "coverage_line_floor = 100",
+        "rust_toolchain = \"1.97.1\"",
+        "artifact = \"harness-ultragoal-governance-complete.zip\"",
+        "sha256 = \"089382f27b64c6eb219b3a032296917dc8984129a52e56e63cb77ba66ba72377\"",
     ] {
         assert!(policy.contains(required), "policy omits: {required}");
     }
@@ -68,7 +72,14 @@ fn policy_preserves_review_and_proof_claim_ceilings() {
 fn repository_check_entrypoints_are_executable() {
     use std::os::unix::fs::PermissionsExt;
 
-    for path in ["scripts/check", "scripts/check-coverage"] {
+    for path in [
+        "scripts/check",
+        "scripts/check-coverage",
+        "scripts/check-dependencies",
+        "scripts/check-mutations",
+        "scripts/check-product-artifacts",
+        "scripts/check-standards",
+    ] {
         let mode = fs::metadata(root().join(path))
             .unwrap_or_else(|error| panic!("missing {path}: {error}"))
             .permissions()

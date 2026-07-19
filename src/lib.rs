@@ -76,3 +76,7 @@ impl StdError for Error {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "error_tests.rs"]
+mod tests;

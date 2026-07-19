@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -23,7 +24,30 @@ fn every_versioned_schema_is_well_formed_json() {
             schemas.push(path);
         }
     }
-    assert_eq!(schemas.len(), 9, "expected all v1 schema documents");
+    let names = schemas
+        .iter()
+        .map(|path| {
+            path.file_name()
+                .expect("schema filename")
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect::<BTreeSet<_>>();
+    let expected = [
+        "claim.schema.json",
+        "evidence.schema.json",
+        "experiment.schema.json",
+        "project-manifest.schema.json",
+        "review.schema.json",
+        "source.schema.json",
+        "status.schema.json",
+        "types.schema.json",
+        "validation.schema.json",
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect::<BTreeSet<_>>();
+    assert_eq!(names, expected, "v1 schema authority changed");
 }
 
 #[test]

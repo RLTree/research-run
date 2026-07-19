@@ -5,12 +5,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::Value;
 
+#[path = "researcher_journey/value_variants.rs"]
+mod value_variants;
+
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-struct TempDir(PathBuf);
+pub(super) struct TempDir(pub(super) PathBuf);
 
 impl TempDir {
-    fn new(label: &str) -> Self {
+    pub(super) fn new(label: &str) -> Self {
         let sequence = COUNTER.fetch_add(1, Ordering::Relaxed);
         let path = std::env::temp_dir().join(format!(
             "research-run-{label}-{}-{sequence}",
@@ -27,7 +30,7 @@ impl Drop for TempDir {
     }
 }
 
-fn cli(cwd: &Path, args: &[&str]) -> Output {
+pub(super) fn cli(cwd: &Path, args: &[&str]) -> Output {
     Command::new(std::env::var("CARGO_BIN_EXE_research-run").expect("binary path"))
         .current_dir(cwd)
         .args(args)
@@ -35,7 +38,7 @@ fn cli(cwd: &Path, args: &[&str]) -> Output {
         .expect("run research-run")
 }
 
-fn succeeds(cwd: &Path, args: &[&str]) -> Output {
+pub(super) fn succeeds(cwd: &Path, args: &[&str]) -> Output {
     let output = cli(cwd, args);
     assert!(
         output.status.success(),
@@ -55,8 +58,17 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
         &temporary.0,
         &["init", &project_text, "--name", "Synthetic assay"],
     );
+    add_source_and_claim(&project);
+    add_supporting_evidence(&project);
+    add_negative_repeat(&project);
+    assert_claim_ceiling_before_review(&project);
+    add_limited_review(&project);
+    assert_limited_status(&project);
+}
+
+fn add_source_and_claim(project: &Path) {
     succeeds(
-        &project,
+        project,
         &[
             "source",
             "add",
@@ -70,8 +82,11 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
             "human",
         ],
     );
+}
+
+fn add_supporting_evidence(project: &Path) {
     succeeds(
-        &project,
+        project,
         &[
             "claim",
             "add",
@@ -87,8 +102,11 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
             "human",
         ],
     );
+}
+
+fn add_negative_repeat(project: &Path) {
     succeeds(
-        &project,
+        project,
         &[
             "evidence",
             "add",
@@ -107,7 +125,7 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
         ],
     );
     succeeds(
-        &project,
+        project,
         &[
             "experiment",
             "add",
@@ -132,7 +150,7 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
         ],
     );
     succeeds(
-        &project,
+        project,
         &[
             "evidence",
             "add",
@@ -150,19 +168,23 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
             "human",
         ],
     );
+}
 
-    let before: Value = serde_json::from_slice(&succeeds(&project, &["status", "--json"]).stdout)
+fn assert_claim_ceiling_before_review(project: &Path) {
+    let before: Value = serde_json::from_slice(&succeeds(project, &["status", "--json"]).stdout)
         .expect("status JSON");
-    assert_eq!(before["claims"][0]["assessment"], "unsupported");
+    assert_eq!(before["claims"][0]["assessment"], "unreviewed");
     assert!(
         before["claims"][0]["blockers"][0]
             .as_str()
             .expect("blocker")
             .contains("human review")
     );
+}
 
+fn add_limited_review(project: &Path) {
     succeeds(
-        &project,
+        project,
         &[
             "review",
             "add",
@@ -178,10 +200,13 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
             "Example Researcher",
         ],
     );
+}
+
+fn assert_limited_status(project: &Path) {
     let validation: Value =
-        serde_json::from_slice(&succeeds(&project, &["validate", "--json"]).stdout)
+        serde_json::from_slice(&succeeds(project, &["validate", "--json"]).stdout)
             .expect("validation JSON");
-    let status: Value = serde_json::from_slice(&succeeds(&project, &["status", "--json"]).stdout)
+    let status: Value = serde_json::from_slice(&succeeds(project, &["status", "--json"]).stdout)
         .expect("status JSON");
     assert_eq!(validation["valid"], true);
     assert_eq!(status["claims"][0]["assessment"], "limited");
@@ -189,52 +214,5 @@ fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
     assert_ne!(
         status["experiments"][0]["observations"][0],
         status["experiments"][0]["interpretation"]
-    );
-}
-
-#[test]
-fn identical_retry_is_idempotent_and_conflicting_identity_fails_closed() {
-    let temporary = TempDir::new("retry");
-    let project = temporary.0.join("project");
-    let project_text = project.to_string_lossy();
-    succeeds(
-        &temporary.0,
-        &["init", &project_text, "--name", "Retry test"],
-    );
-    let first = [
-        "source",
-        "add",
-        "--id",
-        "source-one",
-        "--citation",
-        "Citation",
-        "--locator",
-        "doi:10.0000/example",
-        "--provenance",
-        "human",
-    ];
-    succeeds(&project, &first);
-    succeeds(&project, &first);
-    let conflict = cli(
-        &project,
-        &[
-            "source",
-            "add",
-            "--id",
-            "source-one",
-            "--citation",
-            "Changed citation",
-            "--locator",
-            "doi:10.0000/example",
-            "--provenance",
-            "human",
-        ],
-    );
-    assert!(!conflict.status.success());
-    assert_eq!(
-        fs::read_dir(project.join(".research-run/sources"))
-            .expect("sources")
-            .count(),
-        1
     );
 }

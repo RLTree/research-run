@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "artifact proof requires a clean commit candidate" >&2
+  echo "withheld: package, install, journey, performance_baseline, and compactness_baseline" >&2
+  exit 1
+fi
+
+observation_root="$(mktemp -d "${TMPDIR:-/tmp}/research-run-artifacts.XXXXXX")"
+trap 'rm -rf "$observation_root"' EXIT
+
+target_before_kib="$(du -sk target 2>/dev/null | awk '{print $1}' || printf '0')"
+cargo build --locked --release
+cargo package --locked
+
+archive="$repo_root/target/package/research-run-0.1.0.crate"
+tar -xzf "$archive" -C "$observation_root"
+cargo install --path "$observation_root/research-run-0.1.0" --locked \
+  --root "$observation_root/install"
+binary="$observation_root/install/bin/research-run"
+
+workspace="$observation_root/journey"
+"$binary" init "$workspace" --name "Installed researcher journey" >/dev/null
+
+installed_command() {
+  (cd "$workspace" && "$binary" "$@")
+}
+
+installed_command source add --id source-one --citation Citation --locator local:source \
+  --provenance human >/dev/null
+installed_command claim add --id claim-one --text Claim --scope Scope --owner Researcher \
+  --authorship human >/dev/null
+installed_command evidence add --id evidence-one --claim claim-one --source source-one \
+  --stance supports --specific-evidence Specific --authorship human >/dev/null
+installed_command experiment add --id experiment-one --question 'Question?' --method-ref method.md \
+  --observation Observed --interpretation Interpretation --limitation Limited \
+  --outcome negative --next-move Repeat >/dev/null
+installed_command review add --id review-one --claim claim-one --decision limited \
+  --rationale 'Negative repeat limits the claim.' --reviewer Researcher >/dev/null
+installed_command validate --json | jq -e '.valid == true' >/dev/null
+installed_command status --json | jq -e \
+  '.claims[0].assessment == "limited" and .experiments[0].outcome == "negative"' >/dev/null
+
+measure_real() {
+  local output_file="$1"
+  shift
+  local command_status measured
+  set +e
+  { time -p "$@" >/dev/null; } 2>"$output_file"
+  command_status=$?
+  set -e
+  measured="$(awk '$1 == "real" { print $2; exit }' "$output_file")"
+  if (( command_status != 0 )); then
+    return "$command_status"
+  fi
+  [[ -n "$measured" ]]
+  printf '%s\n' "$measured"
+}
+
+run_repeated() {
+  local repetitions="$1"
+  shift
+  local iteration
+  for ((iteration = 0; iteration < repetitions; iteration++)); do
+    "$@" >/dev/null
+  done
+}
+
+measure_average() {
+  local output_file="$1" repetitions="$2"
+  shift 2
+  local total
+  total="$(measure_real "$output_file" run_repeated "$repetitions" "$@")"
+  awk -v total="$total" -v repetitions="$repetitions" \
+    'BEGIN { printf "%.6f", total / repetitions }'
+}
+
+help_cold_seconds="$(measure_real "$observation_root/help-cold.time" "$binary" --help)"
+help_warm_seconds="$(measure_average "$observation_root/help-warm.time" 50 "$binary" --help)"
+status_cold_seconds="$(measure_real "$observation_root/status-cold.time" installed_command status --json)"
+status_warm_seconds="$(measure_average "$observation_root/status-warm.time" 50 installed_command status --json)"
+
+recovery_source="$workspace/.research-run/sources/source-one.json"
+recovery_pending="$workspace/.research-run/sources/.source-one.json.9.1.tmp"
+mv "$recovery_source" "$recovery_pending"
+recovery_cold_seconds="$(measure_real "$observation_root/recovery-cold.time" "$binary" recover "$workspace" --json)"
+recovery_warm_seconds="$(measure_average "$observation_root/recovery-warm.time" 50 "$binary" recover "$workspace" --json)"
+
+stripped="$observation_root/research-run-stripped"
+cp "$binary" "$stripped"
+strip "$stripped"
+
+archive_bytes="$(wc -c < "$archive" | tr -d ' ')"
+binary_bytes="$(wc -c < "$binary" | tr -d ' ')"
+stripped_binary_bytes="$(wc -c < "$stripped" | tr -d ' ')"
+install_kib="$(du -sk "$observation_root/install" | awk '{print $1}')"
+target_after_kib="$(du -sk target | awk '{print $1}')"
+coverage_target_kib="$(du -sk target/llvm-cov-target 2>/dev/null | awk '{print $1}' || printf '0')"
+
+jq -n \
+  --arg candidate "$(git rev-parse HEAD)" \
+  --arg cache_state "warm Cargo cache; clean source candidate" \
+  --argjson archive_bytes "$archive_bytes" \
+  --argjson binary_bytes "$binary_bytes" \
+  --argjson stripped_binary_bytes "$stripped_binary_bytes" \
+  --argjson install_kib "$install_kib" \
+  --argjson target_before_kib "$target_before_kib" \
+  --argjson target_after_kib "$target_after_kib" \
+  --argjson coverage_target_kib "$coverage_target_kib" \
+  --argjson help_cold_seconds "$help_cold_seconds" \
+  --argjson help_warm_seconds "$help_warm_seconds" \
+  --argjson status_cold_seconds "$status_cold_seconds" \
+  --argjson status_warm_seconds "$status_warm_seconds" \
+  --argjson recovery_cold_seconds "$recovery_cold_seconds" \
+  --argjson recovery_warm_seconds "$recovery_warm_seconds" \
+  '{candidate:$candidate, cache_state:$cache_state, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine reproducible observation only; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'

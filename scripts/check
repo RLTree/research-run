@@ -10,20 +10,37 @@ case "$mode" in
   fast)
     cargo fmt --check
     cargo check --locked --all-targets
-    cargo test --locked --test repository_governance
+    cargo test --locked --test product repository_authority::
+    scripts/check-standards
     ;;
   full)
     cargo fmt --check
     cargo check --locked --all-targets
-    cargo test --locked --all-targets
+    cargo nextest run --locked --all-targets
+    cargo test --locked --doc
     cargo clippy --locked --all-targets -- -D warnings
-    cargo package --locked
+    scripts/check-standards
+    scripts/check-coverage
+    scripts/check-dependencies
+    gitleaks git --no-banner --redact .
+    actionlint
+    scripts/check-mutations
+    scripts/check-product-artifacts
     ;;
   coverage)
     exec "$repo_root/scripts/check-coverage"
     ;;
+  dependencies)
+    exec "$repo_root/scripts/check-dependencies"
+    ;;
+  mutations)
+    exec "$repo_root/scripts/check-mutations"
+    ;;
+  artifacts)
+    exec "$repo_root/scripts/check-product-artifacts"
+    ;;
   *)
-    echo "usage: scripts/check {fast|full|coverage}" >&2
+    echo "usage: scripts/check {fast|full|coverage|dependencies|mutations|artifacts}" >&2
     exit 2
     ;;
 esac

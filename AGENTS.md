@@ -3,8 +3,11 @@
 This file stays compact. For non-trivial work, read only the routed authority
 needed for the task:
 
-1. `STANDARD.md` and `policy.toml` for product law and executable acceptance.
+1. `STANDARD.md` and `policy.toml` for product law and executable acceptance;
+   `ARCHITECTURE.md` for command, domain, storage, and proof boundaries.
 2. `AGENT_STANDARDS.md` for workflow routing.
+   `agent-standards/obligations.json` and `scripts/check-standards` are the
+   machine-readable closure and namespace authority.
 3. The active ExecPlan under `docs/exec-plans/active/` and
    `docs/research/2026-07-17-v0.1-evidence-and-decisions.md` for current scope,
    decisions, and claim ceiling.

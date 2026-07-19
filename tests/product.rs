@@ -1,0 +1,19 @@
+#[path = "product/data_contracts.rs"]
+mod data_contracts;
+#[path = "product/domain_boundaries.rs"]
+mod domain_boundaries;
+#[path = "product/identifier_validation.rs"]
+mod identifier_validation;
+#[path = "product/repository_authority.rs"]
+mod repository_authority;
+#[path = "product/researcher_journey.rs"]
+mod researcher_journey;
+#[cfg(coverage)]
+#[path = "product/resilience.rs"]
+mod resilience;
+#[path = "product/retry_behavior.rs"]
+mod retry_behavior;
+#[path = "product/review_authority.rs"]
+mod review_authority;
+#[path = "product/workspace_defense.rs"]
+mod workspace_defense;

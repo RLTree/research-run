@@ -1,0 +1,182 @@
+use std::collections::BTreeMap;
+
+use crate::domain::{
+    CanonicalRecord, ClaimRecord, EvidenceLink, ExperimentReceipt, ReviewDecision, SourceRecord,
+};
+use crate::{Error, Result};
+
+use super::publication::canonical_json_bytes;
+use super::storage::read_bounded;
+use super::write_lock::WorkspaceWriteLock;
+use super::{MAX_RECORDS_PER_KIND, Snapshot, ValidationResult, Workspace};
+
+impl Workspace {
+    pub fn add_source(&self, record: &SourceRecord) -> Result<bool> {
+        let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
+        record.validate()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        if self.record_is_identical("sources", record)? {
+            return Ok(false);
+        }
+        ensure_record_capacity(snapshot.sources.len(), "sources")?;
+        self.publish_record("sources", record)
+    }
+
+    pub fn add_claim(&self, record: &ClaimRecord) -> Result<bool> {
+        let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
+        record.validate()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        if self.record_is_identical("claims", record)? {
+            return Ok(false);
+        }
+        ensure_record_capacity(snapshot.claims.len(), "claims")?;
+        self.publish_record("claims", record)
+    }
+
+    pub fn add_experiment(&self, record: &ExperimentReceipt) -> Result<bool> {
+        let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
+        record.validate()?;
+        self.validate_artifact_paths(&record.artifacts)?;
+        let snapshot = self.load_mutable_snapshot()?;
+        if self.record_is_identical("experiments", record)? {
+            return Ok(false);
+        }
+        ensure_record_capacity(snapshot.experiments.len(), "experiments")?;
+        self.publish_record("experiments", record)
+    }
+
+    pub fn add_evidence(&self, record: &EvidenceLink) -> Result<bool> {
+        let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
+        record.validate()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        if self.record_is_identical("evidence", record)? {
+            return Ok(false);
+        }
+        ensure_record_capacity(snapshot.evidence.len(), "evidence")?;
+        if !snapshot
+            .claims
+            .iter()
+            .any(|claim| claim.id == record.claim_id)
+        {
+            return Err(Error::invalid("claim reference", "claim does not exist"));
+        }
+        if let Some(source_id) = &record.source_id
+            && !snapshot
+                .sources
+                .iter()
+                .any(|source| &source.id == source_id)
+        {
+            return Err(Error::invalid("source reference", "source does not exist"));
+        }
+        if let Some(experiment_id) = &record.experiment_id
+            && !snapshot
+                .experiments
+                .iter()
+                .any(|experiment| &experiment.id == experiment_id)
+        {
+            return Err(Error::invalid(
+                "experiment reference",
+                "experiment does not exist",
+            ));
+        }
+        if let Some(locator) = &record.artifact {
+            self.validate_workspace_path(locator)?;
+        }
+        self.publish_record("evidence", record)
+    }
+
+    pub fn add_review(&self, record: &ReviewDecision) -> Result<bool> {
+        let _write_lock = WorkspaceWriteLock::acquire(&self.state)?;
+        record.validate()?;
+        let snapshot = self.load_mutable_snapshot()?;
+        if self.record_is_identical("reviews", record)? {
+            return Ok(false);
+        }
+        ensure_record_capacity(snapshot.reviews.len(), "reviews")?;
+        if !snapshot
+            .claims
+            .iter()
+            .any(|claim| claim.id == record.claim_id)
+        {
+            return Err(Error::invalid("claim reference", "claim does not exist"));
+        }
+        let evidence_ids = claim_evidence_ids(&snapshot, &record.claim_id);
+        if record.evidence_ids != evidence_ids {
+            return Err(Error::invalid(
+                "review evidence_ids",
+                "must exactly match the current claim evidence graph",
+            ));
+        }
+        if snapshot.reviews.iter().any(|review| {
+            review.claim_id == record.claim_id && review.evidence_ids == record.evidence_ids
+        }) {
+            return Err(Error::Conflict(format!(
+                "claim {} already has a v0.1 review decision for this evidence graph",
+                record.claim_id
+            )));
+        }
+        self.publish_record("reviews", record)
+    }
+
+    pub fn claim_evidence_ids(&self, claim_id: &str) -> Result<Vec<String>> {
+        let snapshot = self.load_snapshot()?;
+        if !snapshot.claims.iter().any(|claim| claim.id == claim_id) {
+            return Err(Error::invalid("claim reference", "claim does not exist"));
+        }
+        Ok(claim_evidence_ids(&snapshot, claim_id))
+    }
+
+    pub fn validate(&self) -> ValidationResult {
+        match self.load_snapshot() {
+            Ok(snapshot) => {
+                let counts = snapshot.counts();
+                let errors = self.reference_errors(&snapshot);
+                ValidationResult {
+                    valid: errors.is_empty(),
+                    errors,
+                    counts,
+                }
+            }
+            Err(error) => ValidationResult {
+                valid: false,
+                errors: vec![error.to_string()],
+                counts: BTreeMap::new(),
+            },
+        }
+    }
+
+    fn record_is_identical<T: CanonicalRecord + serde::Serialize>(
+        &self,
+        directory: &str,
+        record: &T,
+    ) -> Result<bool> {
+        let target = self
+            .state
+            .join(directory)
+            .join(format!("{}.json", record.id()));
+        if !target.exists() {
+            return Ok(false);
+        }
+        Ok(read_bounded(&target)? == canonical_json_bytes(record))
+    }
+}
+
+fn claim_evidence_ids(snapshot: &Snapshot, claim_id: &str) -> Vec<String> {
+    let mut ids = snapshot
+        .evidence
+        .iter()
+        .filter(|evidence| evidence.claim_id == claim_id)
+        .map(|evidence| evidence.id.clone())
+        .collect::<Vec<_>>();
+    ids.sort();
+    ids
+}
+
+fn ensure_record_capacity(count: usize, directory: &str) -> Result<()> {
+    if count >= MAX_RECORDS_PER_KIND {
+        return Err(Error::Budget(format!(
+            "{directory} already reached the {MAX_RECORDS_PER_KIND} record budget"
+        )));
+    }
+    Ok(())
+}

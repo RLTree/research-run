@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+duplicates="$(cargo metadata --locked --format-version 1 \
+  | jq -r '[.packages[] | {name, version}] | sort_by(.name) | group_by(.name)[]
+    | select([.[].version] | unique | length > 1)
+    | .[0].name + ": " + ([.[].version] | unique | join(", "))')"
+if [[ -n "$duplicates" ]]; then
+  echo "dependency duplication failure:" >&2
+  printf '%s\n' "$duplicates" >&2
+  echo "withheld: dependency_closure and package_delta_closure" >&2
+  exit 1
+fi
+
+cargo audit --deny warnings
+cargo deny check
+
+inventory_root="$(mktemp -d "${TMPDIR:-/tmp}/research-run-inventory.XXXXXX")"
+generated_inventory="$repo_root/research-run-inventory.json"
+inventory_backup="$inventory_root/preexisting-research-run-inventory.json"
+inventory_preexisting=0
+if [[ -e "$generated_inventory" || -L "$generated_inventory" ]]; then
+  mv "$generated_inventory" "$inventory_backup"
+  inventory_preexisting=1
+fi
+cleanup_inventory() {
+  rm -f "$generated_inventory"
+  if (( inventory_preexisting == 1 )); then
+    mv "$inventory_backup" "$generated_inventory"
+  fi
+  rm -rf "$inventory_root"
+}
+trap cleanup_inventory EXIT
+cargo cyclonedx --manifest-path "$repo_root/Cargo.toml" --format json \
+  --override-filename research-run-inventory
+inventory="$inventory_root/research-run-inventory.json"
+mv "$generated_inventory" "$inventory"
+jq -e '.bomFormat == "CycloneDX" and .metadata.component.name == "research-run"' "$inventory" >/dev/null
+echo "dependency proof: no duplicate versions; audit and deny passed; ephemeral CycloneDX inventory validated"
