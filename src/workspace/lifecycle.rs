@@ -29,6 +29,7 @@ impl Workspace {
             "inventories",
             "knowledge",
             "relationships",
+            "migrations",
         ] {
             let path = workspace.state.join(directory);
             create_directory_chain(&path)?;

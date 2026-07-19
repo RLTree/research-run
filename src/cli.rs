@@ -7,6 +7,8 @@ mod handoff_commands;
 mod input;
 mod inventory_arguments;
 mod inventory_commands;
+mod migration_arguments;
+mod migration_commands;
 mod output_arguments;
 mod render;
 mod retrieval_arguments;

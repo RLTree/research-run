@@ -2,7 +2,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::Result;
-use crate::domain::{CanonicalRecord, InventorySnapshot, KnowledgeRecord, RelationshipRecord};
+use crate::domain::{
+    CanonicalRecord, InventorySnapshot, KnowledgeRecord, MigrationRecord, RelationshipRecord,
+};
 
 use super::Workspace;
 use super::recovery_plan::PendingRecord;
@@ -13,9 +15,11 @@ pub(super) struct OptionalRecovery {
     pub(super) inventories: Vec<InventorySnapshot>,
     pub(super) knowledge: Vec<KnowledgeRecord>,
     pub(super) relationships: Vec<RelationshipRecord>,
+    pub(super) migrations: Vec<MigrationRecord>,
     pub(super) inventory_pending: Vec<PendingRecord>,
     pub(super) knowledge_pending: Vec<PendingRecord>,
     pub(super) relationship_pending: Vec<PendingRecord>,
+    pub(super) migration_pending: Vec<PendingRecord>,
 }
 
 pub(super) fn preflight_optional(
@@ -25,6 +29,7 @@ pub(super) fn preflight_optional(
     let mut inventory_pending = collect_optional(workspace, "inventories")?;
     let mut knowledge_pending = collect_optional(workspace, "knowledge")?;
     let mut relationship_pending = collect_optional(workspace, "relationships")?;
+    let mut migration_pending = collect_optional(workspace, "migrations")?;
     let inventories = records_optional(workspace, "inventories", &mut inventory_pending, budget)?;
     let knowledge = records_optional(workspace, "knowledge", &mut knowledge_pending, budget)?;
     let relationships = records_optional(
@@ -33,13 +38,16 @@ pub(super) fn preflight_optional(
         &mut relationship_pending,
         budget,
     )?;
+    let migrations = records_optional(workspace, "migrations", &mut migration_pending, budget)?;
     Ok(OptionalRecovery {
         inventories,
         knowledge,
         relationships,
+        migrations,
         inventory_pending,
         knowledge_pending,
         relationship_pending,
+        migration_pending,
     })
 }
 

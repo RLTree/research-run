@@ -184,6 +184,23 @@ The handoff includes recent or query-matched state, important authority paths,
 unresolved questions, blockers, next actions, relationships, and the claim
 ceiling. It is a portable projection, not claim or workspace authority.
 
+## Migrate an accepted v0.1 workspace
+
+Migration adopts the extended directory shape without rewriting v0.1 records:
+
+```console
+research-run migrate plan existing-project \
+  --id migration-v01 \
+  --migrated-at 2026-07-18T21:00:00Z > /tmp/research-run-migration.json
+research-run migrate apply existing-project \
+  --input /tmp/research-run-migration.json --json
+```
+
+The plan binds every canonical v0.1 JSON byte into a sorted aggregate SHA-256.
+Apply fails if authority changed, creates only missing extended record
+directories, and appends a migration record. Repeating the same accepted plan is
+a no-op.
+
 ## Development and proof surfaces
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact

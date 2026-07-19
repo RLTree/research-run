@@ -54,6 +54,12 @@ inspect` validates and renders that envelope without requiring the originating
 workspace. The envelope is a projection and cannot promote or replace canonical
 records.
 
+Migration keeps the accepted v0.1 JSON format intact. A read-only plan hashes
+the sorted canonical authority paths and bytes into one SHA-256 boundary. Apply
+rechecks that fingerprint under the workspace lock, creates only missing
+extended record directories, and appends one migration record. It does not
+rewrite, delete, or reinterpret an existing record.
+
 ## Proof and governance
 
 - `tests/product.rs` routes product journeys, failure/recovery behavior, and

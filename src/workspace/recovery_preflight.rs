@@ -29,6 +29,7 @@ pub(super) struct RecoveryBatch {
     inventories: Vec<PendingRecord>,
     knowledge: Vec<PendingRecord>,
     relationships: Vec<PendingRecord>,
+    migrations: Vec<PendingRecord>,
 }
 
 impl Workspace {
@@ -63,9 +64,11 @@ impl Workspace {
             inventories,
             knowledge,
             relationships,
+            migrations,
             inventory_pending,
             knowledge_pending,
             relationship_pending,
+            migration_pending,
         } = preflight_optional(self, &mut budget)?;
         let snapshot = Snapshot {
             manifest,
@@ -77,6 +80,7 @@ impl Workspace {
             inventories,
             knowledge,
             relationships,
+            migrations,
         };
         if injected_storage_failure("final snapshot load") {
             return Err(Error::invalid(
@@ -97,6 +101,7 @@ impl Workspace {
                 inventories: inventory_pending,
                 knowledge: knowledge_pending,
                 relationships: relationship_pending,
+                migrations: migration_pending,
             })
         } else {
             Err(Error::invalid(
@@ -126,6 +131,7 @@ impl RecoveryBatch {
             ("inventories", self.inventories),
             ("knowledge", self.knowledge),
             ("relationships", self.relationships),
+            ("migrations", self.migrations),
         ] {
             commit_recovery(&workspace.state.join(directory), pending, result)?;
         }

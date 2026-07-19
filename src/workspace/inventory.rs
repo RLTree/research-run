@@ -147,7 +147,7 @@ impl Workspace {
         Ok(inventories.pop())
     }
 
-    fn at_exact_root(root: &Path) -> Result<Option<Self>> {
+    pub(super) fn at_exact_root(root: &Path) -> Result<Option<Self>> {
         let state = root.join(STATE_DIRECTORY);
         reject_symlink_chain(&state)?;
         if !state.exists() {

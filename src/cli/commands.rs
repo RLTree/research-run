@@ -11,6 +11,7 @@ use super::arguments::{
 };
 use super::handoff_commands;
 use super::inventory_commands;
+use super::migration_commands;
 use super::output_arguments::RecoveryArgs;
 use super::render::{
     parse_artifact, print_effect, print_human_status, print_json, print_text, terminal_text,
@@ -23,6 +24,7 @@ pub(super) fn execute(cli: Cli) -> Result<()> {
         Command::Init { path, name } => initialize(&path, &name),
         Command::Retrofit { command } => inventory_commands::execute(command, false),
         Command::Reconcile { command } => inventory_commands::execute(command, true),
+        Command::Migrate { command } => migration_commands::execute(command),
         Command::Recover(output) => recover(output),
         Command::Source { command } => add_source(command),
         Command::Claim { command } => add_claim(command),

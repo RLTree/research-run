@@ -4,6 +4,7 @@ use clap::{Args, Parser, Subcommand};
 
 use super::handoff_arguments::HandoffCommand;
 use super::inventory_arguments::InventoryCommand;
+use super::migration_arguments::MigrationCommand;
 use super::output_arguments::{OutputArgs, RecoveryArgs};
 use super::retrieval_arguments::{
     ContextArgs, LimitArgs, ListArgs, RelatedArgs, SearchArgs, ShowArgs,
@@ -40,6 +41,11 @@ pub(super) enum Command {
     Reconcile {
         #[command(subcommand)]
         command: InventoryCommand,
+    },
+    /// Adopt an accepted v0.1 workspace without rewriting canonical records.
+    Migrate {
+        #[command(subcommand)]
+        command: MigrationCommand,
     },
     /// Manage source records.
     Source {

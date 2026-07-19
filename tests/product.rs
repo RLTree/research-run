@@ -8,6 +8,8 @@ mod handoff_journey;
 mod identifier_validation;
 #[path = "product/knowledge_history.rs"]
 mod knowledge_history;
+#[path = "product/migration_journey.rs"]
+mod migration_journey;
 #[path = "product/repository_authority.rs"]
 mod repository_authority;
 #[path = "product/researcher_journey.rs"]

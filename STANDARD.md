@@ -64,6 +64,10 @@ directory publication.
   acyclic. Generic relationships may describe a contradiction or dependency,
   but cannot affect claim assessment; only the existing evidence graph plus an
   explicit human review decision can do that.
+- v0.1 migration is lossless adoption, not schema reinterpretation. It binds
+  all canonical JSON paths and bytes before effects, rechecks them under the
+  write lock, creates only missing record directories, and appends one migration
+  record. Existing canonical bytes are never rewritten or deleted.
 - Production and hand-authored test Rust files contain at most 250 noncomment
   lines, and functions at most 80 physical lines. Splits must own product behavior;
   forwarding shells and generic buckets do not satisfy the limit.

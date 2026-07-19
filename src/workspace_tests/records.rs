@@ -157,6 +157,7 @@ fn review_graph_validation_uses_one_canonical_binding() {
         inventories: Vec::new(),
         knowledge: Vec::new(),
         relationships: Vec::new(),
+        migrations: Vec::new(),
     };
     let errors = workspace.reference_errors(&snapshot);
     assert!(
@@ -224,6 +225,7 @@ fn reference_validation_reports_every_invalid_relationship() {
         inventories: Vec::new(),
         knowledge: Vec::new(),
         relationships: Vec::new(),
+        migrations: Vec::new(),
     };
     let errors = workspace.reference_errors(&snapshot);
     for expected in [

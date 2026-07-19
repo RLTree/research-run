@@ -54,6 +54,7 @@ impl Workspace {
                 allow_pending,
                 &mut budget,
             )?,
+            migrations: self.load_optional_records("migrations", allow_pending, &mut budget)?,
         })
     }
 

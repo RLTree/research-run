@@ -5,6 +5,7 @@ use crate::Result;
 mod experiments;
 mod inventory;
 mod knowledge;
+mod migration;
 mod records;
 mod validation;
 
@@ -17,6 +18,7 @@ pub use knowledge::{
     EntityKind, EntityRef, KnowledgeKind, KnowledgeRecord, KnowledgeState, RelationshipKind,
     RelationshipRecord,
 };
+pub use migration::{MigrationPlan, MigrationRecord};
 pub use records::{
     Assessment, Authorship, ClaimRecord, EvidenceLink, Outcome, ProjectManifest, SourceProvenance,
     SourceRecord, Stance,
