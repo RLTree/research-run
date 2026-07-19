@@ -105,10 +105,18 @@ fn rust_files(repository: &Path) -> Vec<PathBuf> {
     while let Some(path) = pending.pop() {
         for entry in fs::read_dir(path).expect("read Rust source directory") {
             let entry = entry.expect("read Rust source entry");
+            let file_type = entry.file_type().expect("inspect Rust source entry");
             let path = entry.path();
-            if path.is_dir() {
+            assert!(
+                !file_type.is_symlink(),
+                "symlinked Rust source entry: {}",
+                path.display()
+            );
+            if file_type.is_dir() {
                 pending.push(path);
-            } else if path.extension().is_some_and(|extension| extension == "rs") {
+            } else if file_type.is_file()
+                && path.extension().is_some_and(|extension| extension == "rs")
+            {
                 files.push(path);
             }
         }

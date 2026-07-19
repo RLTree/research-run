@@ -4,6 +4,8 @@ use std::path::Path;
 
 use crate::{Error, Result};
 
+use super::pending_cleanup::PendingCleanup;
+use super::publication::{pending_path, write_pending};
 use super::recovery_plan::PendingRecord;
 use super::storage::{map_io, read_bounded, sync_directory};
 use super::{RecoveryResult, injected_storage_failure};
@@ -24,9 +26,9 @@ pub(super) fn commit_recovery(
 }
 
 fn discard_identical(record: PendingRecord, result: &mut RecoveryResult) -> Result<()> {
-    if read_bounded(&record.target)? != record.bytes
-        || injected_storage_failure("recovery target conflict")
-    {
+    let target = read_bounded(&record.target)?;
+    let target_matches = target.iter().eq(record.bytes.iter());
+    if !target_matches || injected_storage_failure("recovery target conflict") {
         return Err(Error::AmbiguousEffect(format!(
             "recovery conflict for {}; inspect both files",
             record.target.display()
@@ -42,7 +44,13 @@ fn discard_identical(record: PendingRecord, result: &mut RecoveryResult) -> Resu
         .path
         .parent()
         .expect("pending recovery records always have a parent directory");
-    sync_directory(parent)?;
+    sync_after_mutation(
+        parent,
+        format!(
+            "identical pending record was removed from {}",
+            parent.display()
+        ),
+    )?;
     result
         .discarded_identical
         .push(record.target.display().to_string());
@@ -55,19 +63,49 @@ fn publish_pending(
     result: &mut RecoveryResult,
 ) -> Result<()> {
     fail_before_publication(&record)?;
+    let canonical_pending = pending_path(&record.target);
+    let mut canonical_cleanup = PendingCleanup::new(canonical_pending.clone());
+    if let Err(error) = write_pending(&canonical_pending, &record.bytes) {
+        return Err(canonical_cleanup.after_failure(error));
+    }
     let publication = if injected_storage_failure("hard link recovered record") {
         Err(io::Error::other("injected storage failure"))
     } else {
-        fs::hard_link(&record.path, &record.target)
+        fs::hard_link(&canonical_pending, &record.target)
     };
-    map_io(publication, "publish recovered record", &record.target)?;
-    sync_directory(directory)?;
-    map_io(
+    if let Err(error) = map_io(publication, "publish recovered record", &record.target) {
+        return Err(canonical_cleanup.after_failure(error));
+    }
+    sync_after_mutation(
+        directory,
+        format!(
+            "recovered record may be published at {}",
+            record.target.display()
+        ),
+    )?;
+    if let Err(error) = canonical_cleanup.remove() {
+        return Err(Error::AmbiguousEffect(format!(
+            "recovered record was published at {} but canonical pending cleanup failed: {error}",
+            record.target.display()
+        )));
+    }
+    if let Err(error) = map_io(
         fs::remove_file(&record.path),
         "remove recovered pending file",
         &record.path,
+    ) {
+        return Err(Error::AmbiguousEffect(format!(
+            "recovered record was published at {} but original pending cleanup failed: {error}",
+            record.target.display()
+        )));
+    }
+    sync_after_mutation(
+        directory,
+        format!(
+            "recovered record was published but pending cleanup may not be durable at {}",
+            record.target.display()
+        ),
     )?;
-    sync_directory(directory)?;
     result.recovered.push(record.target.display().to_string());
     Ok(())
 }
@@ -81,4 +119,10 @@ fn fail_before_publication(record: &PendingRecord) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+fn sync_after_mutation(directory: &Path, effect: String) -> Result<()> {
+    sync_directory(directory).map_err(|source| {
+        Error::AmbiguousEffect(format!("{effect}; directory sync failed: {source}"))
+    })
 }

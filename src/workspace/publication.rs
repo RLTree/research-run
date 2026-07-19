@@ -123,7 +123,7 @@ fn inject_inspection_race(target: &Path, content: &[u8]) {
 #[cfg(not(all(any(test, coverage), unix)))]
 fn inject_inspection_race(_target: &Path, _content: &[u8]) {}
 
-fn pending_path(target: &Path) -> PathBuf {
+pub(super) fn pending_path(target: &Path) -> PathBuf {
     let parent = target
         .parent()
         .expect("canonical publication targets are rooted in the workspace");
@@ -135,7 +135,7 @@ fn pending_path(target: &Path) -> PathBuf {
     parent.join(format!(".{file_name}.{}.{}.tmp", std::process::id(), nonce))
 }
 
-fn write_pending(path: &Path, content: &[u8]) -> Result<()> {
+pub(super) fn write_pending(path: &Path, content: &[u8]) -> Result<()> {
     if injected_storage_failure("create pending record") {
         return Err(Error::io(
             "create pending record",
