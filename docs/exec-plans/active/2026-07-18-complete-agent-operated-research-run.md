@@ -168,6 +168,30 @@ pass.
   before broad implementation. That milestone signoff is permanently withheld;
   final exact-candidate review remains required and cannot retroactively replace
   it.
+- 2026-07-18: Clean candidate `d0f58cb7c6a2bb30fd80e13dc28d40b292860195`
+  packaged 174 files (142,749-byte archive), installed in isolation, and passed
+  the installed journey. The binary was 2,004,112 bytes; warm averages were
+  2.4 ms first-use, 3.4 ms status, and 4.2 ms recovery on this machine. These are
+  single-machine observations, not regression budgets.
+- 2026-07-18: The disposable Nathan benchmark indexed 355 files / 117,816,938
+  bytes in 0.24 s and applied in 0.27 s. The non-Research-Run byte digest stayed
+  `b31884eaf00e682ae725329d926eb1d8fb99c2546522a1cb3ac88e290d233d94`;
+  repeat apply returned `created: false`; the ZNF385A query returned 13 bounded
+  matches; and a fresh directory validated the 13-item portable handoff without
+  access to the source workspace. No research bodies were retained.
+- 2026-07-18: Gold Stack kernel
+  `b030c0e2b37509fead964a85e307cac3305c6655266ad63928635505f3a0cb45`
+  returned `triggered: false`, `boundary: none`, no profiles, and no topics for
+  the established Rust stack. Retrofit preview reported no stack decision
+  boundary. No profile was applied; `check-profile` correctly reported the
+  absent generated profile, so profile-materialization/check claims are
+  inapplicable rather than passed.
+- 2026-07-18: Refreshed UltraGoal source is clean branch
+  `codex/successor-contract-v2-live-product` at
+  `6bd743be095b217ab66ec3417c44e7f6749ff49e`. The installed `ultragoal` runtime
+  is absent, so capability, context, fit inspect/plan, installed activation, and
+  tool-verified fit claims remain withheld. Source guidance alone is the active
+  route for review.
 
 ## Current claim ceiling
 
