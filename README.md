@@ -105,6 +105,11 @@ The CLI records the claim's current sorted evidence IDs with each review. Adding
 later evidence makes the old decision historical and returns the claim to
 `unreviewed` until another explicit human review covers the changed graph.
 
+Automation can distinguish failure classes by exit status: `1` is local I/O,
+`2` is malformed or invalid input, `3` is not found, `4` is conflicting or
+ambiguous authority, and `5` is budget exhaustion. Successful commands return
+`0`. Error text is diagnostic only; callers should branch on the status.
+
 ## Retrofit an existing project
 
 Planning is read-only and emits authoritative JSON. Keep the plan outside the

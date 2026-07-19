@@ -41,7 +41,8 @@ contradiction history. They never overwrite their endpoints and never participat
 in claim assessment; `EvidenceLink` plus `ReviewDecision` remain the sole claim
 graph and promotion authority.
 
-Retrieval is a bounded deterministic projection over the same snapshot. `list`,
+Retrieval is a bounded deterministic projection over one canonical snapshot per
+command. `list`,
 `show`, `search`, `recent`, `timeline`, `related`, `unresolved`, `blockers`,
 `next`, and `context` never write. JSON is the automation interface; `--human`
 renders a terminal-neutralized inspection view. Search results name matched

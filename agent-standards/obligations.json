@@ -136,7 +136,7 @@
       "module": "03",
       "status": "mechanized",
       "evidence": [
-        "docs/exec-plans/active/2026-07-17-research-run-v0.1-kickoff.md",
+        "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md",
         "STANDARD.md"
       ],
       "reason": "One living ExecPlan and single-root execution are current authority."
@@ -197,7 +197,7 @@
       "module": "09",
       "status": "mechanized",
       "evidence": [
-        "docs/exec-plans/active/2026-07-17-research-run-v0.1-kickoff.md",
+        "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md",
         "tests/product/researcher_journey.rs"
       ],
       "reason": "The kickoff owns the job, outcomes, claim ceiling, and representative journey for the current v0.1 product claim."

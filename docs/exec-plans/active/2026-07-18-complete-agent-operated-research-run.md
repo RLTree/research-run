@@ -154,6 +154,20 @@ pass.
   starting worktree is clean and synchronized. Created the feature branch.
 - 2026-07-18: Loaded the named Gold Stack router skill. Its generated profile can
   prove profile consistency only; it cannot promote product or runtime claims.
+- 2026-07-18: The deterministic Gold Stack route returned `triggered: false` for
+  the established Rust CLI, and retrofit preview proposed no stack mutation.
+  No generated-profile or installed-profile claim is active.
+- 2026-07-18: Implemented byte-preserving retrofit/reconciliation, typed
+  knowledge and relationships, bounded retrieval, portable handoff, and lossless
+  v0.1 migration in coherent commits through `209b12c`.
+- 2026-07-18: Current source proof records 112/112 normal tests, 6,277/6,277
+  unique production regions, 3,209/3,209 executable production lines, 411/411
+  production functions, and 116/116 viable selected mutants killed; package,
+  install, benchmark, review, GitHub, and completion claims remain pending.
+- 2026-07-18: The requested pre-implementation four-persona round was not run
+  before broad implementation. That milestone signoff is permanently withheld;
+  final exact-candidate review remains required and cannot retroactively replace
+  it.
 
 ## Current claim ceiling
 

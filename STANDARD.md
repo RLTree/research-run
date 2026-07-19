@@ -89,17 +89,22 @@ scripts/check artifacts
 candidate source, dependency, security, mutation, package, install, journey, and
 observation gate and runs only when a claim can move. `scripts/check
 coverage` requires `cargo-llvm-cov` and enforces 100% line, function, and region
-coverage over the single production-shaped `product` integration target, with
-all production files retained in the denominator. Unit tests run through
-nextest and doctests run through Cargo as separate correctness surfaces.
+coverage over every target with every production file retained in the
+denominator. The checker counts each source coordinate once because LLVM emits
+duplicate mappings for generic monomorphs and the separate `cfg(test)` library
+build; every unique production region, line, and function must execute at least
+once. Unit tests run through nextest and doctests run through Cargo as separate
+correctness surfaces.
 `scripts/check-standards`
 validates all 12 source-guidance modules plus contextual namespace red, green,
 and tamper fixtures plus semantic-tree limits. `scripts/check dependencies`
 requires zero duplicate dependency versions, current RustSec audit and Cargo Deny
 passes, and a valid ephemeral CycloneDX inventory. `scripts/check mutations`
-tests a bounded set covering typed parsing, claim promotion, path confinement,
-locking, publication, recovery, and terminal neutralization; every viable mutant
-must be killed and compiler-rejected mutants remain explicitly classified.
+tests a bounded set covering typed parsing and validation, claim promotion, path
+confinement, locking, publication, recovery, inventory/reconciliation,
+knowledge/history, migration, retrieval, handoff validation, and terminal
+neutralization; every viable mutant must be killed and compiler-rejected mutants
+remain explicitly classified.
 `scripts/check artifacts` requires a clean commit, builds and installs the Cargo
 package, exercises the installed researcher journey, and emits machine-local
 latency, size, install-footprint, and target-growth observations. There is no
