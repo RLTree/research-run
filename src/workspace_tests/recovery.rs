@@ -106,3 +106,42 @@ fn injected_recovery_faults_preserve_pending_effects() {
     assert!(workspace.recover().is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
+
+#[test]
+fn post_mutation_recovery_sync_failures_are_ambiguous() {
+    let published_root = temporary();
+    let published =
+        Workspace::initialize(&published_root, "Published sync").expect("initialize workspace");
+    let published_pending = published.state.join("sources/.source-one.json.9.1.tmp");
+    fs::write(
+        &published_pending,
+        serde_json::to_vec_pretty(&source("source-one")).expect("source"),
+    )
+    .expect("pending source");
+    inject_storage_failure("sync record directory");
+    let error = published.recover().expect_err("publication sync failure");
+    assert!(matches!(error, crate::Error::AmbiguousEffect(_)));
+    assert!(error.to_string().contains("directory sync failed"));
+    assert!(published_pending.exists());
+    assert!(published.state.join("sources/source-one.json").exists());
+    fs::remove_dir_all(published_root).expect("remove fixture");
+
+    let discarded_root = temporary();
+    let discarded =
+        Workspace::initialize(&discarded_root, "Discard sync").expect("initialize workspace");
+    discarded
+        .add_source(&source("source-one"))
+        .expect("canonical source");
+    let discarded_pending = discarded.state.join("sources/.source-one.json.9.1.tmp");
+    fs::copy(
+        discarded.state.join("sources/source-one.json"),
+        &discarded_pending,
+    )
+    .expect("identical pending source");
+    inject_storage_failure("sync record directory");
+    let error = discarded.recover().expect_err("discard sync failure");
+    assert!(matches!(error, crate::Error::AmbiguousEffect(_)));
+    assert!(error.to_string().contains("directory sync failed"));
+    assert!(!discarded_pending.exists());
+    fs::remove_dir_all(discarded_root).expect("remove fixture");
+}

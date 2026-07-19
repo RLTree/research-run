@@ -2,11 +2,16 @@ use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::path::Path;
 
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::domain::{CanonicalRecord, ProjectManifest};
+use crate::domain::{
+    CanonicalRecord, ClaimRecord, EvidenceLink, ExperimentReceipt, ProjectManifest, ReviewDecision,
+    SourceRecord,
+};
 use crate::{Error, Result};
 
+use super::publication::canonical_json_bytes;
 use super::recovery_commit::commit_recovery;
 use super::recovery_plan::PendingRecord;
 use super::storage::{ReadBudget, parse_json, read_bounded, read_json_with_budget};
@@ -23,25 +28,40 @@ pub(super) struct RecoveryBatch {
 
 impl Workspace {
     pub(super) fn preflight_recovery_batch(&self) -> Result<RecoveryBatch> {
-        let manifest_pending = self.collect_recovery_pending(&self.state)?;
-        let source_pending = self.collect_recovery_pending(&self.state.join("sources"))?;
-        let claim_pending = self.collect_recovery_pending(&self.state.join("claims"))?;
-        let experiment_pending = self.collect_recovery_pending(&self.state.join("experiments"))?;
-        let evidence_pending = self.collect_recovery_pending(&self.state.join("evidence"))?;
-        let review_pending = self.collect_recovery_pending(&self.state.join("reviews"))?;
+        let mut manifest_pending = self.collect_recovery_pending(&self.state)?;
+        let mut source_pending = self.collect_recovery_pending(&self.state.join("sources"))?;
+        let mut claim_pending = self.collect_recovery_pending(&self.state.join("claims"))?;
+        let mut experiment_pending =
+            self.collect_recovery_pending(&self.state.join("experiments"))?;
+        let mut evidence_pending = self.collect_recovery_pending(&self.state.join("evidence"))?;
+        let mut review_pending = self.collect_recovery_pending(&self.state.join("reviews"))?;
         let mut budget = ReadBudget::default();
+        let manifest = canonical_manifest(self, &mut manifest_pending, &mut budget)?;
+        let sources =
+            canonical_records::<SourceRecord>(self, "sources", &mut source_pending, &mut budget)?;
+        let claims =
+            canonical_records::<ClaimRecord>(self, "claims", &mut claim_pending, &mut budget)?;
+        let experiments = canonical_records::<ExperimentReceipt>(
+            self,
+            "experiments",
+            &mut experiment_pending,
+            &mut budget,
+        )?;
+        let evidence = canonical_records::<EvidenceLink>(
+            self,
+            "evidence",
+            &mut evidence_pending,
+            &mut budget,
+        )?;
+        let reviews =
+            canonical_records::<ReviewDecision>(self, "reviews", &mut review_pending, &mut budget)?;
         let snapshot = Snapshot {
-            manifest: prospective_manifest(self, &manifest_pending, &mut budget)?,
-            sources: prospective_records(self, "sources", &source_pending, &mut budget)?,
-            claims: prospective_records(self, "claims", &claim_pending, &mut budget)?,
-            experiments: prospective_records(
-                self,
-                "experiments",
-                &experiment_pending,
-                &mut budget,
-            )?,
-            evidence: prospective_records(self, "evidence", &evidence_pending, &mut budget)?,
-            reviews: prospective_records(self, "reviews", &review_pending, &mut budget)?,
+            manifest,
+            sources,
+            claims,
+            experiments,
+            evidence,
+            reviews,
         };
         if injected_storage_failure("final snapshot load") {
             return Err(Error::invalid(
@@ -129,12 +149,20 @@ fn validate_pending_review_graphs(snapshot: &Snapshot, pending: &[PendingRecord]
     Ok(())
 }
 
-fn prospective_manifest(
+fn canonical_manifest(
     workspace: &Workspace,
-    pending: &[PendingRecord],
+    pending: &mut [PendingRecord],
     budget: &mut ReadBudget,
 ) -> Result<ProjectManifest> {
     let target = workspace.state.join("manifest.json");
+    let mut candidate = None;
+    for record in pending.iter_mut() {
+        budget.consume(&record.path, record.bytes.len() as u64)?;
+        let parsed: ProjectManifest = parse_json(&record.bytes, &record.target)?;
+        parsed.validate()?;
+        record.bytes = canonical_json_bytes(&parsed);
+        candidate.get_or_insert(parsed);
+    }
     let unique = unique_pending(pending)?;
     if unique.iter().any(|record| record.target != target) {
         return Err(Error::invalid(
@@ -148,31 +176,20 @@ fn prospective_manifest(
         }
         return read_json_with_budget::<ProjectManifest>(&target, budget);
     }
-    let record = unique
-        .into_iter()
-        .next()
-        .ok_or_else(|| Error::NotFound("recovery requires a project manifest".to_owned()))?;
-    budget.consume(&record.path, record.bytes.len() as u64)?;
-    let candidate: ProjectManifest = parse_json(&record.bytes, &record.target)?;
-    candidate.validate()?;
-    Ok(candidate)
+    candidate.ok_or_else(|| Error::NotFound("recovery requires a project manifest".to_owned()))
 }
 
-fn prospective_records<T>(
+fn canonical_records<T>(
     workspace: &Workspace,
     directory: &str,
-    pending: &[PendingRecord],
+    pending: &mut [PendingRecord],
     budget: &mut ReadBudget,
 ) -> Result<Vec<T>>
 where
-    T: CanonicalRecord + DeserializeOwned,
+    T: CanonicalRecord + DeserializeOwned + Serialize,
 {
-    let mut records = workspace.load_records(directory, true, budget)?;
-    for record in unique_pending(pending)? {
-        if record.target.exists() {
-            ensure_identical_target(record)?;
-            continue;
-        }
+    let mut candidates = BTreeMap::<std::path::PathBuf, T>::new();
+    for record in pending.iter_mut() {
         budget.consume(&record.path, record.bytes.len() as u64)?;
         let candidate: T = parse_json(&record.bytes, &record.target)?;
         candidate.validate()?;
@@ -182,7 +199,20 @@ where
                 "filename does not match record id",
             ));
         }
-        records.push(candidate);
+        record.bytes = canonical_json_bytes(&candidate);
+        candidates.entry(record.target.clone()).or_insert(candidate);
+    }
+    let mut records = workspace.load_records(directory, true, budget)?;
+    for record in unique_pending(pending)? {
+        if record.target.exists() {
+            ensure_identical_target(record)?;
+            continue;
+        }
+        records.push(
+            candidates
+                .remove(&record.target)
+                .expect("every canonical pending target retains its typed record"),
+        );
     }
     Ok(records)
 }

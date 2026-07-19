@@ -60,8 +60,31 @@ for gate in scripts/check scripts/check-coverage scripts/check-standards \
 done
 
 while IFS= read -r evidence; do
+  case "$evidence" in
+    /*|..|../*|*/..|*/../*)
+      echo "standards obligation failure: mechanized evidence path $evidence escapes the repository" >&2
+      echo "withheld: agent_standard_closure and package_delta_closure" >&2
+      exit 1
+      ;;
+  esac
   if [[ ! -e "$evidence" ]]; then
     echo "standards obligation failure: mechanized evidence path $evidence is missing" >&2
+    echo "withheld: agent_standard_closure and package_delta_closure" >&2
+    exit 1
+  fi
+  evidence_entry="$repo_root"
+  IFS='/' read -r -a evidence_segments <<< "$evidence"
+  for segment in "${evidence_segments[@]}"; do
+    evidence_entry="$evidence_entry/$segment"
+    if [[ -L "$evidence_entry" ]]; then
+      echo "standards obligation failure: mechanized evidence path $evidence contains a symlink" >&2
+      echo "withheld: agent_standard_closure and package_delta_closure" >&2
+      exit 1
+    fi
+  done
+  resolved_evidence="$(realpath "$evidence")"
+  if [[ "$resolved_evidence" != "$repo_root" && "$resolved_evidence" != "$repo_root/"* ]]; then
+    echo "standards obligation failure: mechanized evidence path $evidence resolves outside the repository" >&2
     echo "withheld: agent_standard_closure and package_delta_closure" >&2
     exit 1
   fi
