@@ -2,8 +2,8 @@ use super::{
     AuthorshipArg, ClaimCommand, Cli, Command, ContextArgs, EvidenceArgs, EvidenceCommand,
     ExperimentCommand, HandoffCommand, LimitArgs, ListArgs, OutcomeArg, OutputArgs, ProvenanceArg,
     RelatedArgs, ReviewArg, ReviewCommand, SearchArgs, ShowArgs, SourceCommand, StanceArg,
-    discover_current, execute, inject_current_directory_failure, parse_artifact,
-    render_human_status, terminal_text,
+    discover_current, execute, inject_current_directory, inject_current_directory_failure,
+    parse_artifact, render_human_status, terminal_text,
 };
 use crate::domain::{
     ArtifactLocatorType, Assessment, Authorship, Outcome, SourceProvenance, Stance,
@@ -212,5 +212,9 @@ fn empty_human_projection_and_current_directory_failure_are_explicit() {
             ..
         })
     ));
+    let root = std::env::temp_dir().join(format!("research-run-cli-empty-{}", std::process::id()));
+    std::fs::create_dir(&root).expect("empty directory");
+    inject_current_directory(&root);
     assert!(matches!(discover_current(), Err(crate::Error::NotFound(_))));
+    std::fs::remove_dir(root).expect("remove empty directory");
 }
