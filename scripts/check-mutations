@@ -16,7 +16,9 @@ mutation_tests='not test(/capacity/)'
 
 RUSTFLAGS='--cfg coverage --check-cfg=cfg(coverage)' cargo mutants \
   --cap-lints true \
-  --test-tool nextest \
+  --test-tool cargo \
+  --cargo-arg=-j \
+  --cargo-arg=1 \
   --jobs "$mutation_jobs" \
   --jobserver-tasks "$mutation_jobs" \
   --timeout 60 \
