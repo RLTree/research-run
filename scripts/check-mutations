@@ -7,7 +7,12 @@ cd "$repo_root"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
 export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
 export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
-mutation_jobs="${RESEARCH_RUN_MUTATION_JOBS:-1}"
+if [[ "${RESEARCH_RUN_MUTATION_JOBS:-1}" != "1" ]]; then
+  echo "mutation custody failure: RESEARCH_RUN_MUTATION_JOBS must be 1" >&2
+  echo "withheld: mutation_proof and package_delta_closure" >&2
+  exit 2
+fi
+mutation_jobs=1
 candidate="$(git rev-parse HEAD)"
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
   echo "mutation failure: the candidate worktree must be clean before the frozen-candidate gate" >&2
