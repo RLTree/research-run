@@ -16,7 +16,7 @@ RUSTFLAGS='--cfg coverage --check-cfg=cfg(coverage)' cargo mutants \
   --cargo-arg=-j \
   --cargo-arg=1 \
   --jobs "$mutation_jobs" \
-  --jobserver-tasks "$mutation_jobs" \
+  --jobserver false \
   --timeout 60 \
   --build-timeout 60 \
   --baseline run \
