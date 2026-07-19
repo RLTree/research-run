@@ -228,15 +228,36 @@ pass.
   filesystem and CLI authority. The product enforces explicit typed review and
   exact semantic binding, but human provenance and final human signoff remain
   withheld until that trust boundary is supplied.
+- 2026-07-19: Candidate `33c2725` changed only the mutation-runner custody
+  controls after the current production-source test repair. Its mutation command
+  uses Cargo's test runner with one outer mutation worker and `cargo -j 1`, with
+  the mutation-runner jobserver disabled. Separate live process checks observed
+  one mutation parent, one Cargo child, and one `rustc` child at a time. The run
+  ended before its selected set completed: its outcome ledger contains the
+  passing baseline, 108 caught mutants, and 4 compiler-unviable mutants. This
+  is incomplete mutation evidence, not a zero-survivor or package-delta claim;
+  it must not be restarted without an explicit new decision boundary.
+- 2026-07-19: The same clean candidate passed `scripts/check fast` and an
+  isolated `scripts/check artifacts` package, install, installed-binary
+  journey, and machine-local observation. The package archive was 157,104
+  bytes, the installed binary was 2,036,848 bytes, and the installed footprint
+  was 2,000 KiB. These observations remain machine-local only. They do not
+  substitute for the incomplete mutation gate, final independent review, human
+  provenance, or audience-bound Product Fitness proof.
+- 2026-07-19: PR #4 merged candidate `33c2725` into `main` as merge commit
+  `7b18fe8` outside this run's merge authority. The merged branch has no open
+  PR or remaining delta. A subsequent follow-up PR may record this state, but
+  cannot retroactively make the original delivery's open-PR condition true.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. Clean candidate `80657ca` has current
-source, package/install journey, machine-local artifact, and GitHub proof. Its
-coverage and mutation evidence remain bound to predecessor `98082eb`; this
-governance refresh creates later bytes and must pass the affected gates after it
-is committed. The canonical UltraGoal retrofit remains blocked by four protected
-authority conflicts, and final independent review, human-authority proof, and
-audience-bound Product Fitness proof remain pending or withheld on their own
-surfaces. Release, merge, scientific truth, scientific impact, continuance, and
-unobserved real researcher usefulness are outside this run.
+No completion claim is active for this plan. Candidate `33c2725` has current
+fast-check and package/install journey evidence, plus machine-local artifact
+observations. Its mutation evidence is incomplete, so the affected mutation and
+package-delta closure remains withheld. The original delivery's open-PR condition
+is also absent because PR #4 is already merged. The canonical UltraGoal retrofit
+remains blocked by four protected authority conflicts, and final independent
+review, human-authority proof, and audience-bound Product Fitness proof remain
+pending or withheld on their own surfaces. Release, scientific truth, scientific
+impact, continuance, and unobserved real researcher usefulness are outside this
+run.
