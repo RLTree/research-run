@@ -7,7 +7,7 @@ cd "$repo_root"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
 export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
 export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
-if [[ "${RESEARCH_RUN_MUTATION_JOBS:-1}" != "1" ]]; then
+if [[ "${RESEARCH_RUN_MUTATION_JOBS-1}" != "1" ]]; then
   echo "mutation custody failure: RESEARCH_RUN_MUTATION_JOBS must be 1" >&2
   echo "withheld: mutation_proof and package_delta_closure" >&2
   exit 2
