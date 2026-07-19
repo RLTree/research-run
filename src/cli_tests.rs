@@ -204,6 +204,10 @@ fn empty_human_projection_and_current_directory_failure_are_explicit() {
     assert!(output.contains("Claims\n- None. Next action: add a claim."));
     assert!(output.contains("Unreviewed AI drafts\n- None."));
     assert!(output.contains("Experiments\n- None."));
+    assert!(matches!(
+        discover_current(),
+        Ok(_) | Err(crate::Error::NotFound(_))
+    ));
     inject_current_directory_failure();
     assert!(matches!(
         discover_current(),
