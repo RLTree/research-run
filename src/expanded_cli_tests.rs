@@ -3,9 +3,9 @@ use std::io::{self, Read};
 
 use clap::Parser;
 
-use super::input::{
-    is_allowed_platform_alias, read_json_input, read_limited, reject_symlink_chain,
-};
+#[cfg(target_os = "macos")]
+use super::input::is_allowed_platform_alias;
+use super::input::{read_json_input, read_limited, reject_symlink_chain};
 use super::{Cli, execute, inject_current_directory};
 use crate::domain::RelationshipRecord;
 use crate::workspace::Workspace;
