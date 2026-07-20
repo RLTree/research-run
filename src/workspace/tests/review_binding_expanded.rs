@@ -90,10 +90,7 @@ fn review_binding_covers_experiment_artifact_and_stale_authority() {
     workspace
         .add_evidence(&artifact)
         .expect("artifact evidence");
-    fs::remove_file(root.join("experiment-artifact.txt")).expect("remove experiment artifact");
-    assert!(workspace.review_subject_binding("claim-one").is_err());
-    fs::write(root.join("experiment-artifact.txt"), b"experiment bytes")
-        .expect("restore experiment artifact");
+    assert_missing_experiment_artifact_rejected(&root, &workspace);
     let mut decision = review("review-one", "claim-one");
     decision.evidence_ids = vec![
         "evidence-artifact".to_owned(),
@@ -144,6 +141,13 @@ fn review_binding_covers_experiment_artifact_and_stale_authority() {
         fs::remove_dir_all(outside).expect("remove outside");
     }
     fs::remove_dir_all(root).expect("remove fixture");
+}
+
+fn assert_missing_experiment_artifact_rejected(root: &std::path::Path, workspace: &Workspace) {
+    fs::remove_file(root.join("experiment-artifact.txt")).expect("remove experiment artifact");
+    assert!(workspace.review_subject_binding("claim-one").is_err());
+    fs::write(root.join("experiment-artifact.txt"), b"experiment bytes")
+        .expect("restore experiment artifact");
 }
 
 #[test]
