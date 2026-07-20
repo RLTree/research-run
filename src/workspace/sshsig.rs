@@ -23,6 +23,7 @@ pub(super) fn parse_authority_key(authority: &ReviewAuthority) -> Result<ParsedP
 }
 
 pub(super) fn parse_openssh_public_key(encoded: &str) -> Result<ParsedPublicKey> {
+    let encoded = encoded.strip_suffix('\n').unwrap_or(encoded);
     if encoded.is_empty() || encoded.contains('\r') || encoded.contains('\n') {
         return Err(Error::invalid(
             "review authority public_key",

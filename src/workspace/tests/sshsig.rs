@@ -10,6 +10,7 @@ mod malformed;
 
 #[test]
 fn openssh_key_parser_rejects_each_malformed_boundary() {
+    assert!(parse_openssh_public_key(&format!("{}\n", public_key())).is_ok());
     assert!(parse_openssh_public_key("rsa AAAA").is_err());
     assert!(parse_openssh_public_key("ssh-ed25519").is_err());
     assert!(parse_openssh_public_key("ssh-ed25519 !").is_err());
