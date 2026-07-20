@@ -14,3 +14,9 @@ Always preserve the active ExecPlan, typed product authority, and claim ceiling.
 Repository policy may tighten inherited law. If upstream and repository law
 conflict, report the conflict and follow the current user and repository-specific
 authority rather than silently weakening or overwriting it.
+
+Durable repository checkouts, linked worktrees, unique evidence, and recovery
+state must live under the repository or another durable project worktree root.
+Never place them under `/tmp`, `/private/tmp`, or an equivalent temporary
+filesystem. Disposable command scratch may use `TMPDIR` only when it is
+reproducible, contains no unique state, and is removed by the producing command.

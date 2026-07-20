@@ -4,6 +4,14 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
+case "$repo_root/" in
+  /tmp/* | /private/tmp/*)
+    echo "worktree custody failure: durable repository work may not run from a temporary filesystem" >&2
+    echo "move the checkout or linked worktree under a durable project root" >&2
+    exit 1
+    ;;
+esac
+
 ledger="agent-standards/obligations.json"
 expected="agent-standards/expected-classifications.json"
 
