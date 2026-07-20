@@ -41,7 +41,7 @@ if ! jq -en --arg src "$repo_root/src/" '
     {path: ($src + "legacy_tests.rs"), expected: false},
     {path: ($src + "contest.rs"), expected: true}
   ] | all(.[]; ((.path | production) == .expected))
-'; then
+' >/dev/null; then
   echo "coverage source classification fixture failed" >&2
   exit 1
 fi
