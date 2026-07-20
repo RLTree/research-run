@@ -31,6 +31,12 @@ pub(super) enum Command {
         path: PathBuf,
         #[arg(long)]
         name: String,
+        /// Stable identifier for the review authority anchored at initialization.
+        #[arg(long, requires = "review_authority_public_key")]
+        review_authority_id: Option<String>,
+        /// OpenSSH Ed25519 public key file, or - for standard input.
+        #[arg(long, requires = "review_authority_id")]
+        review_authority_public_key: Option<String>,
     },
     /// Inventory a populated project and initialize managed state only on apply.
     Retrofit {
@@ -198,7 +204,8 @@ pub(super) enum ExperimentCommand {
 
 #[derive(Debug, Subcommand)]
 pub(super) enum ReviewCommand {
-    Add {
+    /// Emit the exact canonical request that the human authority must sign.
+    Prepare {
         #[arg(long)]
         id: String,
         #[arg(long)]
@@ -209,5 +216,12 @@ pub(super) enum ReviewCommand {
         rationale: String,
         #[arg(long)]
         reviewer: String,
+    },
+    /// Import a prepared request and its detached SSH signature.
+    Add {
+        #[arg(long)]
+        request: String,
+        #[arg(long)]
+        signature: String,
     },
 }

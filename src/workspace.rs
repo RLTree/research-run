@@ -6,8 +6,8 @@ use serde::Serialize;
 
 use crate::domain::{
     Assessment, Authorship, ClaimRecord, EvidenceLink, ExperimentReceipt, InventorySnapshot,
-    KnowledgeRecord, MigrationRecord, ProjectManifest, RelationshipRecord, ReviewDecision,
-    SourceRecord,
+    KnowledgeRecord, MigrationRecord, ProjectManifest, RelationshipRecord, ReviewAuthority,
+    ReviewDecision, SourceRecord,
 };
 
 mod inventory;
@@ -21,6 +21,7 @@ mod pending_cleanup;
 mod publication;
 mod records;
 mod recovery;
+mod recovery_canonical;
 mod recovery_commit;
 mod recovery_optional;
 mod recovery_plan;
@@ -33,8 +34,10 @@ mod retrieval_canonical;
 mod retrieval_context;
 mod retrieval_items;
 mod retrieval_types;
+mod review_authority;
 mod review_binding;
 mod snapshot;
+mod sshsig;
 mod status;
 mod storage;
 mod write_lock;
@@ -194,6 +197,7 @@ pub(super) struct Snapshot {
     pub(super) evidence: Vec<EvidenceLink>,
     pub(super) experiments: Vec<ExperimentReceipt>,
     pub(super) reviews: Vec<ReviewDecision>,
+    pub(super) review_authorities: Vec<ReviewAuthority>,
     pub(super) inventories: Vec<InventorySnapshot>,
     pub(super) knowledge: Vec<KnowledgeRecord>,
     pub(super) relationships: Vec<RelationshipRecord>,
@@ -208,6 +212,7 @@ impl Snapshot {
             ("evidence", self.evidence.len()),
             ("experiment", self.experiments.len()),
             ("review", self.reviews.len()),
+            ("review-authority", self.review_authorities.len()),
             ("inventory", self.inventories.len()),
             ("knowledge", self.knowledge.len()),
             ("relationship", self.relationships.len()),

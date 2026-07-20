@@ -24,7 +24,10 @@ cargo install --path "$observation_root/research-run-0.1.0" --locked \
 binary="$observation_root/install/bin/research-run"
 
 workspace="$observation_root/journey"
-"$binary" init "$workspace" --name "Installed researcher journey" >/dev/null
+ssh-keygen -q -t ed25519 -N '' -f "$observation_root/review-key"
+"$binary" init "$workspace" --name "Installed researcher journey" \
+  --review-authority-id researcher \
+  --review-authority-public-key "$observation_root/review-key.pub" >/dev/null
 
 installed_command() {
   (cd "$workspace" && "$binary" "$@")
@@ -39,8 +42,13 @@ installed_command evidence add --id evidence-one --claim claim-one --source sour
 installed_command experiment add --id experiment-one --question 'Question?' --method-ref method.md \
   --observation Observed --interpretation Interpretation --limitation Limited \
   --outcome negative --next-move Repeat >/dev/null
-installed_command review add --id review-one --claim claim-one --decision limited \
-  --rationale 'Negative repeat limits the claim.' --reviewer Researcher >/dev/null
+installed_command review prepare --id review-one --claim claim-one --decision limited \
+  --rationale 'Negative repeat limits the claim.' --reviewer Researcher \
+  >"$observation_root/review-request.json"
+ssh-keygen -Y sign -f "$observation_root/review-key" \
+  -n research-run-review-v1 "$observation_root/review-request.json" >/dev/null
+installed_command review add --request "$observation_root/review-request.json" \
+  --signature "$observation_root/review-request.json.sig" >/dev/null
 installed_command validate --json | jq -e '.valid == true' >/dev/null
 installed_command status --json | jq -e \
   '.claims[0].assessment == "limited" and .experiments[0].outcome == "negative"' >/dev/null

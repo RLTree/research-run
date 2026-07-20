@@ -81,6 +81,30 @@ fn every_write_command_propagates_lock_path_failure() {
             "command {args:?} ignored lock failure"
         );
     }
+    let signed = crate::review_test_signing::prepare_signed_review(
+        &root.0,
+        "review-one",
+        "claim-one",
+        "limited",
+        "Rationale",
+        "Reviewer",
+    );
+    assert!(
+        !run(
+            &root.0,
+            &[
+                "review",
+                "add",
+                "--request",
+                &signed.request.to_string_lossy(),
+                "--signature",
+                &signed.signature.to_string_lossy(),
+            ],
+            Some("open workspace write lock"),
+        )
+        .status
+        .success()
+    );
 }
 
 fn write_command_arguments() -> Vec<Vec<&'static str>> {
@@ -146,20 +170,6 @@ fn write_command_arguments() -> Vec<Vec<&'static str>> {
             "Specific",
             "--authorship",
             "human",
-        ],
-        vec![
-            "review",
-            "add",
-            "--id",
-            "review-one",
-            "--claim",
-            "claim-one",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Rationale",
-            "--reviewer",
-            "Reviewer",
         ],
     ]
 }

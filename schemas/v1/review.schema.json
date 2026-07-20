@@ -4,7 +4,7 @@
   "title": "Research Run ReviewDecision v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "kind", "id", "claim_id", "subject_sha256", "decision", "rationale", "reviewer"],
+  "required": ["schema_version", "kind", "id", "claim_id", "subject_sha256", "decision", "rationale", "reviewer", "authorization"],
   "properties": {
     "schema_version": { "const": 1 },
     "kind": { "const": "review" },
@@ -18,7 +18,17 @@
     "subject_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "decision": { "enum": ["unsupported", "limited", "supported", "contradicted"] },
     "rationale": { "$ref": "types.schema.json#/$defs/text" },
-    "reviewer": { "$ref": "types.schema.json#/$defs/text" }
+    "reviewer": { "$ref": "types.schema.json#/$defs/text" },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_id", "signer_fingerprint", "signature"],
+      "properties": {
+        "authority_id": { "$ref": "types.schema.json#/$defs/id" },
+        "signer_fingerprint": { "$ref": "types.schema.json#/$defs/text" },
+        "signature": { "$ref": "types.schema.json#/$defs/text" }
+      }
+    }
   },
   "allOf": [
     {

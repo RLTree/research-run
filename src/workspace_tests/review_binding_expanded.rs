@@ -21,7 +21,7 @@ fn review_writes_require_exact_current_subject_and_known_claim() {
 #[test]
 fn review_binding_covers_experiment_artifact_and_stale_authority() {
     let root = temporary();
-    let workspace = Workspace::initialize(&root, "Review subject graph").expect("initialize");
+    let workspace = review_workspace(&root, "Review subject graph");
     workspace.add_claim(&claim("claim-one")).expect("claim");
     workspace
         .add_experiment(&experiment("experiment-one"))
@@ -43,6 +43,7 @@ fn review_binding_covers_experiment_artifact_and_stale_authority() {
         "evidence-experiment".to_owned(),
     ];
     decision.subject_sha256 = Some(workspace.review_subject_binding("claim-one").unwrap().1);
+    authorize_review(&workspace, &mut decision);
     workspace.add_review(&decision).expect("review");
     fs::remove_file(root.join("artifact.txt")).expect("remove artifact");
     let errors = workspace.review_binding_errors(&workspace.load_snapshot().expect("snapshot"));
@@ -50,6 +51,7 @@ fn review_binding_covers_experiment_artifact_and_stale_authority() {
     let mut replacement = review("review-two", "claim-one");
     replacement.evidence_ids = decision.evidence_ids.clone();
     replacement.subject_sha256 = decision.subject_sha256.clone();
+    authorize_review(&workspace, &mut replacement);
     assert!(workspace.add_review(&replacement).is_err());
     assert!(workspace.list(None, 10).is_err());
     assert!(workspace.show("claim", "claim-one").is_err());
@@ -97,6 +99,7 @@ fn legacy_and_missing_experiment_bindings_are_stale() {
         ],
         experiments: Vec::new(),
         reviews: vec![legacy.clone(), missing, missing_source_review],
+        review_authorities: Vec::new(),
         inventories: Vec::new(),
         knowledge: Vec::new(),
         relationships: Vec::new(),

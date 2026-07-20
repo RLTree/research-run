@@ -2,16 +2,38 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use crate::domain::ProjectManifest;
+use crate::domain::{CanonicalRecord, ProjectManifest, ReviewAuthority};
 use crate::{Error, Result};
 
 use super::path_safety::{absolute_path, create_directory_chain, reject_symlink_chain};
+use super::sshsig::parse_authority_key;
 use super::write_lock::WorkspaceWriteLock;
 use super::{STATE_DIRECTORY, Workspace, injected_storage_failure};
 
 impl Workspace {
     pub fn initialize(root: &Path, name: &str) -> Result<Self> {
-        let manifest = ProjectManifest::new(name)?;
+        Self::initialize_inner(root, name, None)
+    }
+
+    pub fn initialize_with_review_authority(
+        root: &Path,
+        name: &str,
+        authority: &ReviewAuthority,
+    ) -> Result<Self> {
+        authority.validate()?;
+        parse_authority_key(authority)?;
+        Self::initialize_inner(root, name, Some(authority))
+    }
+
+    fn initialize_inner(
+        root: &Path,
+        name: &str,
+        authority: Option<&ReviewAuthority>,
+    ) -> Result<Self> {
+        let mut manifest = ProjectManifest::new(name)?;
+        if let Some(authority) = authority {
+            manifest.anchor_review_authority(&authority.id, &authority.fingerprint);
+        }
         let root = absolute_path(root)?;
         reject_symlink_chain(&root)?;
         create_directory_chain(&root)?;
@@ -26,6 +48,7 @@ impl Workspace {
             "evidence",
             "experiments",
             "reviews",
+            "review-authorities",
             "inventories",
             "knowledge",
             "relationships",
@@ -35,7 +58,28 @@ impl Workspace {
             create_directory_chain(&path)?;
         }
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
+        if workspace.state.join("manifest.json").is_file() {
+            let existing = workspace.read_manifest()?;
+            let expected_anchor = authority.map(|value| (&value.id, &value.fingerprint));
+            let existing_anchor = existing
+                .review_authority_id
+                .as_ref()
+                .zip(existing.review_authority_fingerprint.as_ref());
+            if existing.name != manifest.name || existing_anchor != expected_anchor {
+                return Err(Error::Conflict(
+                    "workspace identity or review authority conflicts with the existing manifest"
+                        .to_owned(),
+                ));
+            }
+            if let Some(authority) = authority {
+                workspace.publish_record("review-authorities", authority)?;
+            }
+            return Ok(workspace);
+        }
         workspace.publish_value(&workspace.state.join("manifest.json"), &manifest)?;
+        if let Some(authority) = authority {
+            workspace.publish_record("review-authorities", authority)?;
+        }
         Ok(workspace)
     }
 

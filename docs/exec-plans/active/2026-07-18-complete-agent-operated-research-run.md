@@ -262,18 +262,42 @@ pass.
   standards, formatting, and Clippy pass under serial single-job Rust
   verification. Mutation and coverage were not rerun because no new named
   decision boundary has authorized those resource-intensive surfaces.
+- 2026-07-19: The human-review boundary now uses one immutable Ed25519 public
+  key anchored during owner-controlled workspace initialization. Review
+  preparation emits a canonical request bound to a random 256-bit workspace ID;
+  publication, recovery, validation, and status require an exact detached
+  `research-run-review-v1` SSHSIG. Post-initialization enrollment and rotation
+  are absent, legacy unanchored workspaces cannot promote, and same-name
+  cross-workspace replay fails. The provisioned 1Password-backed signer has
+  public fingerprint `SHA256:HUFBTnkE5jqHd3zeT8AKDlk65I7HyMBAMc/cwfCwKbo`;
+  its private key was not exposed to this run. Cryptography proves control of
+  the configured key, not human personhood, and no agent-run signing is treated
+  as human approval.
+- 2026-07-19: Independent source-only review first found caller-selected
+  enrollment and same-name replay, then request-identity and interrupted-init
+  retry gaps. The repaired design anchors authority only at initialization,
+  compares the submitted workspace identity, and idempotently republishes only
+  the exact manifest anchor after interruption. The final independent recheck
+  reported no actionable findings.
+- 2026-07-19: The signed-authority candidate passes 115/115 library tests,
+  171/171 normal nextest cases, semantic-tree standards, and exact production
+  coverage at 8,110/8,110 regions, 4,119/4,119 lines, and 525/525 functions.
+  Formatting, `cargo check`, doc tests, and Clippy also pass under constrained
+  single-job builds. Dependency, repository, mutation, package, GitHub, and
+  completion proof still require their final frozen-candidate boundaries.
 
 ## Current claim ceiling
 
 No completion claim is active for this plan. The PR #7 security repair candidate
-has local proof for five bounded Codex Security findings, but is not yet proven
-by GitHub. The human-authorization finding remains open: this repository still
-has no external user-controlled signing or approval mechanism that distinguishes
-a human decision from an agent with the same filesystem and CLI authority.
-Mutation and package-delta closure remain withheld because the earlier mutation
-run was incomplete and was not restarted for this repair. The canonical
-UltraGoal retrofit remains blocked by four protected authority conflicts, and
-final independent review, human-authority proof, and audience-bound Product
-Fitness proof remain pending or withheld on their own surfaces. Release,
-scientific truth, scientific impact, continuance, and unobserved real researcher
-usefulness are outside this run.
+has local source, adversarial, independent-review, and exact-coverage proof for
+the six bounded Codex Security findings, but the current bytes are not yet
+proven by GitHub. The product now has an external configured-key authorization
+mechanism and a separately provisioned 1Password signer. That closes the
+self-asserted-review defect at the source boundary; it does not prove
+personhood, owner bootstrap, private-key custody, or an actual human-approved
+signing journey. Mutation, package-delta, and clean-commit closure remain
+withheld until their named frozen-candidate gates run. The canonical UltraGoal
+retrofit remains blocked by four protected authority conflicts, and
+audience-bound Product Fitness proof remains withheld on its own surface.
+Release, scientific truth, scientific impact, continuance, and unobserved real
+researcher usefulness are outside this run.

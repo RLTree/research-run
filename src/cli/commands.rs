@@ -1,9 +1,6 @@
-use std::path::Path;
-
 use crate::domain::{
-    ClaimRecord, EvidenceLink, ExperimentReceipt, FORMAT_VERSION, ReviewDecision, SourceRecord,
+    ClaimRecord, EvidenceLink, ExperimentReceipt, FORMAT_VERSION, ReviewRequest, SourceRecord,
 };
-use crate::workspace::Workspace;
 use crate::{Error, Result};
 
 use super::arguments::{
@@ -11,9 +8,10 @@ use super::arguments::{
 };
 use super::current_directory::discover_current;
 use super::handoff_commands;
+use super::input::{read_json_input, read_text_input};
 use super::inventory_commands;
+use super::lifecycle_commands;
 use super::migration_commands;
-use super::output_arguments::RecoveryArgs;
 use super::render::{
     parse_artifact, print_effect, print_human_status, print_json, print_text, terminal_text,
 };
@@ -22,11 +20,21 @@ use super::structured_commands;
 
 pub(super) fn execute(cli: Cli) -> Result<()> {
     match cli.command {
-        Command::Init { path, name } => initialize(&path, &name),
+        Command::Init {
+            path,
+            name,
+            review_authority_id,
+            review_authority_public_key,
+        } => lifecycle_commands::initialize(
+            &path,
+            &name,
+            review_authority_id,
+            review_authority_public_key,
+        ),
         Command::Retrofit { command } => inventory_commands::execute(command, false),
         Command::Reconcile { command } => inventory_commands::execute(command, true),
         Command::Migrate { command } => migration_commands::execute(command),
-        Command::Recover(output) => recover(output),
+        Command::Recover(output) => lifecycle_commands::recover(output),
         Command::Source { command } => add_source(command),
         Command::Claim { command } => add_claim(command),
         Command::Evidence { command } => add_evidence(command),
@@ -47,28 +55,6 @@ pub(super) fn execute(cli: Cli) -> Result<()> {
         Command::Handoff { command } => handoff_commands::execute(command),
         Command::Validate(output) => validate(output.json),
         Command::Status(output) => status(output.json),
-    }
-}
-
-fn initialize(path: &Path, name: &str) -> Result<()> {
-    let workspace = Workspace::initialize(path, name)?;
-    print_text(&format!(
-        "Initialized Research Run workspace at {}",
-        terminal_text(&workspace.root().display().to_string())
-    ))
-}
-
-fn recover(output: RecoveryArgs) -> Result<()> {
-    let workspace = Workspace::for_recovery(&output.path)?;
-    let recovery = workspace.recover()?;
-    if output.json {
-        print_json(&recovery)
-    } else {
-        print_text(&format!(
-            "Recovered publications: {}\nDiscarded identical pending files: {}",
-            recovery.recovered.len(),
-            recovery.discarded_identical.len()
-        ))
     }
 }
 
@@ -166,27 +152,31 @@ fn add_experiment(command: ExperimentCommand) -> Result<()> {
 }
 
 fn add_review(command: ReviewCommand) -> Result<()> {
-    let ReviewCommand::Add {
-        id,
-        claim,
-        decision,
-        rationale,
-        reviewer,
-    } = command;
-    let workspace = discover_current()?;
-    let (evidence_ids, subject_sha256) = workspace.review_subject_binding(&claim)?;
-    let record = ReviewDecision {
-        schema_version: FORMAT_VERSION,
-        kind: "review".to_owned(),
-        id,
-        claim_id: claim,
-        evidence_ids,
-        subject_sha256: Some(subject_sha256),
-        decision: decision.into(),
-        rationale,
-        reviewer,
-    };
-    print_effect("review", &record.id, workspace.add_review(&record)?)
+    match command {
+        ReviewCommand::Prepare {
+            id,
+            claim,
+            decision,
+            rationale,
+            reviewer,
+        } => {
+            let request = discover_current()?.prepare_review_request(
+                id,
+                claim,
+                decision.into(),
+                rationale,
+                reviewer,
+            )?;
+            print_json(&request)
+        }
+        ReviewCommand::Add { request, signature } => {
+            let request: ReviewRequest = read_json_input(&request)?;
+            let signature = read_text_input(&signature)?;
+            let workspace = discover_current()?;
+            let record = workspace.authorize_review_request(request, signature)?;
+            print_effect("review", &record.id, workspace.add_review(&record)?)
+        }
+    }
 }
 
 fn validate(json: bool) -> Result<()> {

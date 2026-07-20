@@ -45,7 +45,7 @@ fn direct_projection_rejects_duplicate_current_review_authority() {
 
     let output = cli(&project.0, &["list", "--limit", "10"]);
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("ambiguous current binding"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("review authorization"));
 }
 
 fn add_subject_graph(project: &Path) {
@@ -103,22 +103,13 @@ fn add_subject_graph(project: &Path) {
 }
 
 fn add_review(project: &Path, id: &str) {
-    succeeds(
+    crate::review_test_signing::add_signed_review(
         project,
-        &[
-            "review",
-            "add",
-            "--id",
-            id,
-            "--claim",
-            "claim-one",
-            "--decision",
-            "supported",
-            "--rationale",
-            "Reviewed subject authority",
-            "--reviewer",
-            "Example Researcher",
-        ],
+        id,
+        "claim-one",
+        "supported",
+        "Reviewed subject authority",
+        "Example Researcher",
     );
 }
 

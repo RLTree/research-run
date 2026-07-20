@@ -48,22 +48,13 @@ fn assert_graph_change_withholds_prior_review(project: &Path) {
 }
 
 fn add_re_review(project: &Path) {
-    succeeds(
+    crate::review_test_signing::add_signed_review(
         project,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-later",
-            "--claim",
-            "claim-ai",
-            "--decision",
-            "supported",
-            "--rationale",
-            "A human reviewed the changed evidence graph.",
-            "--reviewer",
-            "Example Researcher",
-        ],
+        "review-later",
+        "claim-ai",
+        "supported",
+        "A human reviewed the changed evidence graph.",
+        "Example Researcher",
     );
 }
 
@@ -134,22 +125,13 @@ fn assert_ai_drafts_cannot_promote(project: &Path) {
 }
 
 fn add_human_review(project: &Path) {
-    succeeds(
+    crate::review_test_signing::add_signed_review(
         project,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-ai",
-            "--claim",
-            "claim-ai",
-            "--decision",
-            "supported",
-            "--rationale",
-            "A human checked the cited passage within the stated scope.",
-            "--reviewer",
-            "Example Researcher",
-        ],
+        "review-ai",
+        "claim-ai",
+        "supported",
+        "A human checked the cited passage within the stated scope.",
+        "Example Researcher",
     );
 }
 

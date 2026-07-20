@@ -20,7 +20,7 @@ fn knowledge(id: &str, kind: KnowledgeKind, state: KnowledgeState) -> KnowledgeR
 
 fn setup_retrieval(root: &std::path::Path) -> Workspace {
     fs::write(root.join("artifact.txt"), b"artifact").expect("artifact");
-    let workspace = Workspace::initialize(root, "Retrieval unit").expect("initialize");
+    let workspace = review_workspace(root, "Retrieval unit");
     workspace.add_source(&source("source-one")).expect("source");
     workspace.add_claim(&claim("claim-one")).expect("claim");
     workspace
@@ -66,6 +66,7 @@ fn add_retrieval_evidence(workspace: &Workspace) {
             .expect("binding")
             .1,
     );
+    authorize_review(workspace, &mut decision);
     workspace.add_review(&decision).expect("review");
 }
 

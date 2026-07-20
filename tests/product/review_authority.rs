@@ -1,4 +1,6 @@
 use research_run::domain::{Assessment, CanonicalRecord, ReviewDecision};
+#[path = "review_authority/signature_flow.rs"]
+mod signature_flow;
 
 #[test]
 fn each_review_authority_field_fails_independently() {
@@ -12,6 +14,7 @@ fn each_review_authority_field_fails_independently() {
         decision: Assessment::Limited,
         rationale: "Rationale".to_owned(),
         reviewer: "Reviewer".to_owned(),
+        authorization: None,
     };
     for candidate in [
         ReviewDecision {

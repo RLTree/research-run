@@ -181,6 +181,20 @@ fn injected_storage_faults_prove_ambiguous_and_racing_effect_contracts() {
 
 #[cfg(unix)]
 #[test]
+fn write_lock_rejects_a_symlinked_lock_path() {
+    use std::os::unix::fs::symlink;
+
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Symlinked lock").expect("initialize");
+    let lock = workspace.state.join("write.lock");
+    fs::remove_file(&lock).expect("remove lock");
+    symlink(workspace.state.join("manifest.json"), &lock).expect("symlink lock");
+    assert!(WorkspaceWriteLock::acquire(&workspace.state).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[cfg(unix)]
+#[test]
 fn symlinked_state_directory_is_rejected() {
     use std::os::unix::fs::symlink;
 

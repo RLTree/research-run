@@ -69,6 +69,30 @@ fn identical_record_reads_propagate_storage_failures_for_every_writer() {
             "retry {command:?} ignored its identity-read failure"
         );
     }
+    let signed = crate::review_test_signing::prepare_signed_review(
+        &root.0,
+        "review-one",
+        "claim-one",
+        "limited",
+        "Rationale",
+        "Reviewer",
+    );
+    let request = signed.request.to_string_lossy().into_owned();
+    let signature = signed.signature.to_string_lossy().into_owned();
+    let args = [
+        "review",
+        "add",
+        "--request",
+        &request,
+        "--signature",
+        &signature,
+    ];
+    assert!(run(&root.0, &args, None).status.success());
+    assert!(
+        !run(&root.0, &args, Some("inspect record#14"))
+            .status
+            .success()
+    );
 }
 
 fn retry_commands() -> Vec<Vec<&'static str>> {
@@ -108,20 +132,6 @@ fn retry_commands() -> Vec<Vec<&'static str>> {
             "Specific",
             "--authorship",
             "human",
-        ],
-        vec![
-            "review",
-            "add",
-            "--id",
-            "review-one",
-            "--claim",
-            "claim-one",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Rationale",
-            "--reviewer",
-            "Reviewer",
         ],
         vec![
             "source",

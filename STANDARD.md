@@ -9,11 +9,15 @@ decision may set a claim assessment to `supported`, `limited`, `contradicted`, o
 `unsupported`. `supported` means reviewed support within this workspace and
 scope—not general scientific truth.
 
-Each review binds to the sorted immutable evidence IDs present for its claim at
-the decision boundary. Later evidence makes that decision historical and returns
-the claim to `unreviewed` until a new human review binds the changed graph.
+Each review binds to the immutable random workspace identity and the sorted
+immutable evidence IDs present for its claim at the decision boundary. It
+carries an SSHSIG from the Ed25519 key anchored during owner-controlled
+workspace initialization. Cryptography proves configured-key control, not
+personhood. Reviewer text is metadata and never authorizes promotion. Later
+evidence makes that decision historical and returns the claim to `unreviewed`
+until a new signed review binds the changed graph.
 `supported` requires at least one recorded evidence link; recovery and direct
-record ingestion enforce the same binding as the CLI.
+record ingestion enforce the same content and signature binding as the CLI.
 
 ## Current stack
 
@@ -27,6 +31,11 @@ runtime dependency budget is deliberately small:
 - `sha2`: portable SHA-256 material identity for byte-preserving retrofit and
   reconciliation plans; fingerprints detect exact content identity but do not
   infer scientific meaning.
+- `base64ct`, `ed25519-dalek`, and `sha2`: narrowly parse OpenSSH Ed25519 public
+  keys and SSHSIG envelopes, verify detached signatures, and compute bounded
+  material identities. Research Run never reads or stores a review private key.
+- `getrandom`: generate an immutable 256-bit workspace authorization-domain ID
+  during initialization.
 
 No async runtime, database, network client, logging/telemetry stack, temporary
 file crate, schema framework, or UI dependency is justified by the v0.1 job.
@@ -59,6 +68,13 @@ directory publication.
   product mode and every read still rechecks opened-file identity.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
+- Review preparation is read-only. The repository owner anchors the one Ed25519
+  authority during initialization; post-initialization enrollment and rotation
+  are unsupported. Promotion requires import of a detached
+  `research-run-review-v1` SSH signature from that authority over the immutable
+  workspace ID and exact request. Missing, malformed, wrong-key, replayed,
+  cross-workspace, and modified-request signatures fail closed during
+  publication, recovery, validation, and status.
 - Typed knowledge records are append-only. `revises`, `supersedes`, and
   `invalidates` relationships require knowledge endpoints and must remain
   acyclic. Generic relationships may describe a contradiction or dependency,

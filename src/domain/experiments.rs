@@ -8,6 +8,102 @@ use super::validation::{
 };
 use super::{Assessment, CanonicalRecord, MAX_ARTIFACT_POINTERS, MAX_LIST_ITEMS, Outcome};
 
+pub const REVIEW_SIGNATURE_NAMESPACE: &str = "research-run-review-v1";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ReviewAuthority {
+    pub schema_version: u32,
+    pub kind: String,
+    pub id: String,
+    pub public_key: String,
+    pub fingerprint: String,
+}
+
+impl CanonicalRecord for ReviewAuthority {
+    const KIND: &'static str = "review-authority";
+
+    fn id(&self) -> &str {
+        &self.id
+    }
+
+    fn validate(&self) -> Result<()> {
+        validate_record_header(self.schema_version, &self.kind, Self::KIND, &self.id)?;
+        required_text(&self.public_key, "review authority public_key")?;
+        required_text(&self.fingerprint, "review authority fingerprint")?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ReviewAuthorization {
+    pub authority_id: String,
+    pub signer_fingerprint: String,
+    pub signature: String,
+}
+
+impl ReviewAuthorization {
+    pub fn validate(&self) -> Result<()> {
+        validate_id(&self.authority_id, "review authority_id")?;
+        required_text(&self.signer_fingerprint, "review signer_fingerprint")?;
+        required_text(&self.signature, "review signature")?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ReviewRequest {
+    pub schema_version: u32,
+    pub kind: String,
+    pub project_id: String,
+    pub workspace_id: String,
+    pub id: String,
+    pub claim_id: String,
+    pub evidence_ids: Vec<String>,
+    pub subject_sha256: String,
+    pub decision: Assessment,
+    pub rationale: String,
+    pub reviewer: String,
+}
+
+impl ReviewRequest {
+    pub fn validate(&self) -> Result<()> {
+        validate_record_header(self.schema_version, &self.kind, "review-request", &self.id)?;
+        validate_id(&self.project_id, "review request project_id")?;
+        validate_hex_digest(&self.workspace_id, "review request workspace_id")?;
+        let decision = ReviewDecision {
+            schema_version: self.schema_version,
+            kind: "review".to_owned(),
+            id: self.id.clone(),
+            claim_id: self.claim_id.clone(),
+            evidence_ids: self.evidence_ids.clone(),
+            subject_sha256: Some(self.subject_sha256.clone()),
+            decision: self.decision,
+            rationale: self.rationale.clone(),
+            reviewer: self.reviewer.clone(),
+            authorization: None,
+        };
+        decision.validate()
+    }
+
+    pub fn into_review(self, authorization: ReviewAuthorization) -> ReviewDecision {
+        ReviewDecision {
+            schema_version: self.schema_version,
+            kind: "review".to_owned(),
+            id: self.id,
+            claim_id: self.claim_id,
+            evidence_ids: self.evidence_ids,
+            subject_sha256: Some(self.subject_sha256),
+            decision: self.decision,
+            rationale: self.rationale,
+            reviewer: self.reviewer,
+            authorization: Some(authorization),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ArtifactPointer {
@@ -96,6 +192,8 @@ pub struct ReviewDecision {
     pub decision: Assessment,
     pub rationale: String,
     pub reviewer: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authorization: Option<ReviewAuthorization>,
 }
 
 impl CanonicalRecord for ReviewDecision {
@@ -139,6 +237,9 @@ impl CanonicalRecord for ReviewDecision {
         }
         required_text(&self.rationale, "review rationale")?;
         required_text(&self.reviewer, "reviewer")?;
+        if let Some(authorization) = &self.authorization {
+            authorization.validate()?;
+        }
         Ok(())
     }
 }

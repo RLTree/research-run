@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use crate::{Error, Result};
 
 use super::validation::{
-    bounded_text, required_text, slug, validate_header, validate_id, validate_record_header,
-    validate_workspace_locator,
+    bounded_text, required_text, slug, validate_header, validate_hex_digest, validate_id,
+    validate_record_header, validate_workspace_locator,
 };
 use super::{CanonicalRecord, FORMAT_VERSION};
 
@@ -14,32 +14,84 @@ pub struct ProjectManifest {
     pub schema_version: u32,
     pub kind: String,
     pub project_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub workspace_id: String,
     pub name: String,
     pub declared_roots: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review_authority_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review_authority_fingerprint: Option<String>,
 }
 
 impl ProjectManifest {
     pub fn new(name: &str) -> Result<Self> {
         let name = required_text(name, "project name")?;
         let project_id = slug(&name);
+        let mut random = [0_u8; 32];
+        if super::take_random_failure() || getrandom::getrandom(&mut random).is_err() {
+            return Err(Error::invalid(
+                "workspace identity",
+                "secure randomness unavailable",
+            ));
+        }
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let mut workspace_id = String::with_capacity(64);
+        for byte in random {
+            workspace_id.push(char::from(HEX[usize::from(byte >> 4)]));
+            workspace_id.push(char::from(HEX[usize::from(byte & 0x0f)]));
+        }
         Ok(Self {
             schema_version: FORMAT_VERSION,
             kind: "project-manifest".to_owned(),
             project_id,
+            workspace_id,
             name,
             declared_roots: vec![".".to_owned()],
+            review_authority_id: None,
+            review_authority_fingerprint: None,
         })
+    }
+
+    pub(crate) fn anchor_review_authority(&mut self, id: &str, fingerprint: &str) {
+        self.review_authority_id = Some(id.to_owned());
+        self.review_authority_fingerprint = Some(fingerprint.to_owned());
     }
 
     pub fn validate(&self) -> Result<()> {
         validate_header(self.schema_version, &self.kind, "project-manifest")?;
         validate_id(&self.project_id, "project_id")?;
+        if !self.workspace_id.is_empty() {
+            validate_hex_digest(&self.workspace_id, "workspace_id")?;
+        }
         required_text(&self.name, "project name")?;
         if self.declared_roots != ["."] {
             return Err(Error::invalid(
                 "manifest",
                 "declared_roots must be exactly [\".\"] in format v1",
             ));
+        }
+        match (
+            &self.review_authority_id,
+            &self.review_authority_fingerprint,
+        ) {
+            (Some(id), Some(fingerprint)) => {
+                if self.workspace_id.is_empty() {
+                    return Err(Error::invalid(
+                        "manifest",
+                        "an anchored review authority requires an immutable workspace_id",
+                    ));
+                }
+                validate_id(id, "review authority id")?;
+                required_text(fingerprint, "review authority fingerprint")?;
+            }
+            (None, None) => {}
+            _ => {
+                return Err(Error::invalid(
+                    "manifest",
+                    "review authority id and fingerprint must both be present or absent",
+                ));
+            }
         }
         Ok(())
     }

@@ -180,44 +180,41 @@ fn installed_process_exercises_artifact_and_recovery_reference_variants() {
     );
     assert!(output.status.success());
 
-    assert!(
-        run(
-            &root.0,
-            &[
-                "review",
-                "add",
-                "--id",
-                "review-template",
-                "--claim",
-                "claim-one",
-                "--decision",
-                "supported",
-                "--rationale",
-                "Rationale",
-                "--reviewer",
-                "Reviewer"
-            ],
-            None
-        )
-        .status
-        .success()
+    crate::review_test_signing::add_signed_review(
+        &root.0,
+        "review-template",
+        "claim-one",
+        "supported",
+        "Rationale",
+        "Reviewer",
     );
     let reviews = root.0.join(".research-run/reviews");
     let template = reviews.join("review-template.json");
-    let mut review: serde_json::Value =
-        serde_json::from_slice(&fs::read(&template).expect("review template"))
-            .expect("review JSON");
+    let first = crate::review_test_signing::signed_review_record(
+        &root.0,
+        "review-one",
+        "claim-one",
+        "supported",
+        "Rationale",
+        "Reviewer",
+    );
+    let second = crate::review_test_signing::signed_review_record(
+        &root.0,
+        "review-two",
+        "claim-one",
+        "supported",
+        "Rationale",
+        "Reviewer",
+    );
     fs::remove_file(template).expect("remove canonical template");
-    review["id"] = json!("review-one");
     fs::write(
         reviews.join(".review-one.json.9.1.tmp"),
-        serde_json::to_vec_pretty(&review).expect("review one"),
+        serde_json::to_vec_pretty(&first).expect("review one"),
     )
     .expect("pending review one");
-    review["id"] = json!("review-two");
     fs::write(
         reviews.join(".review-two.json.9.2.tmp"),
-        serde_json::to_vec_pretty(&review).expect("review two"),
+        serde_json::to_vec_pretty(&second).expect("review two"),
     )
     .expect("pending review two");
     let output = run(&root.0, &["recover", "--json"], None);

@@ -27,6 +27,8 @@ fn identifiers_and_paths_fail_closed() {
 fn manifest_identity_is_deterministic() {
     let manifest = ProjectManifest::new("Synthetic Assay").expect("manifest");
     assert_eq!(manifest.project_id, "synthetic-assay");
+    super::inject_random_failure();
+    assert!(ProjectManifest::new("Entropy failure").is_err());
 }
 
 #[test]
@@ -56,6 +58,21 @@ fn manifest_validation_rejects_invalid_shapes() {
     assert!(manifest.validate().is_err());
     manifest.kind = "project-manifest".to_owned();
     manifest.declared_roots = vec!["other".to_owned()];
+    assert!(manifest.validate().is_err());
+    manifest.declared_roots = vec![".".to_owned()];
+    manifest.workspace_id = "invalid".to_owned();
+    assert!(manifest.validate().is_err());
+    manifest.workspace_id = "a".repeat(64);
+    manifest.review_authority_id = Some("authority".to_owned());
+    assert!(manifest.validate().is_err());
+    manifest.review_authority_fingerprint = Some("SHA256:test".to_owned());
+    manifest.workspace_id.clear();
+    assert!(manifest.validate().is_err());
+    manifest.workspace_id = "a".repeat(64);
+    manifest.review_authority_id = Some("Invalid".to_owned());
+    assert!(manifest.validate().is_err());
+    manifest.review_authority_id = Some("authority".to_owned());
+    manifest.review_authority_fingerprint = Some(String::new());
     assert!(manifest.validate().is_err());
 
     let long_name = format!("a{} z", "b".repeat(80));
@@ -177,6 +194,7 @@ fn experiment_and_review_validation_reject_invalid_states() {
         decision: Assessment::Unreviewed,
         rationale: "Rationale".to_owned(),
         reviewer: "Researcher".to_owned(),
+        authorization: None,
     };
     assert!(review.validate().is_err());
     review.decision = Assessment::Limited;

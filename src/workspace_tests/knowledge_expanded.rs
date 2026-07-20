@@ -45,7 +45,7 @@ fn relationship(id: &str, from: EntityRef, to: EntityRef) -> RelationshipRecord 
 fn knowledge_relations_resolve_every_entity_kind_and_remain_idempotent() {
     let root = temporary();
     fs::write(root.join("artifact.txt"), b"artifact").expect("artifact");
-    let workspace = Workspace::initialize(&root, "Relations").expect("initialize");
+    let workspace = review_workspace(&root, "Relations");
     workspace.add_source(&source("source-one")).expect("source");
     workspace.add_claim(&claim("claim-one")).expect("claim");
     workspace
@@ -57,6 +57,7 @@ fn knowledge_relations_resolve_every_entity_kind_and_remain_idempotent() {
     let mut decision = review("review-one", "claim-one");
     decision.evidence_ids = vec!["evidence-one".to_owned()];
     decision.subject_sha256 = Some(workspace.review_subject_binding("claim-one").unwrap().1);
+    authorize_review(&workspace, &mut decision);
     workspace.add_review(&decision).expect("review");
     workspace
         .add_knowledge(&knowledge("knowledge-one"))

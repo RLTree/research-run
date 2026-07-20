@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::Value;
 
+use crate::review_test_signing::{add_signed_review, initialize_with_test_authority};
+
 #[path = "researcher_journey/value_variants.rs"]
 mod value_variants;
 
@@ -53,11 +55,7 @@ pub(super) fn succeeds(cwd: &Path, args: &[&str]) -> Output {
 fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
     let temporary = TempDir::new("journey");
     let project = temporary.0.join("project");
-    let project_text = project.to_string_lossy();
-    succeeds(
-        &temporary.0,
-        &["init", &project_text, "--name", "Synthetic assay"],
-    );
+    initialize_with_test_authority(&temporary.0, &project, "Synthetic assay");
     add_source_and_claim(&project);
     add_supporting_evidence(&project);
     add_negative_repeat(&project);
@@ -183,22 +181,13 @@ fn assert_claim_ceiling_before_review(project: &Path) {
 }
 
 fn add_limited_review(project: &Path) {
-    succeeds(
+    add_signed_review(
         project,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-binding",
-            "--claim",
-            "claim-binding",
-            "--decision",
-            "limited",
-            "--rationale",
-            "The source supports the claim, but the negative repeat limits it.",
-            "--reviewer",
-            "Example Researcher",
-        ],
+        "review-binding",
+        "claim-binding",
+        "limited",
+        "The source supports the claim, but the negative repeat limits it.",
+        "Example Researcher",
     );
 }
 

@@ -8,6 +8,9 @@ use super::{
 use crate::domain::{
     ArtifactLocatorType, Assessment, Authorship, Outcome, SourceProvenance, Stance,
 };
+
+#[path = "cli_review_tests.rs"]
+mod review_tests;
 use crate::workspace::{ProjectStatus, Status};
 
 #[test]
@@ -70,11 +73,8 @@ fn every_current_workspace_command_propagates_discovery_failure() {
     });
     assert_discovery_failure(Command::Review {
         command: ReviewCommand::Add {
-            id: "review-one".to_owned(),
-            claim: "claim-one".to_owned(),
-            decision: ReviewArg::Supported,
-            rationale: "Rationale".to_owned(),
-            reviewer: "Reviewer".to_owned(),
+            request: "request.json".to_owned(),
+            signature: "request.json.sig".to_owned(),
         },
     });
     assert_discovery_failure(Command::Validate(OutputArgs { json: true }));

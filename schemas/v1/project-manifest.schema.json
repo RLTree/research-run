@@ -5,11 +5,18 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "kind", "project_id", "name", "declared_roots"],
+  "dependentRequired": {
+    "review_authority_id": ["review_authority_fingerprint", "workspace_id"],
+    "review_authority_fingerprint": ["review_authority_id", "workspace_id"]
+  },
   "properties": {
     "schema_version": { "const": 1 },
     "kind": { "const": "project-manifest" },
     "project_id": { "$ref": "types.schema.json#/$defs/id" },
+    "workspace_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "name": { "$ref": "types.schema.json#/$defs/text" },
-    "declared_roots": { "const": ["."] }
+    "declared_roots": { "const": ["."] },
+    "review_authority_id": { "$ref": "types.schema.json#/$defs/id" },
+    "review_authority_fingerprint": { "type": "string", "pattern": "^SHA256:[A-Za-z0-9+/]{43}$" }
   }
 }

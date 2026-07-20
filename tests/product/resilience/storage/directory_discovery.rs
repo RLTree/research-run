@@ -155,7 +155,7 @@ fn experiment_review_and_read_commands() -> Vec<Vec<&'static str>> {
         ],
         vec![
             "review",
-            "add",
+            "prepare",
             "--id",
             "review-one",
             "--claim",

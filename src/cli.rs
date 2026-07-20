@@ -8,6 +8,7 @@ mod handoff_commands;
 mod input;
 mod inventory_arguments;
 mod inventory_commands;
+mod lifecycle_commands;
 mod migration_arguments;
 mod migration_commands;
 mod output_arguments;
@@ -46,6 +47,9 @@ use retrieval_arguments::{ContextArgs, LimitArgs, ListArgs, RelatedArgs, SearchA
 #[cfg(test)]
 use value_arguments::*;
 
+#[cfg(test)]
+#[path = "cli_bootstrap_tests.rs"]
+mod bootstrap_tests;
 #[cfg(test)]
 #[path = "expanded_cli_lifecycle_tests.rs"]
 mod expanded_lifecycle_tests;

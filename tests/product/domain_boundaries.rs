@@ -161,6 +161,7 @@ fn experiment_and_review_validation_reject_invalid_states() {
         decision: Assessment::Unreviewed,
         rationale: "Rationale".to_owned(),
         reviewer: "Researcher".to_owned(),
+        authorization: None,
     };
     assert!(review.validate().is_err());
 }

@@ -65,6 +65,12 @@ impl Workspace {
                 "reference validation failed; run 'research-run validate'",
             ));
         }
+        if !self.review_authorization_errors(snapshot).is_empty() {
+            return Err(Error::invalid(
+                "workspace",
+                "review authorization validation failed; run 'research-run validate'",
+            ));
+        }
         let counts = snapshot.counts();
         let mut index = StatusIndex::build(self, snapshot)?;
         let unreviewed_ai_drafts = unreviewed_ai_drafts(snapshot, &index);

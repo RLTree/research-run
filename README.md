@@ -66,19 +66,41 @@ research-run experiment add \
   --artifact "workspace:artifacts/summary.txt:Deidentified summary"
 ```
 
-Inspect the claim ceiling, then record an explicit human review:
+Create the workspace with its one review key anchored in the immutable manifest.
+This initialization is the repository owner's trust-bootstrap boundary; there
+is no post-initialization enrollment command. Then inspect the claim ceiling,
+prepare the exact request, sign it outside the agent process, and import the
+detached SSH signature:
 
 ```console
+research-run init . \
+  --name "Assay project" \
+  --review-authority-id primary-researcher \
+  --review-authority-public-key researcher-review.pub
 research-run status
-research-run review add \
+research-run review prepare \
   --id review-binding \
   --claim claim-binding \
   --decision limited \
   --rationale "The paper supports the claim, but the negative repeat limits it." \
-  --reviewer "Researcher Name"
+  --reviewer "Researcher Name" > review-binding.json
+ssh-keygen -Y sign \
+  -f researcher-review.pub \
+  -n research-run-review-v1 \
+  review-binding.json
+research-run review add \
+  --request review-binding.json \
+  --signature review-binding.json.sig
 research-run validate
 research-run status --json
 ```
+
+The signer may be a hardware-backed key or a 1Password SSH Agent key. Keep its
+private key and signing approval outside the agent-accessible environment.
+Research Run stores only the public key and detached signature. Cryptography
+proves control of that configured key, not human personhood; repository access
+control and owner-run initialization establish who may choose the key. v0.1
+provides neither post-initialization enrollment nor key rotation.
 
 Canonical records live under `.research-run/` as deterministic, versioned JSON.
 The machine-readable v1 contracts are in [`schemas/v1`](schemas/v1). The complete
@@ -98,12 +120,12 @@ synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
   published. Recovery never silently chooses conflicting content.
 - Diagnostics identify a path and invariant, not record bodies or secret values.
 
-Review decisions are local assertions made by the CLI user; v0.1 has no account
-system or identity verification. Treat Git review and repository access controls
-as the human-authorship boundary.
-The CLI records the claim's current sorted evidence IDs with each review. Adding
-later evidence makes the old decision historical and returns the claim to
-`unreviewed` until another explicit human review covers the changed graph.
+Reviewer text is metadata, not authority. A review affects assessment only when
+its detached SSH signature verifies against the workspace's one enrolled
+Ed25519 authority over the exact immutable workspace identity, project, claim,
+decision, rationale, evidence IDs, and subject digest. Adding later evidence
+makes the old decision historical and returns the claim to `unreviewed` until
+another signed review covers the changed graph.
 
 Automation can distinguish failure classes by exit status: `1` is local I/O,
 `2` is malformed or invalid input, `3` is not found, `4` is conflicting or
@@ -147,8 +169,8 @@ risks, blockers, uncertainties, contradictions, next actions, plans,
 presentations, and session summaries. Relationships are append-only and typed;
 revision, supersession, and invalidation history remains acyclic and never
 erases the older record. These relationships cannot promote a claim. Claim
-assessment still requires an explicit human `review add` decision bound to the
-current evidence graph.
+assessment still requires a signed human `review add` decision bound to the
+current evidence graph and enrolled review authority.
 
 ## Retrieve bounded context
 

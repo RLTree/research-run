@@ -59,7 +59,7 @@ fn reject_missing_and_duplicate_review_references(root: &Path) {
         root,
         &[
             "review",
-            "add",
+            "prepare",
             "--id",
             "review-missing",
             "--claim",
@@ -75,43 +75,31 @@ fn reject_missing_and_duplicate_review_references(root: &Path) {
     );
     assert_fails(missing_review_claim, "missing review claim");
 
-    assert!(
-        run(
-            root,
-            &[
-                "review",
-                "add",
-                "--id",
-                "review-one",
-                "--claim",
-                "claim-one",
-                "--decision",
-                "limited",
-                "--rationale",
-                "Rationale",
-                "--reviewer",
-                "Reviewer",
-            ],
-            None,
-        )
-        .status
-        .success()
+    crate::review_test_signing::add_signed_review(
+        root,
+        "review-one",
+        "claim-one",
+        "limited",
+        "Rationale",
+        "Reviewer",
+    );
+    let signed = crate::review_test_signing::prepare_signed_review(
+        root,
+        "review-two",
+        "claim-one",
+        "limited",
+        "Second",
+        "Reviewer",
     );
     let duplicate = run(
         root,
         &[
             "review",
             "add",
-            "--id",
-            "review-two",
-            "--claim",
-            "claim-one",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Second",
-            "--reviewer",
-            "Reviewer",
+            "--request",
+            &signed.request.to_string_lossy(),
+            "--signature",
+            &signed.signature.to_string_lossy(),
         ],
         None,
     );

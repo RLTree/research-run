@@ -130,6 +130,7 @@ pub(super) fn current_review_bindings<'a>(
 ) -> Result<BTreeMap<&'a str, &'a ReviewDecision>> {
     let mut bindings = BTreeMap::new();
     for review in &snapshot.reviews {
+        workspace.verify_review_authorization(snapshot, review)?;
         if review.evidence_ids == claim_evidence_ids(snapshot, &review.claim_id)
             && let Some(expected) = &review.subject_sha256
             && workspace.review_subject_sha256(snapshot, &review.claim_id)? == *expected

@@ -21,7 +21,7 @@ fn pending_filename_recovers_exact_target() {
 #[test]
 fn valid_pending_records_recover_in_dependency_order() {
     let root = temporary();
-    let workspace = Workspace::initialize(&root, "Recovery matrix").expect("initialize");
+    let workspace = review_workspace(&root, "Recovery matrix");
 
     let source = source("source-one");
     let claim = claim("claim-one");
@@ -37,6 +37,10 @@ fn valid_pending_records_recover_in_dependency_order() {
         experiments: vec![experiment.clone()],
         evidence: vec![evidence.clone()],
         reviews: Vec::new(),
+        review_authorities: workspace
+            .load_snapshot()
+            .expect("authority snapshot")
+            .review_authorities,
         inventories: Vec::new(),
         knowledge: Vec::new(),
         relationships: Vec::new(),
@@ -47,6 +51,7 @@ fn valid_pending_records_recover_in_dependency_order() {
             .review_subject_sha256(&prospective, &claim.id)
             .expect("binding"),
     );
+    authorize_review(&workspace, &mut review);
     for (directory, filename, bytes) in [
         (
             "sources",
@@ -99,6 +104,32 @@ fn pending_review_rejects_a_stale_subject_digest() {
     )
     .expect("pending review");
     assert!(workspace.recover().is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn recovery_cannot_bootstrap_an_unanchored_review_authority() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Unanchored recovery").expect("initialize");
+    let authority =
+        ReviewAuthority::from_openssh("caller-key".to_owned(), &test_review_public_key())
+            .expect("authority");
+    let pending = workspace
+        .state
+        .join("review-authorities/.caller-key.json.9.1.tmp");
+    fs::write(
+        &pending,
+        serde_json::to_vec_pretty(&authority).expect("authority"),
+    )
+    .expect("pending authority");
+    assert!(workspace.recover().is_err());
+    assert!(pending.exists());
+    assert!(
+        !workspace
+            .state
+            .join("review-authorities/caller-key.json")
+            .exists()
+    );
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

@@ -73,7 +73,13 @@ impl Workspace {
             ));
         }
         let record = MigrationRecord::from(plan);
-        for directory in ["inventories", "knowledge", "relationships", "migrations"] {
+        for directory in [
+            "inventories",
+            "knowledge",
+            "relationships",
+            "review-authorities",
+            "migrations",
+        ] {
             create_directory_chain(&workspace.state.join(directory))?;
         }
         if workspace.record_is_identical("migrations", &record)? {

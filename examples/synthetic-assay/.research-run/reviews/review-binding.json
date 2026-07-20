@@ -7,5 +7,10 @@
   "kind": "review",
   "rationale": "The source supports the claim, but the negative repeat limits it.",
   "reviewer": "Example Researcher",
+  "authorization": {
+    "authority_id": "example-researcher",
+    "signer_fingerprint": "SHA256:uNV0CMAknvTD038ZYtLhCs/nh9ZKVy8N7J8hYFBZLWk",
+    "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgao0ZU6JBXJ68w2TJCNWey61fMt\n3Vyd6ues+LWD2ubJAAAAAWcmVzZWFyY2gtcnVuLXJldmlldy12MQAAAAAAAAAGc2hhNTEy\nAAAAUwAAAAtzc2gtZWQyNTUxOQAAAEAkmI6Kg1GkTezy5tUvTB2yebLji0pA7SLL26zRfx\nux3wQMv7oRbfn8o1L6EyuAAIX5BP092MbYKXP8AD7eHpMI\n-----END SSH SIGNATURE-----\n"
+  },
   "schema_version": 1
 }

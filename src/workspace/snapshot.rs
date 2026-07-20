@@ -21,6 +21,12 @@ impl Workspace {
     }
 
     pub(super) fn load_snapshot(&self) -> Result<Snapshot> {
+        if injected_storage_failure("load snapshot") {
+            return Err(Error::invalid(
+                "workspace snapshot",
+                "injected snapshot load failure",
+            ));
+        }
         self.load_snapshot_allow_pending(false)
     }
 
@@ -44,6 +50,8 @@ impl Workspace {
             self.load_optional_records("relationships", allow_pending, &mut budget)?;
         let knowledge = self.load_optional_records("knowledge", allow_pending, &mut budget)?;
         let migrations = self.load_optional_records("migrations", allow_pending, &mut budget)?;
+        let review_authorities =
+            self.load_optional_records("review-authorities", allow_pending, &mut budget)?;
         Ok(Snapshot {
             manifest,
             sources: self.load_records("sources", allow_pending, &mut budget)?,
@@ -51,6 +59,7 @@ impl Workspace {
             evidence: self.load_records("evidence", allow_pending, &mut budget)?,
             experiments: self.load_records("experiments", allow_pending, &mut budget)?,
             reviews: self.load_records("reviews", allow_pending, &mut budget)?,
+            review_authorities,
             inventories: self.load_optional_records("inventories", allow_pending, &mut budget)?,
             knowledge,
             relationships,

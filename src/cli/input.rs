@@ -13,6 +13,16 @@ pub(super) fn read_json_input<T: DeserializeOwned>(input: &str) -> Result<T> {
     serde_json::from_slice(&bytes).map_err(|_| Error::MalformedJson { path: label })
 }
 
+pub(super) fn read_text_input(input: &str) -> Result<String> {
+    let (bytes, label) = read_json_bytes(input)?;
+    String::from_utf8(bytes).map_err(|_| {
+        Error::invalid(
+            "structured input",
+            format!("{} is not UTF-8", label.display()),
+        )
+    })
+}
+
 fn read_json_bytes(input: &str) -> Result<(Vec<u8>, std::path::PathBuf)> {
     let (bytes, label) = if input == "-" {
         (read_stdin()?, Path::new("stdin").to_path_buf())

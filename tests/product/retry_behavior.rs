@@ -6,11 +6,11 @@ use super::researcher_journey::{TempDir, cli, succeeds};
 fn identical_retry_is_idempotent_and_conflicting_identity_fails_closed() {
     let temporary = TempDir::new("retry");
     let project = temporary.0.join("project");
-    let project_text = project.to_string_lossy();
     for _ in 0..2 {
-        succeeds(
+        crate::review_test_signing::initialize_with_test_authority(
             &temporary.0,
-            &["init", &project_text, "--name", "Retry test"],
+            &project,
+            "Retry test",
         );
     }
     let first = [
@@ -43,22 +43,22 @@ fn identical_retry_is_idempotent_and_conflicting_identity_fails_closed() {
     ];
     succeeds(&project, &claim);
     succeeds(&project, &claim);
-    let review = [
-        "review",
-        "add",
-        "--id",
+    crate::review_test_signing::add_signed_review(
+        &project,
         "review-one",
-        "--claim",
         "claim-one",
-        "--decision",
         "limited",
-        "--rationale",
         "Bounded assessment",
-        "--reviewer",
         "Researcher",
-    ];
-    succeeds(&project, &review);
-    succeeds(&project, &review);
+    );
+    crate::review_test_signing::add_signed_review(
+        &project,
+        "review-one",
+        "claim-one",
+        "limited",
+        "Bounded assessment",
+        "Researcher",
+    );
     let conflict = cli(
         &project,
         &[

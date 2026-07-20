@@ -5,6 +5,8 @@
   "kind": "project-manifest",
   "name": "Synthetic assay",
   "project_id": "synthetic-assay",
+  "workspace_id": "36de87b0a2d64d68921a75ac39d2a1f0ce474d1722144ae8a6819334ecf2555a",
+  "review_authority_id": "example-researcher",
+  "review_authority_fingerprint": "SHA256:uNV0CMAknvTD038ZYtLhCs/nh9ZKVy8N7J8hYFBZLWk",
   "schema_version": 1
 }
-

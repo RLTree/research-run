@@ -25,7 +25,7 @@ pub(super) fn commit_recovery(
     Ok(())
 }
 
-fn discard_identical(record: PendingRecord, result: &mut RecoveryResult) -> Result<()> {
+pub(super) fn discard_identical(record: PendingRecord, result: &mut RecoveryResult) -> Result<()> {
     let target = read_bounded(&record.target)?;
     let target_matches = target.iter().eq(record.bytes.iter());
     if !target_matches || injected_storage_failure("recovery target conflict") {

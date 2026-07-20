@@ -4,8 +4,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::domain::{
     ArtifactLocatorType, ArtifactPointer, Assessment, Authorship, CanonicalRecord, ClaimRecord,
     EntityKind, EntityRef, EvidenceLink, ExperimentReceipt, KnowledgeKind, KnowledgeRecord,
-    KnowledgeState, Outcome, ProjectManifest, RelationshipKind, RelationshipRecord, ReviewDecision,
-    SourceProvenance, SourceRecord, Stance,
+    KnowledgeState, Outcome, ProjectManifest, RelationshipKind, RelationshipRecord,
+    ReviewAuthority, ReviewDecision, SourceProvenance, SourceRecord, Stance,
 };
 
 use super::{
@@ -16,6 +16,16 @@ use super::{
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
+#[path = "workspace_tests/review_signing.rs"]
+mod review_signing;
+use review_signing::*;
+#[path = "workspace_tests/coverage_edges.rs"]
+mod coverage_edges;
+#[path = "workspace_tests/recovery_coverage_edges.rs"]
+mod recovery_coverage_edges;
+#[path = "workspace_tests/recovery_semantic_coverage.rs"]
+mod recovery_semantic_coverage;
+
 fn temporary() -> std::path::PathBuf {
     let path = std::env::temp_dir().join(format!(
         "research-run-workspace-test-{}-{}",
@@ -25,6 +35,15 @@ fn temporary() -> std::path::PathBuf {
     let _ = fs::remove_dir_all(&path);
     fs::create_dir(&path).expect("temporary directory");
     path
+}
+
+#[test]
+fn initialization_rejects_conflicting_existing_identity() {
+    let root = temporary();
+    Workspace::initialize(&root, "Original").expect("initialize");
+    Workspace::initialize(&root, "Original").expect("idempotent retry");
+    assert!(Workspace::initialize(&root, "Different").is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
 }
 
 fn source(id: &str) -> SourceRecord {
@@ -77,6 +96,7 @@ fn review(id: &str, claim_id: &str) -> ReviewDecision {
         decision: Assessment::Limited,
         rationale: "Bounded rationale".to_owned(),
         reviewer: "Researcher".to_owned(),
+        authorization: None,
     }
 }
 
@@ -176,9 +196,13 @@ mod retrieval_boundaries;
 mod retrieval_expanded;
 #[path = "workspace_tests/retrieval_failure_expanded.rs"]
 mod retrieval_failure_expanded;
+#[path = "workspace_tests/review_authority_coverage.rs"]
+mod review_authority_coverage;
 #[path = "workspace_tests/review_binding_expanded.rs"]
 mod review_binding_expanded;
 #[path = "workspace_tests/snapshot_expanded.rs"]
 mod snapshot_expanded;
+#[path = "workspace_tests/sshsig.rs"]
+mod sshsig;
 #[path = "workspace_tests/storage.rs"]
 mod storage;

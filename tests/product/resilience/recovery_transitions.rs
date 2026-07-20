@@ -52,13 +52,9 @@ fn recover_propagates_lock_and_final_snapshot_failures() {
             .success()
     );
     assert!(
-        !run(
-            &root.0,
-            &["recover", "--json"],
-            Some("inspect workspace path#4")
-        )
-        .status
-        .success()
+        !run(&root.0, &["recover", "--json"], Some("load snapshot"))
+            .status
+            .success()
     );
 }
 

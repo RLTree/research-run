@@ -14,7 +14,7 @@ pub(super) fn validate_recovered_authority(
     snapshot: &Snapshot,
     inventory_pending: &[PendingRecord],
     migration_pending: &[PendingRecord],
-    other_pending: [&[PendingRecord]; 9],
+    other_pending: [&[PendingRecord]; 10],
 ) -> Result<()> {
     validate_inventory(workspace, snapshot, inventory_pending)?;
     validate_migration(workspace, snapshot, migration_pending, other_pending)
@@ -71,7 +71,7 @@ fn validate_migration(
     workspace: &Workspace,
     snapshot: &Snapshot,
     pending: &[PendingRecord],
-    other_pending: [&[PendingRecord]; 9],
+    other_pending: [&[PendingRecord]; 10],
 ) -> Result<()> {
     let new_ids = new_target_ids(pending)?;
     if new_ids.is_empty() {

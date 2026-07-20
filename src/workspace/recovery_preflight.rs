@@ -1,23 +1,15 @@
-use std::collections::BTreeMap;
-use std::ffi::OsStr;
-use std::path::Path;
-
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-
 use crate::domain::{
-    CanonicalRecord, ClaimRecord, EvidenceLink, ExperimentReceipt, ProjectManifest, ReviewDecision,
-    SourceRecord,
+    ClaimRecord, EvidenceLink, ExperimentReceipt, ReviewAuthority, ReviewDecision, SourceRecord,
 };
 use crate::{Error, Result};
 
-use super::publication::canonical_json_bytes;
+use super::recovery_canonical::{canonical_manifest, canonical_records};
 use super::recovery_commit::commit_recovery;
 use super::recovery_optional::{OptionalRecovery, preflight_optional};
 use super::recovery_plan::PendingRecord;
 use super::recovery_review::validate_pending_review_graphs;
 use super::recovery_semantics::validate_recovered_authority;
-use super::storage::{ReadBudget, parse_json, read_bounded, read_json_with_budget};
+use super::storage::ReadBudget;
 use super::{RecoveryResult, Snapshot, Workspace, injected_storage_failure};
 
 pub(super) struct RecoveryBatch {
@@ -27,6 +19,7 @@ pub(super) struct RecoveryBatch {
     experiments: Vec<PendingRecord>,
     evidence: Vec<PendingRecord>,
     reviews: Vec<PendingRecord>,
+    review_authorities: Vec<PendingRecord>,
     inventories: Vec<PendingRecord>,
     knowledge: Vec<PendingRecord>,
     relationships: Vec<PendingRecord>,
@@ -41,6 +34,7 @@ impl Workspace {
         let mut experiment_pending = collect_named(self, "experiments")?;
         let mut evidence_pending = collect_named(self, "evidence")?;
         let mut review_pending = collect_named(self, "reviews")?;
+        let mut review_authority_pending = collect_named_optional(self, "review-authorities")?;
         let mut budget = ReadBudget::default();
         let manifest = canonical_manifest(self, &mut manifest_pending, &mut budget)?;
         let sources =
@@ -61,6 +55,16 @@ impl Workspace {
         )?;
         let reviews =
             canonical_records::<ReviewDecision>(self, "reviews", &mut review_pending, &mut budget)?;
+        let review_authorities = if self.state.join("review-authorities").exists() {
+            canonical_records::<ReviewAuthority>(
+                self,
+                "review-authorities",
+                &mut review_authority_pending,
+                &mut budget,
+            )?
+        } else {
+            Vec::new()
+        };
         let OptionalRecovery {
             inventories,
             knowledge,
@@ -78,6 +82,7 @@ impl Workspace {
             experiments,
             evidence,
             reviews,
+            review_authorities,
             inventories,
             knowledge,
             relationships,
@@ -90,6 +95,7 @@ impl Workspace {
             experiments: experiment_pending,
             evidence: evidence_pending,
             reviews: review_pending,
+            review_authorities: review_authority_pending,
             inventories: inventory_pending,
             knowledge: knowledge_pending,
             relationships: relationship_pending,
@@ -102,6 +108,15 @@ impl Workspace {
 
 fn collect_named(workspace: &Workspace, name: &str) -> Result<Vec<PendingRecord>> {
     workspace.collect_recovery_pending(&workspace.state.join(name))
+}
+
+fn collect_named_optional(workspace: &Workspace, name: &str) -> Result<Vec<PendingRecord>> {
+    let path = workspace.state.join(name);
+    if path.exists() {
+        workspace.collect_recovery_pending(&path)
+    } else {
+        Ok(Vec::new())
+    }
 }
 
 impl RecoveryBatch {
@@ -118,6 +133,7 @@ impl RecoveryBatch {
                 &self.experiments,
                 &self.evidence,
                 &self.reviews,
+                &self.review_authorities,
                 &self.inventories,
                 &self.knowledge,
                 &self.relationships,
@@ -131,14 +147,22 @@ impl RecoveryBatch {
         }
         let errors = workspace.reference_errors(snapshot);
         validate_pending_review_graphs(workspace, snapshot, &self.reviews)?;
-        if errors.is_empty() && !injected_storage_failure("recovered references") {
+        let authorization_errors = workspace.review_authorization_errors(snapshot);
+        if errors.is_empty()
+            && authorization_errors.is_empty()
+            && !injected_storage_failure("recovered references")
+        {
             Ok(())
         } else {
             Err(Error::invalid(
                 "recovery plan",
                 format!(
                     "prospective reference validation failed: {}",
-                    errors.join("; ")
+                    errors
+                        .into_iter()
+                        .chain(authorization_errors)
+                        .collect::<Vec<_>>()
+                        .join("; ")
                 ),
             ))
         }
@@ -152,6 +176,7 @@ impl RecoveryBatch {
             ("experiments", self.experiments),
             ("evidence", self.evidence),
             ("reviews", self.reviews),
+            ("review-authorities", self.review_authorities),
             ("inventories", self.inventories),
             ("knowledge", self.knowledge),
             ("relationships", self.relationships),
@@ -160,102 +185,5 @@ impl RecoveryBatch {
             commit_recovery(&workspace.state.join(directory), pending, result)?;
         }
         Ok(())
-    }
-}
-
-fn canonical_manifest(
-    workspace: &Workspace,
-    pending: &mut [PendingRecord],
-    budget: &mut ReadBudget,
-) -> Result<ProjectManifest> {
-    let target = workspace.state.join("manifest.json");
-    let mut candidate = None;
-    for record in pending.iter_mut() {
-        budget.consume(&record.path, record.bytes.len() as u64)?;
-        let parsed: ProjectManifest = parse_json(&record.bytes, &record.target)?;
-        parsed.validate()?;
-        record.bytes = canonical_json_bytes(&parsed);
-        candidate.get_or_insert(parsed);
-    }
-    let unique = unique_pending(pending)?;
-    if unique.iter().any(|record| record.target != target) {
-        return Err(Error::invalid(
-            "recovery target",
-            "project manifest must publish only as manifest.json",
-        ));
-    }
-    if target.exists() {
-        for record in unique {
-            ensure_identical_target(record)?;
-        }
-        let manifest = read_json_with_budget::<ProjectManifest>(&target, budget)?;
-        manifest.validate()?;
-        return Ok(manifest);
-    }
-    candidate.ok_or_else(|| Error::NotFound("recovery requires a project manifest".to_owned()))
-}
-
-pub(super) fn canonical_records<T>(
-    workspace: &Workspace,
-    directory: &str,
-    pending: &mut [PendingRecord],
-    budget: &mut ReadBudget,
-) -> Result<Vec<T>>
-where
-    T: CanonicalRecord + DeserializeOwned + Serialize,
-{
-    let mut candidates = BTreeMap::<std::path::PathBuf, T>::new();
-    for record in pending.iter_mut() {
-        budget.consume(&record.path, record.bytes.len() as u64)?;
-        let candidate: T = parse_json(&record.bytes, &record.target)?;
-        candidate.validate()?;
-        if record.target.file_stem().and_then(OsStr::to_str) != Some(candidate.id()) {
-            return Err(Error::invalid(
-                "recovery target",
-                "filename does not match record id",
-            ));
-        }
-        record.bytes = canonical_json_bytes(&candidate);
-        candidates.entry(record.target.clone()).or_insert(candidate);
-    }
-    let mut records = workspace.load_records(directory, true, budget)?;
-    for record in unique_pending(pending)? {
-        if record.target.exists() {
-            ensure_identical_target(record)?;
-            continue;
-        }
-        records.push(
-            candidates
-                .remove(&record.target)
-                .expect("every canonical pending target retains its typed record"),
-        );
-    }
-    Ok(records)
-}
-
-fn unique_pending(pending: &[PendingRecord]) -> Result<Vec<&PendingRecord>> {
-    let mut by_target = BTreeMap::<&Path, &PendingRecord>::new();
-    for record in pending {
-        if let Some(existing) = by_target.get(record.target.as_path())
-            && existing.bytes != record.bytes
-        {
-            return Err(Error::AmbiguousEffect(format!(
-                "conflicting pending publications target {}; inspect them before recovery",
-                record.target.display()
-            )));
-        }
-        by_target.insert(&record.target, record);
-    }
-    Ok(by_target.into_values().collect())
-}
-
-fn ensure_identical_target(record: &PendingRecord) -> Result<()> {
-    if read_bounded(&record.target)? == record.bytes {
-        Ok(())
-    } else {
-        Err(Error::AmbiguousEffect(format!(
-            "recovery conflict for {}; inspect both files",
-            record.target.display()
-        )))
     }
 }
