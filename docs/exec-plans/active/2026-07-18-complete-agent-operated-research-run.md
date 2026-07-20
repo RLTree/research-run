@@ -334,10 +334,10 @@ pass.
 - 2026-07-20: The pending Product Fitness candidate declaration resolves
   `git:HEAD` only from a clean proof-gate worktree and expects the
   `aarch64-apple-darwin` installed binary content digest
-  `a2e3a75dc5b409a086834b2337ab6afeb87a015a63421b522abbfe3e30eeaa89`
+  `7c240570bb001663b5808e0e6feacd46ced8ff0490b30a7406f20e76d3087eaa`
   after first verifying and binding the exact empty-entitlement ad-hoc,
   linker-signed profile, then removing that code-signature blob and zeroing the
-  nondeterministic Mach-O `LC_UUID` (2,253,600 normalized bytes; 2,271,376 raw
+  nondeterministic Mach-O `LC_UUID` (2,253,608 normalized bytes; 2,271,392 raw
   bytes). The canonical signature-profile digest is
   `a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd`.
   `scripts/check-product-artifacts` must reproduce and verify these values from
@@ -383,10 +383,12 @@ pass.
   authority. New anchored workspaces now publish the validated authority first
   and expose the manifest only after that publication succeeds. Fault fixtures
   prove both authority-publication and manifest-publication interruption states
-  remain undiscoverable and retry safely. The exact production totals remain
-  8,842/8,842 regions, 4,506/4,506 lines, and 561/561 functions. The named
-  `initialize_inner` mutation boundary at `bb43273` exercised six mutants: five
-  caught, one compiler-unviable, zero missed, and zero timed out.
+  remain undiscoverable and retry safely. Conflicting anchored and unanchored
+  retries now validate the complete staged authority set before any new effect.
+  The exact production totals are 8,887/8,887 regions, 4,527/4,527 lines, and
+  564/564 functions. The named lifecycle mutation boundary at `ee5e819`
+  exercised fifteen mutants: thirteen caught, two compiler-unviable, zero
+  missed, and zero timed out.
 
 ## Current claim ceiling
 
