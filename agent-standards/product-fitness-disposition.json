@@ -5,10 +5,16 @@
   "status": "withheld",
   "owner": "human product-fitness reviewer",
   "candidate_binding": {
-    "status": "withheld",
-    "current_candidate": null,
+    "status": "bound",
+    "current_candidate": "git:HEAD",
+    "resolver": "Resolve git:HEAD only from a clean worktree at the exact proof gate.",
     "required_identity": "clean Git HEAD plus installed binary digest",
-    "reason": "The final clean candidate and installed-binary receipt do not exist yet."
+    "installed_binary": {
+      "sha256": "6467cef964a376b1c919f3f36553ead1af85a35ff85d927e72f90b30fe6a1ef6",
+      "bytes": 2221520,
+      "receipt": "scripts/check-product-artifacts (clean HEAD package/install journey with exact digest and byte verification)"
+    },
+    "reason": "Source and installed mechanics are candidate-bound; Product Fitness remains withheld because those deterministic proofs are not human-use evidence."
   },
   "audience": [
     "researcher",

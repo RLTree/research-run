@@ -102,9 +102,13 @@ jq -e '
   .claim_id == "research-run-v0.1-real-use-fitness" and
   .status == "withheld" and
   .owner == "human product-fitness reviewer" and
-  .candidate_binding.status == "withheld" and
-  .candidate_binding.current_candidate == null and
+  .candidate_binding.status == "bound" and
+  .candidate_binding.current_candidate == "git:HEAD" and
+  (.candidate_binding.resolver | contains("clean worktree")) and
   (.candidate_binding.required_identity | contains("clean Git HEAD")) and
+  .candidate_binding.installed_binary.sha256 == "6467cef964a376b1c919f3f36553ead1af85a35ff85d927e72f90b30fe6a1ef6" and
+  .candidate_binding.installed_binary.bytes == 2221520 and
+  (.candidate_binding.installed_binary.receipt | startswith("scripts/check-product-artifacts")) and
   .audience == [
     "researcher",
     "repository owner and review-key signer",

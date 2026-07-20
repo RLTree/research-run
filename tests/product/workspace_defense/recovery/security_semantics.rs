@@ -73,8 +73,7 @@ fn recovery_rejects_forged_inventory_content_with_valid_identity() {
             "2026-07-20T00:00:00Z",
         ],
     );
-    let mut inventory: Value = serde_json::from_slice(&planned.stdout).expect("inventory plan");
-    inventory["kind"] = Value::String("inventory".to_owned());
+    let mut inventory = inventory_snapshot_from_plan(&planned.stdout);
     inventory["entries"][0]["sha256"] = Value::String("a".repeat(64));
     let state = project.0.join(".research-run");
     let pending = state.join("inventories/.inventory-forged-content.json.99.1.tmp");
@@ -109,8 +108,7 @@ fn recovery_accepts_initial_inventory_bound_to_current_materials() {
             "2026-07-20T00:00:00Z",
         ],
     );
-    let mut inventory: Value = serde_json::from_slice(&planned.stdout).expect("inventory plan");
-    inventory["kind"] = Value::String("inventory".to_owned());
+    let inventory = inventory_snapshot_from_plan(&planned.stdout);
     let state = project.0.join(".research-run");
     let pending = state.join("inventories/.inventory-valid.json.99.1.tmp");
     write_json(&pending, inventory);
@@ -142,6 +140,20 @@ fn recovery_rejects_forged_migration_authority() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("migration identity"));
     assert!(pending.exists());
     assert!(!state.join("migrations/migration-forged.json").exists());
+}
+
+fn inventory_snapshot_from_plan(bytes: &[u8]) -> Value {
+    let mut inventory: Value = serde_json::from_slice(bytes).expect("inventory plan");
+    inventory["kind"] = Value::String("inventory".to_owned());
+    let object = inventory.as_object_mut().expect("inventory object");
+    for plan_only in [
+        "workspace_id",
+        "review_authority",
+        "without_review_authority",
+    ] {
+        object.remove(plan_only);
+    }
+    inventory
 }
 
 #[test]

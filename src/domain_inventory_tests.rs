@@ -16,6 +16,7 @@ fn inventory_plan() -> InventoryPlan {
         id: "inventory-one".to_owned(),
         project_name: "Project".to_owned(),
         project_id: "project".to_owned(),
+        workspace_id: "b".repeat(64),
         observed_at: "2026-07-18T20:00:00Z".to_owned(),
         previous_snapshot_id: None,
         review_authority: None,
@@ -58,6 +59,9 @@ fn assert_invalid_plan_fields(plan: &InventoryPlan) {
     invalid.project_id = "INVALID".to_owned();
     assert!(invalid.validate().is_err());
     invalid = plan.clone();
+    invalid.workspace_id = "INVALID".to_owned();
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
     invalid.observed_at = "bad".to_owned();
     assert!(invalid.validate().is_err());
     invalid = plan.clone();
@@ -82,6 +86,11 @@ fn assert_invalid_plan_fields(plan: &InventoryPlan) {
 }
 
 fn assert_invalid_authority_fields(plan: &InventoryPlan) {
+    let mut legacy = plan.clone();
+    legacy.without_review_authority = false;
+    legacy.workspace_id.clear();
+    assert!(legacy.validate().is_ok());
+
     let mut invalid = plan.clone();
     invalid.review_authority = Some(ReviewAuthority {
         schema_version: 2,

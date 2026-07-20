@@ -22,6 +22,20 @@ tar -xzf "$archive" -C "$observation_root"
 cargo install --path "$observation_root/research-run-0.1.0" --locked \
   --root "$observation_root/install"
 binary="$observation_root/install/bin/research-run"
+if command -v sha256sum >/dev/null 2>&1; then
+  binary_sha256="$(sha256sum "$binary" | awk '{print $1}')"
+else
+  binary_sha256="$(shasum -a 256 "$binary" | awk '{print $1}')"
+fi
+binary_bytes="$(wc -c < "$binary" | tr -d ' ')"
+jq -e \
+  --arg sha256 "$binary_sha256" \
+  --argjson bytes "$binary_bytes" '
+    .candidate_binding.status == "bound" and
+    .candidate_binding.current_candidate == "git:HEAD" and
+    .candidate_binding.installed_binary.sha256 == $sha256 and
+    .candidate_binding.installed_binary.bytes == $bytes
+  ' agent-standards/product-fitness-disposition.json >/dev/null
 
 workspace="$observation_root/journey"
 ssh-keygen -q -t ed25519 -N '' -f "$observation_root/review-key"
@@ -103,7 +117,6 @@ cp "$binary" "$stripped"
 strip "$stripped"
 
 archive_bytes="$(wc -c < "$archive" | tr -d ' ')"
-binary_bytes="$(wc -c < "$binary" | tr -d ' ')"
 stripped_binary_bytes="$(wc -c < "$stripped" | tr -d ' ')"
 install_kib="$(du -sk "$observation_root/install" | awk '{print $1}')"
 target_after_kib="$(du -sk target | awk '{print $1}')"
@@ -112,6 +125,7 @@ coverage_target_kib="$(du -sk target/llvm-cov-target 2>/dev/null | awk '{print $
 jq -n \
   --arg candidate "$(git rev-parse HEAD)" \
   --arg cache_state "warm Cargo cache; clean source candidate" \
+  --arg installed_binary_sha256 "$binary_sha256" \
   --argjson archive_bytes "$archive_bytes" \
   --argjson binary_bytes "$binary_bytes" \
   --argjson stripped_binary_bytes "$stripped_binary_bytes" \
@@ -125,4 +139,4 @@ jq -n \
   --argjson status_warm_seconds "$status_warm_seconds" \
   --argjson recovery_cold_seconds "$recovery_cold_seconds" \
   --argjson recovery_warm_seconds "$recovery_warm_seconds" \
-  '{candidate:$candidate, cache_state:$cache_state, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine reproducible observation only; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'
+  '{candidate:$candidate, cache_state:$cache_state, installed_binary_sha256:$installed_binary_sha256, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine reproducible observation only; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'

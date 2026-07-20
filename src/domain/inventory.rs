@@ -86,6 +86,8 @@ pub struct InventoryPlan {
     pub id: String,
     pub project_name: String,
     pub project_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub workspace_id: String,
     pub observed_at: String,
     pub previous_snapshot_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -107,6 +109,12 @@ impl InventoryPlan {
         }
         if let Some(authority) = &self.review_authority {
             authority.validate()?;
+        }
+        if self.review_authority.is_some()
+            || self.without_review_authority
+            || !self.workspace_id.is_empty()
+        {
+            validate_hex_digest(&self.workspace_id, "inventory plan workspace_id")?;
         }
         validate_common(self)
     }

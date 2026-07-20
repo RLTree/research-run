@@ -12,7 +12,7 @@ use super::{STATE_DIRECTORY, Workspace, injected_storage_failure};
 
 impl Workspace {
     pub fn initialize(root: &Path, name: &str) -> Result<Self> {
-        Self::initialize_inner(root, name, None)
+        Self::initialize_inner(root, name, None, None)
     }
 
     pub fn initialize_with_review_authority(
@@ -22,18 +22,36 @@ impl Workspace {
     ) -> Result<Self> {
         authority.validate()?;
         parse_authority_key(authority)?;
-        Self::initialize_inner(root, name, Some(authority))
+        Self::initialize_inner(root, name, Some(authority), None)
+    }
+
+    pub(super) fn initialize_for_inventory(
+        root: &Path,
+        name: &str,
+        authority: Option<&ReviewAuthority>,
+        workspace_id: &str,
+    ) -> Result<Self> {
+        if let Some(authority) = authority {
+            authority.validate()?;
+            parse_authority_key(authority)?;
+        }
+        Self::initialize_inner(root, name, authority, Some(workspace_id))
     }
 
     fn initialize_inner(
         root: &Path,
         name: &str,
         authority: Option<&ReviewAuthority>,
+        workspace_id: Option<&str>,
     ) -> Result<Self> {
         let mut manifest = ProjectManifest::new(name)?;
+        if let Some(workspace_id) = workspace_id {
+            manifest.workspace_id = workspace_id.to_owned();
+        }
         if let Some(authority) = authority {
             manifest.anchor_review_authority(&authority.id, &authority.fingerprint);
         }
+        manifest.validate()?;
         let root = absolute_path(root)?;
         reject_symlink_chain(&root)?;
         create_directory_chain(&root)?;
@@ -42,6 +60,27 @@ impl Workspace {
             root,
         };
         create_directory_chain(&workspace.state)?;
+        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
+        let manifest_path = workspace.state.join("manifest.json");
+        if manifest_path.is_file() {
+            let existing = workspace.read_manifest()?;
+            let expected_anchor = authority.map(|value| (&value.id, &value.fingerprint));
+            let existing_anchor = existing
+                .review_authority_id
+                .as_ref()
+                .zip(existing.review_authority_fingerprint.as_ref());
+            let workspace_id_conflicts =
+                workspace_id.is_some_and(|expected| existing.workspace_id.as_str() != expected);
+            if existing.name != manifest.name
+                || existing_anchor != expected_anchor
+                || workspace_id_conflicts
+            {
+                return Err(Error::Conflict(
+                    "workspace identity or review authority conflicts with the existing manifest"
+                        .to_owned(),
+                ));
+            }
+        }
         for directory in [
             "sources",
             "claims",
@@ -57,27 +96,14 @@ impl Workspace {
             let path = workspace.state.join(directory);
             create_directory_chain(&path)?;
         }
-        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
-        if workspace.state.join("manifest.json").is_file() {
-            let existing = workspace.read_manifest()?;
-            let expected_anchor = authority.map(|value| (&value.id, &value.fingerprint));
-            let existing_anchor = existing
-                .review_authority_id
-                .as_ref()
-                .zip(existing.review_authority_fingerprint.as_ref());
-            if existing.name != manifest.name || existing_anchor != expected_anchor {
-                return Err(Error::Conflict(
-                    "workspace identity or review authority conflicts with the existing manifest"
-                        .to_owned(),
-                ));
-            }
+        if manifest_path.is_file() {
             if let Some(authority) = authority {
                 workspace.publish_record("review-authorities", authority)?;
             }
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
-        workspace.publish_value(&workspace.state.join("manifest.json"), &manifest)?;
+        workspace.publish_value(&manifest_path, &manifest)?;
         if let Some(authority) = authority {
             workspace.publish_record("review-authorities", authority)?;
         }

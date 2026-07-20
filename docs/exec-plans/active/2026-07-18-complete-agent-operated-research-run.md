@@ -313,19 +313,47 @@ pass.
   regressions were added without changing runtime behavior; mutation closure
   remains withheld until those exact survivors are killed on the clean
   test-repair candidate.
+- 2026-07-20: Exact candidate `abfe80b` closed all five prior survivors in a
+  focused 22-mutant delta: 16 viable mutants caught, six compiler-unviable,
+  zero missed or timed out. Exact coverage, normal-mode gates, dependency and
+  secret checks, and package/install mechanics passed on that clean candidate.
+  Final review then found an inventory plan race: a workspace created or whose
+  review authority changed after planning could be accepted before inventory
+  publication. The current repair binds plans to immutable workspace identity,
+  verifies the full authority snapshot under lock before effects, and derives
+  apply status only from that verified snapshot. The follow-up security review
+  found two narrower variants: existing-workspace plans did not carry the
+  plan-time authority, and initialization retries checked an appeared
+  manifest's name and key but not its supplied workspace identity before
+  creating subdirectories. The repair now binds every newly produced plan to
+  the exact anchored key or explicit unanchored mode, validates an appeared
+  workspace identity under lock before initialization effects, and retains
+  legacy `(None, false)` acceptance only for an unanchored target. Dedicated
+  no-effect race fixtures pass. Exact production coverage is 8,477/8,477
+  regions, 4,328/4,328 lines, and 542/542 functions.
+- 2026-07-20: Product Fitness candidate binding resolves `git:HEAD` only from a
+  clean proof-gate worktree and binds the installed binary digest
+  `6467cef964a376b1c919f3f36553ead1af85a35ff85d927e72f90b30fe6a1ef6`
+  (2,221,520 bytes). `scripts/check-product-artifacts` must reproduce and
+  verify both values from a clean exact `HEAD` while completing the installed
+  journey. This proves installed mechanics only. Accessibility,
+  cognitive load, recovery burden, continuance, audience-bound real use,
+  research impact, and actual owner-approved signing remain withheld.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. The current PR #7 repair has local
-normal-mode source, dependency/security, standards, and exact-coverage proof,
-but its bytes are not yet frozen in a clean commit or proven by package,
-mutation, independent exact-commit review, or GitHub. The product has an
-external configured-key authorization mechanism and a separately provisioned
-1Password signer. That closes the self-asserted-review defect at the source
-boundary; it does not prove personhood, owner bootstrap, private-key custody, or
-an actual human-approved signing journey. The prior UltraGoal fit record is
-historical and non-authoritative; current fit classification, applied fit,
-receipt, and fitted-governance readiness remain withheld because no current
-reprobe has run. Audience-bound Product Fitness proof remains withheld on its
-own surface. Release, scientific truth, scientific impact, continuance, and
-unobserved real researcher usefulness are outside this run.
+No completion claim is active for this plan. The clean candidate resolved as
+`git:HEAD` at each final gate may claim only the exact local source,
+dependency/security, standards, coverage, combined bounded-mutation,
+package/install, and synthetic-journey observations that name that surface.
+GitHub and CodeRabbit proof remain pending until the branch is pushed and the PR
+settles. The product has an external configured-key authorization mechanism and
+a separately provisioned 1Password signer. That closes the self-asserted-review
+defect at the source boundary; it does not prove personhood, owner bootstrap,
+private-key custody, or an actual human-approved signing journey. The prior
+UltraGoal fit record is historical and non-authoritative; current fit
+classification, applied fit, receipt, and fitted-governance readiness remain
+withheld because no current reprobe has run. Audience-bound Product Fitness
+proof remains withheld on its own surface. Release, scientific truth,
+scientific impact, continuance, and unobserved real researcher usefulness are
+outside this run.

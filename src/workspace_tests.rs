@@ -22,6 +22,8 @@ mod review_signing;
 use review_signing::*;
 #[path = "workspace_tests/coverage_edges.rs"]
 mod coverage_edges;
+#[path = "workspace_tests/inventory_authority_coverage.rs"]
+mod inventory_authority_coverage;
 #[path = "workspace_tests/inventory_bootstrap_coverage.rs"]
 mod inventory_bootstrap_coverage;
 #[path = "workspace_tests/recovery_coverage_edges.rs"]

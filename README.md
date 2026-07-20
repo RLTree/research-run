@@ -16,10 +16,11 @@ Build or install with the pinned Rust toolchain:
 
 ```console
 cargo install --path . --locked
+REVIEW_PUBLIC_KEY="$(pwd)/researcher-review.pub"
 research-run init my-study \
   --name "My study" \
   --review-authority-id primary-researcher \
-  --review-authority-public-key researcher-review.pub
+  --review-authority-public-key "$REVIEW_PUBLIC_KEY"
 cd my-study
 ```
 
@@ -90,7 +91,7 @@ research-run review prepare \
   --rationale "The paper supports the claim, but the negative repeat limits it." \
   --reviewer "Researcher Name" > review-binding.json
 ssh-keygen -Y sign \
-  -f researcher-review.pub \
+  -f "$REVIEW_PUBLIC_KEY" \
   -n research-run-review-v1 \
   review-binding.json
 research-run review add \

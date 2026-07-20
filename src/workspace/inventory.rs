@@ -6,10 +6,13 @@ use crate::domain::{
 };
 use crate::{Error, Result};
 
+use super::inventory_authority::{
+    inventory_apply_workspace, inventory_plan_review_authority, latest_inventory_from_snapshot,
+    verified_inventory_plan_snapshot, verify_inventory_target,
+};
 use super::inventory_reconcile::reconcile;
 use super::inventory_scan::scan_materials;
 use super::path_safety::{create_directory_chain, reject_symlink_chain};
-use super::status_authority::review_authority_status_from_manifest;
 use super::storage::{ReadBudget, read_json_with_budget};
 use super::write_lock::WorkspaceWriteLock;
 use super::{InventoryApplyResult, STATE_DIRECTORY, Workspace};
@@ -50,8 +53,9 @@ impl Workspace {
         let (root, entries) = scan_materials(root)?;
         let requested = ProjectManifest::new(name)?;
         let existing = Self::at_exact_root(&root)?;
-        let manifest = match (&existing, &bootstrap) {
-            (Some(workspace), None) => workspace.read_manifest()?,
+        let existing_snapshot = verified_inventory_plan_snapshot(existing.as_ref())?;
+        let manifest = match (&existing_snapshot, &bootstrap) {
+            (Some(snapshot), None) => snapshot.manifest.clone(),
             (Some(_), Some(_)) => {
                 return Err(Error::Conflict(
                     "workspace already exists; review authority bootstrap applies only to a new retrofit"
@@ -92,22 +96,19 @@ impl Workspace {
             .as_ref()
             .map(|snapshot| reconcile(&snapshot.entries, &entries))
             .unwrap_or_default();
+        let (review_authority, without_review_authority) =
+            inventory_plan_review_authority(existing_snapshot.as_ref(), bootstrap.as_ref())?;
         let plan = InventoryPlan {
             schema_version: FORMAT_VERSION,
             kind: "inventory-plan".to_owned(),
             id: id.to_owned(),
             project_name: manifest.name,
             project_id: manifest.project_id,
+            workspace_id: manifest.workspace_id,
             observed_at: observed_at.to_owned(),
             previous_snapshot_id: previous.map(|snapshot| snapshot.id),
-            review_authority: match &bootstrap {
-                Some(ReviewBootstrap::Authority(authority)) => Some(authority.clone()),
-                _ => None,
-            },
-            without_review_authority: matches!(
-                bootstrap,
-                Some(ReviewBootstrap::WithoutReviewAuthority)
-            ),
+            review_authority,
+            without_review_authority,
             entries,
             changes,
         };
@@ -131,14 +132,6 @@ impl Workspace {
             ));
         }
         let workspace = inventory_apply_workspace(&root, &plan)?;
-        let manifest = workspace.read_manifest()?;
-        if manifest.project_id != plan.project_id || manifest.name != plan.project_name {
-            return Err(Error::Conflict(
-                "inventory plan project identity does not match target workspace".to_owned(),
-            ));
-        }
-        let directory = workspace.state.join("inventories");
-        create_directory_chain(&directory)?;
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
         let (_, locked_entries) = scan_materials(&root)?;
         if super::injected_storage_failure("materials changed under lock")
@@ -149,14 +142,18 @@ impl Workspace {
                     .to_owned(),
             ));
         }
+        let authority_snapshot = workspace.load_snapshot()?;
+        let review_authority = verify_inventory_target(&workspace, &authority_snapshot, &plan)?;
+        let directory = workspace.state.join("inventories");
+        create_directory_chain(&directory)?;
         let snapshot = InventorySnapshot::from(plan.clone());
         if workspace.record_is_identical("inventories", &snapshot)? {
             return Ok(InventoryApplyResult {
                 created: false,
-                review_authority: review_authority_status_from_manifest(&manifest),
+                review_authority,
             });
         }
-        let latest = workspace.latest_inventory()?;
+        let latest = latest_inventory_from_snapshot(&authority_snapshot);
         if latest.as_ref().map(|value| value.id.as_str()) != plan.previous_snapshot_id.as_deref() {
             return Err(Error::Conflict(
                 "inventory authority changed after planning; create a fresh plan".to_owned(),
@@ -183,7 +180,7 @@ impl Workspace {
         let created = workspace.publish_record("inventories", &snapshot)?;
         Ok(InventoryApplyResult {
             created,
-            review_authority: review_authority_status_from_manifest(&manifest),
+            review_authority,
         })
     }
 
@@ -218,21 +215,5 @@ impl Workspace {
         };
         workspace.read_manifest()?;
         Ok(Some(workspace))
-    }
-}
-
-fn inventory_apply_workspace(root: &Path, plan: &InventoryPlan) -> Result<Workspace> {
-    match Workspace::at_exact_root(root)? {
-        Some(workspace) => Ok(workspace),
-        None => match (&plan.review_authority, plan.without_review_authority) {
-            (Some(authority), false) => {
-                Workspace::initialize_with_review_authority(root, &plan.project_name, authority)
-            }
-            (None, true) => Workspace::initialize(root, &plan.project_name),
-            _ => Err(Error::invalid(
-                "inventory plan review authority",
-                "new-workspace retrofit requires an authority or explicit unanchored opt-out",
-            )),
-        },
     }
 }
