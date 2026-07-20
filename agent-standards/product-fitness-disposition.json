@@ -28,7 +28,7 @@
       },
       "signature_profile_sha256": "a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd",
       "normalization": "removed ad-hoc code signature and zeroed Mach-O LC_UUID",
-      "normalized_sha256": "7c240570bb001663b5808e0e6feacd46ced8ff0490b30a7406f20e76d3087eaa",
+      "normalized_sha256": "db5b61dd80b44110846b9330366f52db2d1bbbd1d8e3a79c5e68c33330d82923",
       "normalized_bytes": 2253608,
       "receipt": "scripts/check-product-artifacts (clean HEAD package/install journey with exact digest and byte verification)"
     },

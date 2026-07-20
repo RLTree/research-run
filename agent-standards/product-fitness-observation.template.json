@@ -5,7 +5,7 @@
     "git_commit": "0000000000000000000000000000000000000000",
     "installed_binary": {
       "platform": "aarch64-apple-darwin",
-      "normalized_sha256": "7c240570bb001663b5808e0e6feacd46ced8ff0490b30a7406f20e76d3087eaa",
+      "normalized_sha256": "db5b61dd80b44110846b9330366f52db2d1bbbd1d8e3a79c5e68c33330d82923",
       "normalized_bytes": 2253608
     }
   },
