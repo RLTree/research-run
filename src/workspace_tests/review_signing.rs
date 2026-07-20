@@ -171,8 +171,16 @@ fn review_authorization_rejects_missing_and_mismatched_authority_metadata() {
             .verify_review_authorization(&snapshot, &review)
             .is_err()
     );
+    review.subject_sha256 = Some(request.subject_sha256.clone());
     let mut mismatched = workspace.load_snapshot().expect("snapshot");
     mismatched.manifest.review_authority_fingerprint = Some("SHA256:wrong".to_owned());
+    assert!(
+        workspace
+            .verify_review_authorization(&mismatched, &review)
+            .is_err()
+    );
+    let mut mismatched = workspace.load_snapshot().expect("snapshot");
+    mismatched.manifest.review_authority_id = Some("wrong-authority".to_owned());
     assert!(
         workspace
             .verify_review_authorization(&mismatched, &review)

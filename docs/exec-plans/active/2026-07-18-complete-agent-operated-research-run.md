@@ -303,6 +303,16 @@ pass.
   4,255/4,255 lines, and 535/535 functions. Package/install, the single bounded
   final mutation run, exact-commit review, push, and GitHub proof remain
   pending.
+- 2026-07-20: Clean candidate `7607c23` passed package, isolated install,
+  installed signing journey, and machine-local artifact observation. Its
+  bounded one-worker/one-Cargo-job mutation run completed normally in 46
+  minutes: 271 mutants evaluated, 233 caught, 33 compiler-unviable, zero timed
+  out, and five survived. The survivors exposed missing independent checks for
+  initialized-authority equality, manifest ID/fingerprint matching, SSHSIG
+  namespace/reserved fields, and unanchored human-claim guidance. Focused
+  regressions were added without changing runtime behavior; mutation closure
+  remains withheld until those exact survivors are killed on the clean
+  test-repair candidate.
 
 ## Current claim ceiling
 

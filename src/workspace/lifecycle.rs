@@ -85,7 +85,10 @@ impl Workspace {
         Ok(workspace)
     }
 
-    fn verify_initialized_authority(&self, expected: Option<&ReviewAuthority>) -> Result<()> {
+    pub(super) fn verify_initialized_authority(
+        &self,
+        expected: Option<&ReviewAuthority>,
+    ) -> Result<()> {
         let snapshot = self.load_snapshot()?;
         match (expected, snapshot.review_authorities.as_slice()) {
             (Some(expected), [actual]) if actual == expected => Ok(()),

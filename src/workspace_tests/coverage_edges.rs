@@ -70,6 +70,18 @@ fn authority_initialization_retry_restores_the_exact_anchored_record() {
     );
     let mut mismatched = authority.clone();
     mismatched.fingerprint = "SHA256:wrong".to_owned();
+    let workspace = Workspace::initialize_with_review_authority(
+        &root.join("direct-mismatch"),
+        "Direct mismatch",
+        &authority,
+    )
+    .expect("direct mismatch workspace");
+    assert!(
+        workspace
+            .verify_initialized_authority(Some(&mismatched))
+            .is_err(),
+        "initialized authority accepted a different expected record"
+    );
     assert!(
         Workspace::initialize_with_review_authority(&root.join("invalid"), "Invalid", &mismatched)
             .is_err()
@@ -144,6 +156,9 @@ fn unanchored_ai_claim_reports_the_irreversible_promotion_boundary() {
     let mut record = claim("ai-claim");
     record.authorship = Authorship::Ai;
     workspace.add_claim(&record).expect("claim");
+    workspace
+        .add_claim(&claim("human-claim"))
+        .expect("human claim");
     let status = workspace.status().expect("status");
     let claim = status
         .claims
@@ -152,6 +167,16 @@ fn unanchored_ai_claim_reports_the_irreversible_promotion_boundary() {
         .expect("claim status");
     assert!(
         claim
+            .next_action
+            .contains("new workspace with an anchored review authority")
+    );
+    let human = status
+        .claims
+        .iter()
+        .find(|value| value.id == "human-claim")
+        .expect("human claim status");
+    assert!(
+        human
             .next_action
             .contains("new workspace with an anchored review authority")
     );

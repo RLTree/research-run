@@ -60,15 +60,37 @@ fn sshsig_verifier_rejects_malformed_envelopes_and_accepts_sha256() {
         .is_err()
     );
     assert!(verify(&key, "namespace", b"message", &signed(b"message")).is_ok());
+    assert!(
+        verify(
+            &key,
+            "namespace",
+            b"message",
+            &signed_fields(b"message", b"wrong-namespace", b"")
+        )
+        .is_err()
+    );
+    assert!(
+        verify(
+            &key,
+            "namespace",
+            b"message",
+            &signed_fields(b"message", b"namespace", b"reserved")
+        )
+        .is_err()
+    );
     for signature in malformed::signatures(&key.blob) {
         assert!(verify(&key, "namespace", b"message", &signature).is_err());
     }
 }
 
 fn signed(message: &[u8]) -> String {
+    signed_fields(message, b"namespace", b"")
+}
+
+fn signed_fields(message: &[u8], namespace: &[u8], reserved: &[u8]) -> String {
     let digest = Sha256::digest(message);
     let mut signed = b"SSHSIG".to_vec();
-    for field in [b"namespace".as_slice(), b"", b"sha256", digest.as_slice()] {
+    for field in [namespace, reserved, b"sha256", digest.as_slice()] {
         put_string(&mut signed, field);
     }
     let signature = signing_key().sign(&signed).to_bytes();
@@ -77,8 +99,8 @@ fn signed(message: &[u8]) -> String {
         1,
         [
             &public_key_blob(),
-            b"namespace",
-            b"",
+            namespace,
+            reserved,
             b"sha256",
             &signature_blob(b"ssh-ed25519", &signature, false),
         ],
