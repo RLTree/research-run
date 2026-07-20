@@ -17,7 +17,9 @@ pub(super) struct TempDir(pub(super) PathBuf);
 impl TempDir {
     pub(super) fn new(label: &str) -> Self {
         let sequence = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
+        let test_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("target/test-workspaces");
+        fs::create_dir_all(&test_root).expect("create worktree-local test root");
+        let path = test_root.join(format!(
             "research-run-{label}-{}-{sequence}",
             std::process::id()
         ));
@@ -103,6 +105,12 @@ fn add_supporting_evidence(project: &Path) {
 }
 
 fn add_negative_repeat(project: &Path) {
+    fs::create_dir_all(project.join("artifacts")).expect("create artifact directory");
+    fs::write(
+        project.join("artifacts/summary.txt"),
+        b"Deidentified negative-control summary.\n",
+    )
+    .expect("write experiment artifact");
     succeeds(
         project,
         &[
