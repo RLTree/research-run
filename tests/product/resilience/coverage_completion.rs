@@ -68,7 +68,7 @@ fn installed_retrofit_covers_scan_ordering_and_optional_legacy_state() {
 }
 
 #[test]
-fn installed_retrofit_rechecks_the_empty_bootstrap_scaffold_under_lock() {
+fn installed_retrofit_inspects_the_empty_bootstrap_scaffold_under_lock() {
     let project = TempDir::new("inventory-bootstrap-recheck");
     fs::write(project.0.join("note.md"), b"one").expect("material");
     let planned = run(
@@ -91,7 +91,7 @@ fn installed_retrofit_rechecks_the_empty_bootstrap_scaffold_under_lock() {
             .status
             .success()
     );
-    let recheck = run(&project.0, &args, Some("read inventory bootstrap state#2"));
+    let recheck = run(&project.0, &args, Some("read inventory bootstrap state"));
     assert!(!recheck.status.success());
     assert!(run(&project.0, &args, None).status.success());
     fs::remove_file(input).expect("remove plan");

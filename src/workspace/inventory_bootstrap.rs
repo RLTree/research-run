@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -9,9 +9,10 @@ use sha2::{Digest, Sha256};
 use crate::domain::InventoryPlan;
 use crate::{Error, Result};
 
-use super::path_safety::reject_symlink_chain;
+use super::path_safety::{interrupted_target_name, reject_symlink_chain};
+use super::pending_cleanup::PendingCleanup;
 use super::publication::canonical_json_bytes;
-use super::storage::{ReadBudget, map_io, read_json_with_budget, sync_directory};
+use super::storage::{ReadBudget, map_io, read_bounded, read_json_with_budget, sync_directory};
 use super::{Workspace, injected_storage_failure};
 
 pub(super) const INVENTORY_BOOTSTRAP_MARKER: &str = "inventory-bootstrap.json";
@@ -23,9 +24,17 @@ struct InventoryBootstrapMarker {
     plan_sha256: String,
 }
 
-pub(super) fn retryable_empty_bootstrap_state(workspace: &Workspace) -> Result<bool> {
+pub(super) enum InventoryBootstrapScaffold {
+    Empty,
+    ExactPending(PathBuf),
+}
+
+pub(super) fn inspect_inventory_bootstrap_scaffold(
+    workspace: &Workspace,
+    plan: &InventoryPlan,
+) -> Result<Option<InventoryBootstrapScaffold>> {
     if injected_storage_failure("inventory bootstrap state conflict") {
-        return Ok(false);
+        return Ok(None);
     }
     if injected_storage_failure("read inventory bootstrap state") {
         return Err(Error::io(
@@ -34,11 +43,15 @@ pub(super) fn retryable_empty_bootstrap_state(workspace: &Workspace) -> Result<b
             io::Error::other("injected storage failure"),
         ));
     }
-    let entries = map_io(
-        fs::read_dir(&workspace.state),
-        "read inventory bootstrap state",
-        &workspace.state,
-    )?;
+    let directory = if injected_storage_failure("read inventory bootstrap directory") {
+        Err(io::Error::other("injected storage failure"))
+    } else {
+        fs::read_dir(&workspace.state)
+    };
+    let entries = map_io(directory, "read bootstrap state", &workspace.state)?;
+    let expected = canonical_json_bytes(&inventory_bootstrap_marker(plan));
+    let mut pending = None;
+    let mut unexpected = false;
     for entry in entries {
         let entry = if injected_storage_failure("read inventory bootstrap state entry") {
             Err(io::Error::other("injected storage failure"))
@@ -58,11 +71,86 @@ pub(super) fn retryable_empty_bootstrap_state(workspace: &Workspace) -> Result<b
             entry.file_type()
         };
         let entry_type = map_io(entry_type, "inspect bootstrap state entry", &path)?;
-        if entry.file_name() != OsStr::new("write.lock") || !entry_type.is_file() {
-            return Ok(false);
+        if entry.file_name() == OsStr::new("write.lock") && entry_type.is_file() {
+            continue;
         }
+        if interrupted_target_name(&entry.file_name()) == Some(INVENTORY_BOOTSTRAP_MARKER)
+            && entry_type.is_file()
+        {
+            if pending.is_some() {
+                return Err(Error::AmbiguousEffect(
+                    "multiple pending inventory bootstrap markers require manual recovery"
+                        .to_owned(),
+                ));
+            }
+            if !read_bounded(&path).is_ok_and(|bytes| bytes == expected) {
+                return Err(Error::Conflict(
+                    "pending inventory bootstrap marker belongs to a different plan".to_owned(),
+                ));
+            }
+            pending = Some(path);
+            continue;
+        }
+        unexpected = true;
     }
-    Ok(true)
+    if pending.is_some() && unexpected {
+        return Err(Error::AmbiguousEffect(
+            "pending inventory bootstrap marker coexists with other workspace state".to_owned(),
+        ));
+    }
+    if unexpected {
+        return Ok(None);
+    }
+    Ok(Some(pending.map_or(
+        InventoryBootstrapScaffold::Empty,
+        InventoryBootstrapScaffold::ExactPending,
+    )))
+}
+
+pub(super) fn clear_exact_pending_bootstrap(scaffold: InventoryBootstrapScaffold) -> Result<()> {
+    if let InventoryBootstrapScaffold::ExactPending(path) = scaffold {
+        PendingCleanup::new(path).remove()?;
+    }
+    Ok(())
+}
+
+pub(super) fn clear_linked_bootstrap_pending(
+    workspace: &Workspace,
+    plan: &InventoryPlan,
+) -> Result<()> {
+    let expected = canonical_json_bytes(&inventory_bootstrap_marker(plan));
+    let directory = if injected_storage_failure("read linked bootstrap state") {
+        Err(io::Error::other("injected storage failure"))
+    } else {
+        fs::read_dir(&workspace.state)
+    };
+    for entry in map_io(directory, "read linked bootstrap state", &workspace.state)? {
+        let entry = if injected_storage_failure("read linked bootstrap entry") {
+            Err(io::Error::other("injected storage failure"))
+        } else {
+            entry
+        };
+        let entry = map_io(entry, "read linked bootstrap entry", &workspace.state)?;
+        if interrupted_target_name(&entry.file_name()) != Some(INVENTORY_BOOTSTRAP_MARKER) {
+            continue;
+        }
+        let path = entry.path();
+        reject_symlink_chain(&path)?;
+        let entry_type = if injected_storage_failure("inspect linked bootstrap pending entry") {
+            Err(io::Error::other("injected storage failure"))
+        } else {
+            entry.file_type()
+        };
+        if !map_io(entry_type, "inspect linked bootstrap pending entry", &path)?.is_file()
+            || !read_bounded(&path).is_ok_and(|bytes| bytes == expected)
+        {
+            return Err(Error::Conflict(
+                "linked inventory bootstrap has a conflicting pending marker".to_owned(),
+            ));
+        }
+        PendingCleanup::new(path).remove()?;
+    }
+    Ok(())
 }
 
 pub(super) fn ensure_inventory_bootstrap_marker(

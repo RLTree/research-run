@@ -8,8 +8,9 @@ use crate::{Error, Result};
 use super::STATE_DIRECTORY;
 use super::inventory::ReviewBootstrap;
 use super::inventory_bootstrap::{
-    INVENTORY_BOOTSTRAP_MARKER, ensure_inventory_bootstrap_marker, initialize_inventory_bootstrap,
-    inventory_bootstrap_error, retryable_empty_bootstrap_state,
+    INVENTORY_BOOTSTRAP_MARKER, clear_exact_pending_bootstrap, clear_linked_bootstrap_pending,
+    ensure_inventory_bootstrap_marker, initialize_inventory_bootstrap,
+    inspect_inventory_bootstrap_scaffold, inventory_bootstrap_error,
 };
 use super::path_safety::reject_symlink_chain;
 use super::status_authority::review_authority_status;
@@ -82,30 +83,30 @@ pub(super) fn inventory_apply_workspace(
     };
     let marker_path = workspace.state.join(INVENTORY_BOOTSTRAP_MARKER);
     let marker_exists = marker_path.exists();
-    let retryable_empty_state =
-        !created_state && !marker_exists && retryable_empty_bootstrap_state(&workspace)?;
-    if !created_state && !marker_exists && !retryable_empty_state {
-        let existing = if super::injected_storage_failure(
-            "inventory workspace disappeared after inspection",
-        ) {
-            None
-        } else {
-            Workspace::at_exact_root(root)?
-        };
-        return existing
-            .map(|workspace| (workspace, false))
-            .ok_or_else(|| Error::NotFound("workspace manifest is missing".to_owned()));
-    }
     let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
-    if retryable_empty_state {
-        let unchanged = retryable_empty_bootstrap_state(&workspace).unwrap_or(false);
-        if super::injected_storage_failure("inventory bootstrap state changed under lock")
-            || !unchanged
-        {
-            return Err(Error::AmbiguousEffect(
-                "inventory bootstrap state changed while acquiring recovery authority".to_owned(),
-            ));
+    if !marker_exists {
+        let scaffold = inspect_inventory_bootstrap_scaffold(&workspace, plan)?;
+        if scaffold.is_none() && !created_state {
+            drop(_write_lock);
+            let existing = if super::injected_storage_failure(
+                "inventory workspace disappeared after inspection",
+            ) {
+                None
+            } else {
+                Workspace::at_exact_root(root)?
+            };
+            return existing
+                .map(|workspace| (workspace, false))
+                .ok_or_else(|| Error::NotFound("workspace manifest is missing".to_owned()));
         }
+        let Some(scaffold) = scaffold else {
+            return Err(Error::AmbiguousEffect(
+                "new inventory bootstrap state contains an unexpected effect".to_owned(),
+            ));
+        };
+        clear_exact_pending_bootstrap(scaffold)?;
+    } else {
+        clear_linked_bootstrap_pending(&workspace, plan)?;
     }
     ensure_inventory_bootstrap_marker(&workspace, plan)?;
     drop(_write_lock);

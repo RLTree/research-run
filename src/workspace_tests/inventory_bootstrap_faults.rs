@@ -6,11 +6,10 @@ use crate::workspace::inventory_bootstrap::finish_inventory_bootstrap;
 fn bootstrap_scaffold_faults_preserve_a_retryable_boundary() {
     for fault in [
         "read inventory bootstrap state",
+        "read inventory bootstrap directory",
         "read inventory bootstrap state entry",
         "inspect inventory bootstrap state entry",
-        "read inventory bootstrap state#2",
-        "inventory bootstrap state conflict#2",
-        "inventory bootstrap state changed under lock",
+        "inventory bootstrap state conflict",
     ] {
         let root = temporary();
         fs::write(root.join("note.md"), b"note").expect("note");
@@ -51,6 +50,28 @@ fn bootstrap_creation_and_cleanup_faults_are_explicit() {
         finish_inventory_bootstrap(&workspace).expect("absent marker");
         fs::remove_dir_all(root).expect("remove fixture");
     }
+}
+
+#[test]
+fn new_bootstrap_rejects_an_injected_unexpected_effect() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    inject_storage_failure("inventory bootstrap state conflict");
+    assert!(Workspace::apply_inventory_plan(&root, plan.clone()).is_err());
+    Workspace::apply_inventory_plan(&root, plan).expect("retry");
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn bootstrap_post_initialization_lock_failure_is_retryable() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    inject_storage_failure("lock identity#3");
+    assert!(Workspace::apply_inventory_plan(&root, plan.clone()).is_err());
+    Workspace::apply_inventory_plan(&root, plan).expect("retry");
+    fs::remove_dir_all(root).expect("remove fixture");
 }
 
 #[test]
