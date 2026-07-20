@@ -12,7 +12,7 @@ fi
 version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
 [[ "$version" == "0.1.0" ]]
 [[ -f LICENSE && -f CHANGELOG.md && -f SECURITY.md ]]
-rg -q '^## 0\\.1\\.0 — Unreleased$' CHANGELOG.md
+rg -q '^## 0\.1\.0 — Unreleased$' CHANGELOG.md
 rg -q 'Validation proves ledger integrity, not scientific truth' CHANGELOG.md
 rg -q 'configured-key control, not personhood' CHANGELOG.md
 rg -q 'publication_authorized = false' policy.toml
