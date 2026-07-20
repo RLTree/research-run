@@ -255,3 +255,9 @@ creation, local install, runtime
 journey, CI, pull request, release, and real researcher use are separate proof
 surfaces. v0.1 does not include a GUI, service, sync, telemetry, database, LLM
 provider, or generic workflow engine.
+
+The unreleased `0.1.0` candidate is governed by
+[`docs/release/0.1.0.md`](docs/release/0.1.0.md). Product Fitness observations
+use the consent-first
+[`docs/release/product-fitness-protocol.md`](docs/release/product-fitness-protocol.md)
+and remain external, deidentified evidence by default.

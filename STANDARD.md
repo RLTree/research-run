@@ -130,6 +130,20 @@ cross-machine performance or regression-budget claim. CI and local gitleaks prov
 their own secret-scan surfaces. Package, install, runtime, journey, GitHub,
 release, and real-user evidence remain distinct.
 
+## Release boundary
+
+The v0.1 release class is a technical preview governed by
+`docs/release/0.1.0.md`. Release readiness may claim exact-candidate ledger
+integrity, package/install mechanics, and the installed journey on named
+platforms. It cannot claim personhood, scientific truth, general Product
+Fitness, continuance, or scientific impact. A Product Fitness observation uses
+the consent-first external-receipt protocol in
+`docs/release/product-fitness-protocol.md`; synthetic and agent-operated
+journeys remain non-substitutes. A detached release-candidate signature proves
+configured-key control over the exact request, not identity beyond the
+repository owner's key choice. No repository check publishes, tags, merges, or
+creates a release.
+
 ### Tool contract
 
 | Command | Owner and risk | Preconditions and effects | Failure and claim impact |

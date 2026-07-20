@@ -62,6 +62,13 @@
     "status": "none",
     "synthetic_journeys_are_non_substitutes": true
   },
+  "observation_protocol": {
+    "status": "ready-unobserved",
+    "path": "docs/release/product-fitness-protocol.md",
+    "receipt_template": "agent-standards/product-fitness-observation.template.json",
+    "receipt_validator": "scripts/check-product-fitness-receipt",
+    "receipt_storage": "external deidentified evidence; no human-subject receipt is tracked by default"
+  },
   "dispositions": [
     {
       "claim_id": "research-run-v0.1-complete-unfamiliar-project-workflow",
@@ -81,7 +88,7 @@
     "continuance",
     "research outcome improvement"
   ],
-  "required_follow_up": "Observe a consenting researcher completing the critical unfamiliar-project journey with an exact-candidate installed binary, record recovery burden and outcome evidence, then obtain an actor-disjoint Product Fitness review.",
+  "required_follow_up": "Run docs/release/product-fitness-protocol.md with a consenting researcher, validate the external receipt with scripts/check-product-fitness-receipt, then obtain an actor-disjoint Product Fitness review.",
   "accepted_non_substitutes": [
     "source tests",
     "coverage or mutation proof",

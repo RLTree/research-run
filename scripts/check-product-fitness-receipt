@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+if [[ "$#" -ne 1 ]]; then
+  echo "usage: scripts/check-product-fitness-receipt /absolute/path/to/receipt.json" >&2
+  exit 2
+fi
+
+receipt="$1"
+if [[ "$receipt" != /* || ! -f "$receipt" || -L "$receipt" ]]; then
+  echo "product fitness receipt must be an absolute path to a regular non-symlink file" >&2
+  exit 2
+fi
+resolved_receipt="$(realpath "$receipt")"
+if [[ "$resolved_receipt" == "$repo_root" || "$resolved_receipt" == "$repo_root/"* ]]; then
+  echo "product fitness receipts contain human-use evidence and must remain outside the repository" >&2
+  exit 2
+fi
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "product fitness receipt validation requires a clean exact candidate" >&2
+  exit 1
+fi
+
+candidate="$(git rev-parse HEAD)"
+platform="$(jq -er '.candidate_binding.installed_binary.platform' \
+  agent-standards/product-fitness-disposition.json)"
+normalized_sha256="$(jq -er '.candidate_binding.installed_binary.normalized_sha256' \
+  agent-standards/product-fitness-disposition.json)"
+normalized_bytes="$(jq -er '.candidate_binding.installed_binary.normalized_bytes' \
+  agent-standards/product-fitness-disposition.json)"
+
+jq -e \
+  --arg candidate "$candidate" \
+  --arg platform "$platform" \
+  --arg normalized_sha256 "$normalized_sha256" \
+  --argjson normalized_bytes "$normalized_bytes" '
+  def exact_keys($keys): (keys | sort) == ($keys | sort);
+  def bounded_text:
+    type == "string" and (length > 0) and (length <= 1024);
+  def utc_timestamp:
+    type == "string" and
+    test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$");
+  exact_keys([
+    "schema_version", "kind", "candidate", "consent", "participant", "observer",
+    "session", "accessibility", "cognitive_load", "outcome", "continuance",
+    "claim_ceiling"
+  ]) and
+  .schema_version == 1 and
+  .kind == "product-fitness-observation" and
+  (.candidate | exact_keys(["git_commit", "installed_binary"])) and
+  .candidate.git_commit == $candidate and
+  (.candidate.installed_binary |
+    exact_keys(["platform", "normalized_sha256", "normalized_bytes"])) and
+  .candidate.installed_binary == {
+    platform: $platform,
+    normalized_sha256: $normalized_sha256,
+    normalized_bytes: $normalized_bytes
+  } and
+  (.consent | exact_keys([
+    "obtained", "withdrawal_explained", "retained_fields_explained",
+    "sensitive_data_retained"
+  ])) and
+  .consent == {
+    obtained: true,
+    withdrawal_explained: true,
+    retained_fields_explained: true,
+    sensitive_data_retained: false
+  } and
+  (.participant | exact_keys(["role", "prior_research_run_use"])) and
+  .participant.role == "researcher" and
+  (.participant.prior_research_run_use |
+    . == "none" or . == "limited" or . == "regular") and
+  (.observer | exact_keys(["role", "actor_disjoint_from_participant"])) and
+  (.observer.role | bounded_text) and
+  .observer.actor_disjoint_from_participant == true and
+  (.session | exact_keys([
+    "started_at", "completed_at", "journey", "errors", "command_takeovers",
+    "abandoned_attempts", "recovery_seconds"
+  ])) and
+  (.session.started_at | utc_timestamp) and
+  (.session.completed_at | utc_timestamp) and
+  (.session.journey | exact_keys([
+    "installed_candidate_used", "initialized_or_retrofitted",
+    "recorded_scoped_evidence", "retained_negative_or_ambiguous_outcome",
+    "retrieved_context", "approved_detached_signature",
+    "recovered_interrupted_publication", "validated_workspace",
+    "explained_claim_ceiling"
+  ])) and
+  all(.session.journey[]; . == true) and
+  (.session.errors | type == "array" and length <= 32) and
+  all(.session.errors[];
+    exact_keys(["step", "category", "recovered", "recovery_steps", "recovery_seconds"]) and
+    (.step | bounded_text) and
+    (.category | bounded_text) and
+    (.recovered | type == "boolean") and
+    (.recovery_steps | type == "array" and length <= 16) and
+    all(.recovery_steps[]; bounded_text) and
+    (.recovery_seconds | type == "number" and . >= 0)) and
+  (.session.command_takeovers | type == "number" and . >= 0 and floor == .) and
+  (.session.abandoned_attempts | type == "number" and . >= 0 and floor == .) and
+  (.session.recovery_seconds | type == "number" and . >= 0) and
+  (.accessibility | exact_keys(["assistive_mode", "blockers"])) and
+  (.accessibility.assistive_mode | bounded_text) and
+  (.accessibility.blockers | type == "array" and length <= 16) and
+  all(.accessibility.blockers[]; bounded_text) and
+  (.cognitive_load | exact_keys(["rating_1_to_5", "confusing_steps"])) and
+  (.cognitive_load.rating_1_to_5 |
+    type == "number" and floor == . and . >= 1 and . <= 5) and
+  (.cognitive_load.confusing_steps | type == "array" and length <= 16) and
+  all(.cognitive_load.confusing_steps[]; bounded_text) and
+  (.outcome | exact_keys(["completed", "would_use_again", "limitations"])) and
+  .outcome.completed == true and
+  (.outcome.would_use_again |
+    . == "yes" or . == "no" or . == "uncertain") and
+  (.outcome.limitations | type == "array" and length <= 16) and
+  all(.outcome.limitations[]; bounded_text) and
+  (.continuance | exact_keys(["status", "voluntary_sessions"])) and
+  (
+    (.continuance.status == "not_observed" and
+      .continuance.voluntary_sessions == 1) or
+    (.continuance.status == "observed" and
+      (.continuance.voluntary_sessions |
+        type == "number" and floor == . and . >= 2))
+  ) and
+  .claim_ceiling ==
+    "One deidentified exact-candidate first-use observation; not personhood, continuance, scientific truth, scientific impact, or general Product Fitness."
+' "$resolved_receipt" >/dev/null || {
+  echo "product fitness receipt is malformed, incomplete, overbroad, or bound to a different candidate" >&2
+  echo "withheld: unfamiliar_project_workflow, product_fitness, continuance, and research_impact" >&2
+  exit 1
+}
+
+jq -c '{
+  candidate: .candidate,
+  completed: .outcome.completed,
+  errors_observed: (.session.errors | length),
+  command_takeovers: .session.command_takeovers,
+  abandoned_attempts: .session.abandoned_attempts,
+  recovery_seconds: .session.recovery_seconds,
+  accessibility_blockers: (.accessibility.blockers | length),
+  cognitive_load_rating_1_to_5: .cognitive_load.rating_1_to_5,
+  would_use_again: .outcome.would_use_again,
+  continuance: .continuance,
+  claim_ceiling: .claim_ceiling
+}' "$resolved_receipt"

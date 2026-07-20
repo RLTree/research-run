@@ -37,6 +37,15 @@ conflicting_identity = "fail_closed"
 distinct = ["source", "package", "install", "cache", "discovery", "runtime", "journey", "github", "release", "real_use", "product"]
 withheld = ["scientific_truth", "real_world_usefulness", "scientific_impact", "ultragoal_install", "ultragoal_discovery", "ultragoal_runtime_activation", "full_fitted_governance"]
 
+[release]
+version = "0.1.0"
+class = "technical_preview"
+contract = "docs/release/0.1.0.md"
+publication_authorized = false
+personhood_claim = false
+scientific_truth_claim = false
+product_fitness_claim = "withheld_until_external_observation_and_actor_disjoint_review"
+
 [checks]
 fast = "scripts/check fast"
 full = "scripts/check full"

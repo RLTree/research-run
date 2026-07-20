@@ -90,7 +90,7 @@
       {"id": "check_authority", "pattern": "scripts/**|.github/**"},
       {"id": "data_contract", "pattern": "schemas/**|examples/**"},
       {"id": "cargo_substrate", "pattern": "Cargo.toml|Cargo.lock|rust-toolchain.toml|deny.toml"},
-      {"id": "repository_metadata", "pattern": ".gitignore|LICENSE|README.md"},
+      {"id": "repository_metadata", "pattern": ".gitignore|LICENSE|README.md|CHANGELOG.md|SECURITY.md"},
       {"id": "validator_fixture", "pattern": "fixtures/**"},
       {"id": "generated_ephemeral", "pattern": "target/**|mutants.out*/**|*.crate"}
     ],
@@ -100,6 +100,12 @@
         "class": "product_source",
         "allowed_name": "lib",
         "forcing_contract": "Cargo library crate root and published Rust crate API boundary"
+      },
+      {
+        "path": "fixtures/namespace/green/source-layout/src/lib.rs",
+        "class": "validator_fixture",
+        "allowed_name": "lib",
+        "forcing_contract": "Green semantic source-layout fixture models Cargo's required library crate root"
       },
       {
         "path": "fixtures/namespace/red/phase4_rebind.rs",
@@ -136,7 +142,7 @@
       "module": "03",
       "status": "mechanized",
       "evidence": [
-        "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md",
+        "docs/exec-plans/active/2026-07-20-v0.1-release-readiness.md",
         "STANDARD.md"
       ],
       "reason": "One living ExecPlan and single-root execution are current authority."
@@ -198,9 +204,11 @@
       "status": "mechanized",
       "evidence": [
         "agent-standards/product-fitness-disposition.json",
+        "docs/release/product-fitness-protocol.md",
+        "scripts/check-product-fitness-receipt",
         "scripts/check-standards"
       ],
-      "reason": "A typed disposition withholds real-use and continuance claims until audience-bound human evidence exists; install and journey tests cannot substitute."
+      "reason": "A consent-first external receipt makes audience-bound first-use evidence executable while the typed disposition withholds Product Fitness and continuance until their separate review boundaries close."
     },
     {
       "id": "plugin-activation-distribution",

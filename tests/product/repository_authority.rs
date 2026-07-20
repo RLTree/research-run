@@ -59,6 +59,10 @@ fn policy_preserves_review_and_proof_claim_ceilings() {
         "exact_source_build = \"passed_locked_offline_source_only\"",
         "fit_apply = \"withheld_conflicting_authority\"",
         "full_activation = false",
+        "class = \"technical_preview\"",
+        "publication_authorized = false",
+        "personhood_claim = false",
+        "scientific_truth_claim = false",
         "coverage_line_floor = 100",
         "rust_toolchain = \"1.97.1\"",
         "artifact = \"harness-ultragoal-governance-complete.zip\"",
@@ -83,8 +87,12 @@ fn repository_check_entrypoints_are_executable() {
         "scripts/check-coverage",
         "scripts/check-dependencies",
         "scripts/check-mutations",
+        "scripts/check-product-fitness-receipt",
         "scripts/check-product-artifacts",
+        "scripts/check-release-candidate",
+        "scripts/prepare-release-authorization",
         "scripts/check-standards",
+        "scripts/verify-release-authorization",
     ] {
         let mode = fs::metadata(root().join(path))
             .unwrap_or_else(|error| panic!("missing {path}: {error}"))

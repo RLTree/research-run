@@ -24,10 +24,14 @@ jq -e '
   (.package_delta.artifact == "harness-ultragoal-governance-complete.zip") and
   (.package_delta.sha256 == "089382f27b64c6eb219b3a032296917dc8984129a52e56e63cb77ba66ba72377") and
   (.package_delta.inventory == {"laws":160,"classified_items":172,"validator_issues":0}) and
-  (.namespace.boundary_exceptions | length == 2) and
+  (.namespace.boundary_exceptions | length == 3) and
   (.namespace.boundary_exceptions | any(
     .path == "src/lib.rs" and .class == "product_source" and
     .allowed_name == "lib" and (.forcing_contract | startswith("Cargo library crate root")))) and
+  (.namespace.boundary_exceptions | any(
+    .path == "fixtures/namespace/green/source-layout/src/lib.rs" and
+    .class == "validator_fixture" and .allowed_name == "lib" and
+    (.forcing_contract | startswith("Green semantic source-layout fixture")))) and
   (.namespace.boundary_exceptions | any(
     .path == "fixtures/namespace/red/phase4_rebind.rs" and
     .class == "validator_fixture" and .allowed_name == "phase4_rebind" and
@@ -145,6 +149,13 @@ jq -e '
     "status": "none",
     "synthetic_journeys_are_non_substitutes": true
   } and
+  .observation_protocol == {
+    "status": "ready-unobserved",
+    "path": "docs/release/product-fitness-protocol.md",
+    "receipt_template": "agent-standards/product-fitness-observation.template.json",
+    "receipt_validator": "scripts/check-product-fitness-receipt",
+    "receipt_storage": "external deidentified evidence; no human-subject receipt is tracked by default"
+  } and
   (.dispositions | map(.claim_id) == [
     "research-run-v0.1-complete-unfamiliar-project-workflow",
     "research-run-v0.1-real-use-fitness"
@@ -177,14 +188,16 @@ done
 
 shopt -s nullglob
 active_plans=(docs/exec-plans/active/*.md)
-if [[ "${#active_plans[@]}" -ne 1 || "${active_plans[0]}" != "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md" ]]; then
+if [[ "${#active_plans[@]}" -ne 1 || "${active_plans[0]}" != "docs/exec-plans/active/2026-07-20-v0.1-release-readiness.md" ]]; then
   echo "standards obligation failure: exactly one named current ExecPlan must exist" >&2
   echo "withheld: execution_authority and material_completion" >&2
   exit 1
 fi
 
 for gate in scripts/check scripts/check-coverage scripts/check-standards \
-  scripts/check-dependencies scripts/check-mutations scripts/check-product-artifacts; do
+  scripts/check-dependencies scripts/check-mutations scripts/check-product-artifacts \
+  scripts/check-product-fitness-receipt scripts/check-release-candidate \
+  scripts/prepare-release-authorization scripts/verify-release-authorization; do
   if [[ ! -x "$gate" ]]; then
     echo "standards obligation failure: claimed executable evidence $gate is missing or not executable" >&2
     echo "withheld: agent_standard_closure and package_delta_closure" >&2
@@ -251,12 +264,34 @@ classify_path() {
     scripts/*|.github/*) echo check_authority ;;
     schemas/*|examples/*) echo data_contract ;;
     Cargo.toml|Cargo.lock|rust-toolchain.toml|deny.toml) echo cargo_substrate ;;
-    .gitignore|LICENSE|README.md) echo repository_metadata ;;
+    .gitignore|LICENSE|README.md|CHANGELOG.md|SECURITY.md) echo repository_metadata ;;
     fixtures/*) echo validator_fixture ;;
     target|target/*|mutants.out*|mutants.out*/*|*.crate) echo generated_ephemeral ;;
     *) return 1 ;;
   esac
 }
+
+source_layout_violations() {
+  local source_root="$1/src"
+  find "$source_root" -maxdepth 1 -type f -name '*.rs' \
+    ! -name 'lib.rs' ! -name 'main.rs' -print
+}
+
+top_level_sources="$(source_layout_violations "$repo_root")"
+if [[ -n "$top_level_sources" ]]; then
+  echo "semantic source layout failure: only Cargo crate roots may be top-level Rust files under src/" >&2
+  printf '%s\n' "$top_level_sources" >&2
+  echo "move each file under the product behavior it owns; withheld: namespace_law and material_completion" >&2
+  exit 1
+fi
+if [[ -n "$(source_layout_violations fixtures/namespace/green/source-layout)" ]]; then
+  echo "namespace fixture failure: the governed semantic source layout was rejected" >&2
+  exit 1
+fi
+if [[ -z "$(source_layout_violations fixtures/namespace/red/source-layout)" ]]; then
+  echo "namespace fixture failure: a misplaced top-level Rust source was accepted" >&2
+  exit 1
+fi
 
 while IFS= read -r path; do
   class="$(classify_path "$path")" || {
@@ -310,4 +345,4 @@ fi
 
 cargo test --locked --test standards_syntax --quiet
 
-echo "standards classifications: 12 source modules and 160 package laws validated; product-fitness withholding, paths, namespace, and semantic-tree fixtures passed"
+echo "standards classifications: 12 source modules and 160 package laws validated; product-fitness withholding, semantic source layout, paths, namespace, and semantic-tree fixtures passed"
