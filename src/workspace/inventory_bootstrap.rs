@@ -183,7 +183,6 @@ pub(super) fn initialize_inventory_bootstrap(
     root: &Path,
     plan: &InventoryPlan,
 ) -> Result<Workspace> {
-    validate_new_inventory_bootstrap(plan)?;
     match (&plan.review_authority, plan.without_review_authority) {
         (Some(authority), false) => Workspace::initialize_for_inventory(
             root,
@@ -194,7 +193,10 @@ pub(super) fn initialize_inventory_bootstrap(
         (None, true) => {
             Workspace::initialize_for_inventory(root, &plan.project_name, None, &plan.workspace_id)
         }
-        _ => unreachable!("inventory bootstrap authority was validated"),
+        _ => Err(Error::invalid(
+            "inventory plan review authority",
+            "new-workspace retrofit requires an authority or explicit unanchored opt-out",
+        )),
     }
 }
 

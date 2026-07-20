@@ -24,7 +24,7 @@ pub(super) fn canonical_manifest(
         budget.consume(&record.path, record.bytes.len() as u64)?;
         let parsed: ProjectManifest = parse_json(&record.bytes, &record.target)?;
         parsed.validate()?;
-        record.bytes = bounded_canonical_json(&parsed)?;
+        record.bytes = canonical_json_bytes(&parsed);
         candidate.get_or_insert(parsed);
     }
     let unique = unique_pending(pending)?;

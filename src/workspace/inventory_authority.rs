@@ -68,18 +68,8 @@ pub(super) fn inventory_apply_workspace(
 ) -> Result<(Workspace, bool)> {
     let state = root.join(STATE_DIRECTORY);
     reject_symlink_chain(&state)?;
-    match fs::symlink_metadata(&state) {
-        Ok(_) => {}
-        Err(error) if error.kind() == ErrorKind::NotFound => {
-            validate_new_inventory_bootstrap(plan)?;
-        }
-        Err(error) => {
-            return Err(Error::io(
-                "inspect inventory bootstrap state",
-                &state,
-                error,
-            ));
-        }
+    if !state.join("manifest.json").is_file() {
+        validate_new_inventory_bootstrap(plan)?;
     }
     let creation = if super::injected_storage_failure("create inventory bootstrap state") {
         Err(io::Error::other("injected storage failure"))
