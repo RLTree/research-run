@@ -3,6 +3,7 @@ use std::fs;
 use serde_json::Value;
 
 use super::researcher_journey::{TempDir, cli, succeeds};
+use super::review_test_signing::write_test_public_key;
 
 #[test]
 fn retrofit_preserves_bytes_and_reconcile_records_a_move() {
@@ -14,7 +15,8 @@ fn retrofit_preserves_bytes_and_reconcile_records_a_move() {
     let protocol = project.join("protocols/assay.md");
     fs::write(&note, b"negative result\n").expect("write note");
     fs::write(&protocol, b"safe synthetic protocol\n").expect("write protocol");
-    apply_and_repeat_retrofit(&temporary, &project, &note, &protocol);
+    let public_key = write_test_public_key(&temporary.0);
+    apply_and_repeat_retrofit(&temporary, &project, &note, &protocol, &public_key);
     let moved = project.join("notes/negative-result.md");
     fs::rename(&note, &moved).expect("move note");
     assert_move_plan(&temporary, &project);
@@ -25,6 +27,7 @@ fn apply_and_repeat_retrofit(
     project: &std::path::Path,
     note: &std::path::Path,
     protocol: &std::path::Path,
+    public_key: &std::path::Path,
 ) {
     let before_note = fs::read(note).expect("read note");
     let before_protocol = fs::read(protocol).expect("read protocol");
@@ -40,14 +43,19 @@ fn apply_and_repeat_retrofit(
             "inventory-initial",
             "--observed-at",
             "2026-07-18T20:00:00Z",
+            "--review-authority-id",
+            "test-human",
+            "--review-authority-public-key",
+            public_key.to_str().expect("public key path"),
         ],
     );
     let plan: Value = serde_json::from_slice(&plan_output.stdout).expect("plan JSON");
     assert_eq!(plan["entries"].as_array().expect("entries").len(), 2);
+    assert_eq!(plan["review_authority"]["id"], "test-human");
     let plan_path = temporary.0.join("retrofit-plan.json");
     fs::write(&plan_path, &plan_output.stdout).expect("write plan");
 
-    succeeds(
+    let applied = succeeds(
         &temporary.0,
         &[
             "retrofit",
@@ -58,6 +66,9 @@ fn apply_and_repeat_retrofit(
             "--json",
         ],
     );
+    let applied: Value = serde_json::from_slice(&applied.stdout).expect("apply JSON");
+    assert_eq!(applied["review_authority"]["mode"], "anchored");
+    assert_eq!(applied["review_authority"]["promotion_capable"], true);
     assert_eq!(fs::read(note).expect("note after"), before_note);
     assert_eq!(fs::read(protocol).expect("protocol after"), before_protocol);
     let repeated = succeeds(
@@ -171,6 +182,7 @@ fn retrofit_fails_closed_on_stale_plan_and_symlink() {
             "inventory-defense",
             "--observed-at",
             "2026-07-18T20:00:00Z",
+            "--without-review-authority",
         ],
     );
     let plan_path = temporary.0.join("plan.json");
@@ -205,6 +217,7 @@ fn retrofit_fails_closed_on_stale_plan_and_symlink() {
                 "inventory-linked",
                 "--observed-at",
                 "2026-07-18T20:00:00Z",
+                "--without-review-authority",
             ],
         );
         assert!(!linked.status.success());

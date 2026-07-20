@@ -25,11 +25,13 @@ pub(super) fn execute(cli: Cli) -> Result<()> {
             name,
             review_authority_id,
             review_authority_public_key,
+            without_review_authority,
         } => lifecycle_commands::initialize(
             &path,
             &name,
             review_authority_id,
             review_authority_public_key,
+            without_review_authority,
         ),
         Command::Retrofit { command } => inventory_commands::execute(command, false),
         Command::Reconcile { command } => inventory_commands::execute(command, true),

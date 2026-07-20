@@ -16,9 +16,18 @@ Build or install with the pinned Rust toolchain:
 
 ```console
 cargo install --path . --locked
-research-run init my-study --name "My study"
+research-run init my-study \
+  --name "My study" \
+  --review-authority-id primary-researcher \
+  --review-authority-public-key researcher-review.pub
 cd my-study
 ```
+
+Initialization anchors the one permitted Ed25519 review authority. The public
+key may come from a hardware-backed key or 1Password SSH Agent; its private key
+and each signing approval stay outside Research Run and the agent process.
+`--without-review-authority` is an explicit irreversible opt-out that disables
+claim promotion for that workspace.
 
 Add a source and a scoped claim:
 
@@ -66,17 +75,13 @@ research-run experiment add \
   --artifact "workspace:artifacts/summary.txt:Deidentified summary"
 ```
 
-Create the workspace with its one review key anchored in the immutable manifest.
-This initialization is the repository owner's trust-bootstrap boundary; there
-is no post-initialization enrollment command. Then inspect the claim ceiling,
-prepare the exact request, sign it outside the agent process, and import the
-detached SSH signature:
+The quickstart created the workspace with its one review key anchored in the
+immutable manifest. This initialization is the repository owner's
+trust-bootstrap boundary; there is no post-initialization enrollment command.
+Inspect the claim ceiling, prepare the exact request, sign it outside the agent
+process, and import the detached SSH signature:
 
 ```console
-research-run init . \
-  --name "Assay project" \
-  --review-authority-id primary-researcher \
-  --review-authority-public-key researcher-review.pub
 research-run status
 research-run review prepare \
   --id review-binding \
@@ -141,14 +146,20 @@ target so writing the plan itself cannot change the candidate it describes:
 research-run retrofit plan existing-project \
   --name "Existing project" \
   --id inventory-initial \
-  --observed-at 2026-07-18T20:00:00Z > /tmp/research-run-plan.json
+  --observed-at 2026-07-18T20:00:00Z \
+  --review-authority-id primary-researcher \
+  --review-authority-public-key researcher-review.pub \
+  > /tmp/research-run-plan.json
 research-run retrofit apply existing-project \
   --input /tmp/research-run-plan.json --json
 ```
 
 Apply rescans every indexed byte and fails if the project changed after
 planning. It creates only `.research-run/`, never modifies existing project
-files, and repeating the same accepted plan is a no-op. After files change,
+files, and repeating the same accepted plan is a no-op. The accepted plan binds
+the authority decision used if apply creates the workspace. Passing
+`--without-review-authority` to `retrofit plan` instead is the same explicit,
+irreversible non-promoting opt-out as `init`. After files change,
 `reconcile plan` compares the current directory with the latest inventory and
 reports added, changed, moved, missing, duplicate, or ambiguous material.
 Ambiguous identity conflicts cannot be applied.

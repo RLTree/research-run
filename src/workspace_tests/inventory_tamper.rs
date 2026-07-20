@@ -9,6 +9,7 @@ fn inventory_apply_recomputes_semantic_changes_under_lock() {
         "Tamper proof",
         "inventory-initial",
         "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
     )
     .expect("initial plan");
     Workspace::apply_inventory_plan(&root, initial).expect("initial apply");
@@ -44,6 +45,7 @@ fn inventory_apply_rejects_material_changes_after_planning() {
         "Stale plan",
         "inventory-stale",
         "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
     )
     .expect("plan");
     fs::write(root.join("new.txt"), b"new material").expect("new material");
@@ -61,6 +63,7 @@ fn inventory_apply_propagates_locked_rescan_failure() {
         "Locked scan",
         "inventory-locked",
         "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
     )
     .expect("plan");
     inject_storage_failure("read retrofit directory#2");
@@ -77,6 +80,7 @@ fn inventory_apply_rejects_an_under_lock_change() {
         "Under lock change",
         "inventory-under-lock",
         "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
     )
     .expect("plan");
     inject_storage_failure("materials changed under lock");
@@ -95,6 +99,7 @@ fn inventory_apply_rejects_genuine_ambiguous_moves() {
         "Conflict plan",
         "inventory-initial",
         "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
     )
     .expect("initial plan");
     Workspace::apply_inventory_plan(&root, initial).expect("initial apply");

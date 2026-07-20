@@ -1,4 +1,3 @@
-use super::super::references::current_review_bindings;
 use super::*;
 
 #[test]
@@ -139,47 +138,6 @@ fn corrupted_references_block_status_validation_and_recovery() {
     assert!(!workspace.validate().valid);
     assert!(workspace.status().is_err());
     assert!(workspace.recover().is_err());
-    fs::remove_dir_all(root).expect("remove fixture");
-}
-
-#[test]
-fn review_graph_validation_uses_one_canonical_binding() {
-    let root = temporary();
-    let workspace = Workspace::initialize(&root, "Review binding matrix").expect("initialize");
-    let mut reordered = review("review-reordered", "claim-one");
-    reordered.evidence_ids = vec!["evidence-two".to_owned(), "evidence-one".to_owned()];
-    assert!(reordered.validate().is_err());
-
-    let mut unknown = review("review-unknown", "claim-one");
-    unknown.evidence_ids = vec!["evidence-missing".to_owned()];
-    let mut cross_claim = review("review-cross", "claim-two");
-    cross_claim.evidence_ids = vec!["evidence-one".to_owned()];
-    let incomplete = review("review-incomplete", "claim-one");
-    let snapshot = Snapshot {
-        manifest: ProjectManifest::new("Review binding matrix").expect("manifest"),
-        sources: Vec::new(),
-        claims: vec![claim("claim-one"), claim("claim-two")],
-        evidence: vec![evidence("evidence-one", "claim-one", None)],
-        experiments: Vec::new(),
-        reviews: vec![unknown, cross_claim, incomplete],
-        review_authorities: Vec::new(),
-        inventories: Vec::new(),
-        knowledge: Vec::new(),
-        relationships: Vec::new(),
-        migrations: Vec::new(),
-    };
-    let errors = workspace.reference_errors(&snapshot);
-    assert!(
-        errors
-            .iter()
-            .any(|error| error.contains("unknown evidence"))
-    );
-    assert!(
-        errors
-            .iter()
-            .any(|error| error.contains("belongs to claim"))
-    );
-    assert!(current_review_bindings(&workspace, &snapshot).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

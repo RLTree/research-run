@@ -134,6 +134,23 @@ fn recovery_cannot_bootstrap_an_unanchored_review_authority() {
 }
 
 #[test]
+fn recovery_rejects_an_anchored_manifest_without_its_authority() {
+    let root = temporary();
+    let workspace = review_workspace(&root, "Interrupted anchored initialization");
+    let manifest = fs::read(workspace.state.join("manifest.json")).expect("manifest");
+    fs::remove_file(workspace.state.join("manifest.json")).expect("remove manifest");
+    fs::remove_file(workspace.state.join("review-authorities/test-human.json"))
+        .expect("remove authority");
+    let pending = workspace.state.join(".manifest.json.9.1.tmp");
+    fs::write(&pending, manifest).expect("pending manifest");
+
+    assert!(Workspace::for_recovery(&root).unwrap().recover().is_err());
+    assert!(pending.exists());
+    assert!(!workspace.state.join("manifest.json").exists());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn injected_recovery_faults_preserve_pending_effects() {
     for point in [
         "pending record count",

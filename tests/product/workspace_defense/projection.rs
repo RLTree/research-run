@@ -29,7 +29,10 @@ fn status_projection_is_byte_deterministic() {
 fn human_output_neutralizes_record_and_filename_controls() {
     let temporary = TempDir::new("terminal-controls");
     let hostile = "visible\u{1b}]2;changed\u{7}";
-    succeeds(&temporary.0, &["init", ".", "--name", hostile]);
+    succeeds(
+        &temporary.0,
+        &["init", ".", "--name", hostile, "--without-review-authority"],
+    );
     succeeds(
         &temporary.0,
         &[

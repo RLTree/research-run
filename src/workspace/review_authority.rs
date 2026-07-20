@@ -87,10 +87,15 @@ impl Workspace {
 
     pub(super) fn review_authorization_errors(&self, snapshot: &Snapshot) -> Vec<String> {
         let mut errors = Vec::new();
-        if snapshot.review_authorities.len() > 1 {
+        let manifest_is_anchored = snapshot.manifest.review_authority_id.is_some();
+        if manifest_is_anchored && snapshot.review_authorities.len() != 1 {
             errors.push(
-                "review-authorities: exactly one enrolled authority is permitted in v0.1"
+                "review-authorities: an anchored manifest requires exactly one enrolled authority"
                     .to_owned(),
+            );
+        } else if !manifest_is_anchored && !snapshot.review_authorities.is_empty() {
+            errors.push(
+                "review-authorities: an unanchored manifest cannot enroll an authority".to_owned(),
             );
         }
         for authority in &snapshot.review_authorities {
@@ -101,6 +106,9 @@ impl Workspace {
             }
         }
         for review in &snapshot.reviews {
+            if review.authorization.is_none() && !manifest_is_anchored {
+                continue;
+            }
             if let Err(error) = self.verify_review_authorization(snapshot, review) {
                 errors.push(format!("reviews/{}: {error}", review.id));
             }

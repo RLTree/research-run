@@ -39,8 +39,11 @@ mod review_binding;
 mod snapshot;
 mod sshsig;
 mod status;
+mod status_authority;
 mod storage;
 mod write_lock;
+
+pub use inventory::ReviewBootstrap;
 
 pub(super) const STATE_DIRECTORY: &str = ".research-run";
 pub(super) const MAX_RECORD_BYTES: u64 = 1_048_576;
@@ -130,6 +133,7 @@ pub struct ValidationResult {
 pub struct Status {
     pub format_version: u32,
     pub project: ProjectStatus,
+    pub review_authority: ReviewAuthorityStatus,
     pub claim_ceiling: &'static str,
     pub counts: BTreeMap<&'static str, usize>,
     pub claims: Vec<ClaimStatus>,
@@ -143,6 +147,22 @@ pub struct Status {
 pub struct ProjectStatus {
     pub id: String,
     pub name: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReviewAuthorityStatus {
+    pub mode: &'static str,
+    pub id: Option<String>,
+    pub fingerprint: Option<String>,
+    pub promotion_capable: bool,
+    pub repairable: bool,
+    pub blocker: Option<&'static str>,
+    pub next_action: &'static str,
+}
+
+pub struct InventoryApplyResult {
+    pub created: bool,
+    pub review_authority: ReviewAuthorityStatus,
 }
 
 #[derive(Debug, Serialize)]

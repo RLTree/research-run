@@ -32,11 +32,23 @@ pub(super) enum Command {
         #[arg(long)]
         name: String,
         /// Stable identifier for the review authority anchored at initialization.
-        #[arg(long, requires = "review_authority_public_key")]
+        #[arg(
+            long,
+            requires = "review_authority_public_key",
+            required_unless_present = "without_review_authority",
+            conflicts_with = "without_review_authority"
+        )]
         review_authority_id: Option<String>,
         /// OpenSSH Ed25519 public key file, or - for standard input.
-        #[arg(long, requires = "review_authority_id")]
+        #[arg(
+            long,
+            requires = "review_authority_id",
+            conflicts_with = "without_review_authority"
+        )]
         review_authority_public_key: Option<String>,
+        /// Irreversibly initialize without claim-promotion capability.
+        #[arg(long)]
+        without_review_authority: bool,
     },
     /// Inventory a populated project and initialize managed state only on apply.
     Retrofit {

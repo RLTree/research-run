@@ -27,19 +27,24 @@ const KINDS: &[&str] = &[
     "session-summary",
 ];
 
-#[test]
-fn every_knowledge_class_is_typed_and_history_is_append_only() {
-    let temporary = TempDir::new("knowledge");
-    let project = temporary.0.join("project");
+fn initialize_unanchored(cwd: &std::path::Path, project: &std::path::Path, name: &str) {
     succeeds(
-        &temporary.0,
+        cwd,
         &[
             "init",
             project.to_str().unwrap(),
             "--name",
-            "Knowledge project",
+            name,
+            "--without-review-authority",
         ],
     );
+}
+
+#[test]
+fn every_knowledge_class_is_typed_and_history_is_append_only() {
+    let temporary = TempDir::new("knowledge");
+    let project = temporary.0.join("project");
+    initialize_unanchored(&temporary.0, &project, "Knowledge project");
     for (index, kind) in KINDS.iter().enumerate() {
         let id = format!("record-{index:02}");
         add_json(&temporary, &project, "knowledge", knowledge(&id, kind));
@@ -77,10 +82,7 @@ fn every_knowledge_class_is_typed_and_history_is_append_only() {
 fn relationship_references_and_history_cycles_fail_before_effect() {
     let temporary = TempDir::new("knowledge-defense");
     let project = temporary.0.join("project");
-    succeeds(
-        &temporary.0,
-        &["init", project.to_str().unwrap(), "--name", "Defense"],
-    );
+    initialize_unanchored(&temporary.0, &project, "Defense");
     add_json(
         &temporary,
         &project,
@@ -114,10 +116,7 @@ fn relationship_references_and_history_cycles_fail_before_effect() {
 fn structured_stdin_is_supported_without_promoting_claims() {
     let temporary = TempDir::new("knowledge-stdin");
     let project = temporary.0.join("project");
-    succeeds(
-        &temporary.0,
-        &["init", project.to_str().unwrap(), "--name", "Stdin"],
-    );
+    initialize_unanchored(&temporary.0, &project, "Stdin");
     let binary = std::env::var("CARGO_BIN_EXE_research-run").expect("binary path");
     let mut child = Command::new(binary)
         .current_dir(&project)
@@ -149,10 +148,7 @@ fn structured_stdin_is_supported_without_promoting_claims() {
 fn structured_file_input_rejects_missing_directory_oversized_and_symlink_paths() {
     let temporary = TempDir::new("knowledge-input-defense");
     let project = temporary.0.join("project");
-    succeeds(
-        &temporary.0,
-        &["init", project.to_str().unwrap(), "--name", "Input defense"],
-    );
+    initialize_unanchored(&temporary.0, &project, "Input defense");
     let missing = temporary.0.join("missing.json");
     assert!(
         !cli(

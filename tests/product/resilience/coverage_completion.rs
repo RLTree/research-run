@@ -125,12 +125,14 @@ fn retrofit_plan<'a>(id: &'a str, observed_at: &'a str) -> Vec<&'a str> {
         id,
         "--observed-at",
         observed_at,
+        "--without-review-authority",
     ]
 }
 
 fn reconcile_plan<'a>(id: &'a str, observed_at: &'a str) -> Vec<&'a str> {
     let mut args = retrofit_plan(id, observed_at);
     args[0] = "reconcile";
+    args.pop();
     args
 }
 

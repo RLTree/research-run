@@ -7,6 +7,7 @@ use crate::domain::{
 use crate::{Error, Result};
 
 use super::references::current_review_bindings;
+use super::status_authority::{aggregate_actions, review_authority_status};
 use super::{
     AiDraftStatus, ClaimStatus, EvidenceStatus, ExperimentStatus, ProjectStatus, Snapshot, Status,
     Workspace,
@@ -73,16 +74,22 @@ impl Workspace {
         }
         let counts = snapshot.counts();
         let mut index = StatusIndex::build(self, snapshot)?;
+        let review_authority = review_authority_status(snapshot);
         let unreviewed_ai_drafts = unreviewed_ai_drafts(snapshot, &index);
-        let claims = claim_statuses(&snapshot.claims, &mut index);
+        let claims = claim_statuses(
+            &snapshot.claims,
+            &mut index,
+            review_authority.promotion_capable,
+        );
         let experiments = experiment_statuses(snapshot.experiments.clone());
-        let (blockers, next_actions) = aggregate_actions(&claims);
+        let (blockers, next_actions) = aggregate_actions(&claims, &review_authority);
         Ok(Status {
             format_version: crate::domain::FORMAT_VERSION,
             project: ProjectStatus {
                 id: snapshot.manifest.project_id.clone(),
                 name: snapshot.manifest.name.clone(),
             },
+            review_authority,
             claim_ceiling: super::CLAIM_CEILING,
             counts,
             claims,
@@ -152,7 +159,11 @@ fn source_requires_review(source: &SourceRecord, index: &StatusIndex<'_>) -> boo
             .any(|claim_id| !index.reviewed_claims.contains(claim_id))
 }
 
-fn claim_statuses(claims: &[ClaimRecord], index: &mut StatusIndex<'_>) -> Vec<ClaimStatus> {
+fn claim_statuses(
+    claims: &[ClaimRecord],
+    index: &mut StatusIndex<'_>,
+    promotion_capable: bool,
+) -> Vec<ClaimStatus> {
     claims
         .iter()
         .map(|claim| {
@@ -164,7 +175,7 @@ fn claim_statuses(claims: &[ClaimRecord], index: &mut StatusIndex<'_>) -> Vec<Cl
             let ai_draft = claim.authorship == Authorship::Ai
                 || index.ai_evidence_claims.contains(claim.id.as_str());
             let (assessment, blockers, next_action) =
-                claim_assessment(claim, &links, reviewed, ai_draft);
+                claim_assessment(claim, &links, reviewed, ai_draft, promotion_capable);
             ClaimStatus {
                 id: claim.id.clone(),
                 text: claim.text.clone(),
@@ -190,6 +201,7 @@ fn claim_assessment(
     links: &[&EvidenceLink],
     review: Option<&ReviewDecision>,
     ai_draft: bool,
+    promotion_capable: bool,
 ) -> (Assessment, Vec<String>, String) {
     if let Some(review) = review {
         return (
@@ -199,17 +211,26 @@ fn claim_assessment(
         );
     }
     if ai_draft {
+        let next_action = if promotion_capable {
+            format!("Add a human review for {}.", claim.id)
+        } else {
+            "Create a new workspace with an anchored review authority; this workspace cannot promote claims."
+                .to_owned()
+        };
         return (
             Assessment::Unreviewed,
             vec!["AI-authored material requires an explicit human review decision.".to_owned()],
-            format!("Add a human review for {}.", claim.id),
+            next_action,
         );
     }
     let mut blockers = vec!["Claim lacks an explicit human review decision.".to_owned()];
     if links.is_empty() {
         blockers.push("Claim has no evidence links.".to_owned());
     }
-    let next_action = if links.is_empty() {
+    let next_action = if !promotion_capable {
+        "Create a new workspace with an anchored review authority; this workspace cannot promote claims."
+            .to_owned()
+    } else if links.is_empty() {
         format!("Add evidence for {}.", claim.id)
     } else {
         format!("Add a human review for {}.", claim.id)
@@ -229,16 +250,4 @@ fn experiment_statuses(experiments: Vec<ExperimentReceipt>) -> Vec<ExperimentSta
             next_move: experiment.next_move,
         })
         .collect()
-}
-
-fn aggregate_actions(claims: &[ClaimStatus]) -> (Vec<String>, Vec<String>) {
-    let blockers = claims
-        .iter()
-        .flat_map(|claim| claim.blockers.iter().cloned())
-        .collect();
-    let next_actions = claims
-        .iter()
-        .map(|claim| claim.next_action.clone())
-        .collect();
-    (blockers, next_actions)
 }

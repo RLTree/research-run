@@ -119,8 +119,7 @@ pub(super) fn enroll_test_authority(project: &Path) {
 
 pub(super) fn initialize_with_test_authority(cwd: &Path, project: &Path, name: &str) {
     let files = TempDir::new("review-authority");
-    let public_key = files.0.join("authority.pub");
-    fs::write(&public_key, test_public_key()).expect("write test public key");
+    let public_key = write_test_public_key(&files.0);
     succeeds(
         cwd,
         &[
@@ -134,6 +133,12 @@ pub(super) fn initialize_with_test_authority(cwd: &Path, project: &Path, name: &
             &public_key.to_string_lossy(),
         ],
     );
+}
+
+pub(super) fn write_test_public_key(directory: &Path) -> std::path::PathBuf {
+    let public_key = directory.join("research-run-test-authority.pub");
+    fs::write(&public_key, test_public_key()).expect("write test public key");
+    public_key
 }
 
 fn test_key() -> &'static SigningKey {

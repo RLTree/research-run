@@ -42,7 +42,10 @@ update a pull request. Do not merge or release.
 - Workflow and proof law: `AGENT_STANDARDS.md`,
   `agent-standards/obligations.json`, `scripts/check-standards`, this plan, and
   `docs/research/2026-07-17-v0.1-evidence-and-decisions.md`.
-- Current branch: `codex/research-run-complete-agent-workspace`.
+- Current delivery branch: `codex/pr-review-automation`, tracking PR #7 at
+  `origin/codex/pr-review-automation`. The exact candidate is always the clean
+  Git `HEAD` containing this plan and is resolved from Git at each proof gate;
+  this plan does not embed its own impossible self-referential commit hash.
 
 ## Constraints
 
@@ -285,19 +288,34 @@ pass.
   Formatting, `cargo check`, doc tests, and Clippy also pass under constrained
   single-job builds. Dependency, repository, mutation, package, GitHub, and
   completion proof still require their final frozen-candidate boundaries.
+- 2026-07-20: Material review found and the current repair closes surplus
+  review-authority recovery, irreversible unanchored init/retrofit ambiguity,
+  legacy unsigned-v0.1 compatibility, hidden authority status, incomplete
+  mutation selection, stale UltraGoal fit language, under-specified Product
+  Fitness withholding, and stale or invisible Codex PR-review reporting. The
+  inventory apply command now returns its authority disposition from the same
+  transaction instead of performing fallible post-effect rediscovery.
+- 2026-07-20: The current pre-commit repair passes 121/121 library tests,
+  54/54 normal product tests, 177/177 serial nextest cases, doc tests,
+  formatting, check, Clippy, semantic-tree and package-law standards,
+  dependency audit/deny and inventory validation, gitleaks, and actionlint.
+  Exact authoritative production coverage is 8,352/8,352 regions,
+  4,255/4,255 lines, and 535/535 functions. Package/install, the single bounded
+  final mutation run, exact-commit review, push, and GitHub proof remain
+  pending.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. The PR #7 security repair candidate
-has local source, adversarial, independent-review, and exact-coverage proof for
-the six bounded Codex Security findings, but the current bytes are not yet
-proven by GitHub. The product now has an external configured-key authorization
-mechanism and a separately provisioned 1Password signer. That closes the
-self-asserted-review defect at the source boundary; it does not prove
-personhood, owner bootstrap, private-key custody, or an actual human-approved
-signing journey. Mutation, package-delta, and clean-commit closure remain
-withheld until their named frozen-candidate gates run. The canonical UltraGoal
-retrofit remains blocked by four protected authority conflicts, and
-audience-bound Product Fitness proof remains withheld on its own surface.
-Release, scientific truth, scientific impact, continuance, and unobserved real
-researcher usefulness are outside this run.
+No completion claim is active for this plan. The current PR #7 repair has local
+normal-mode source, dependency/security, standards, and exact-coverage proof,
+but its bytes are not yet frozen in a clean commit or proven by package,
+mutation, independent exact-commit review, or GitHub. The product has an
+external configured-key authorization mechanism and a separately provisioned
+1Password signer. That closes the self-asserted-review defect at the source
+boundary; it does not prove personhood, owner bootstrap, private-key custody, or
+an actual human-approved signing journey. The prior UltraGoal fit record is
+historical and non-authoritative; current fit classification, applied fit,
+receipt, and fitted-governance readiness remain withheld because no current
+reprobe has run. Audience-bound Product Fitness proof remains withheld on its
+own surface. Release, scientific truth, scientific impact, continuance, and
+unobserved real researcher usefulness are outside this run.

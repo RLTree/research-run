@@ -1,0 +1,124 @@
+use super::*;
+
+fn entry(path: &str) -> MaterialEntry {
+    MaterialEntry {
+        path: path.to_owned(),
+        class: MaterialClass::Note,
+        bytes: 1,
+        sha256: "a".repeat(64),
+    }
+}
+
+fn inventory_plan() -> InventoryPlan {
+    InventoryPlan {
+        schema_version: 1,
+        kind: "inventory-plan".to_owned(),
+        id: "inventory-one".to_owned(),
+        project_name: "Project".to_owned(),
+        project_id: "project".to_owned(),
+        observed_at: "2026-07-18T20:00:00Z".to_owned(),
+        previous_snapshot_id: None,
+        review_authority: None,
+        without_review_authority: true,
+        entries: vec![entry("notes/result.md")],
+        changes: Vec::new(),
+    }
+}
+
+#[test]
+fn inventory_validation_covers_every_bounded_shape() {
+    let plan = inventory_plan();
+    assert!(plan.validate().is_ok());
+    assert!(InventorySnapshot::from(plan.clone()).validate().is_ok());
+    assert_invalid_plan_fields(&plan);
+    assert_invalid_changes(&plan);
+
+    let mut snapshot = InventorySnapshot::from(inventory_plan());
+    snapshot.schema_version = 2;
+    assert!(snapshot.validate().is_err());
+    snapshot = InventorySnapshot::from(inventory_plan());
+    snapshot.kind = "wrong".to_owned();
+    assert!(snapshot.validate().is_err());
+}
+
+fn assert_invalid_plan_fields(plan: &InventoryPlan) {
+    let mut invalid = plan.clone();
+    invalid.schema_version = 2;
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.kind = "wrong".to_owned();
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.id = "INVALID".to_owned();
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.project_name.clear();
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.project_id = "INVALID".to_owned();
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.observed_at = "bad".to_owned();
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.entries[0].path = "../escape".to_owned();
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.entries[0].sha256 = "A".repeat(64);
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.previous_snapshot_id = Some(invalid.id.clone());
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.previous_snapshot_id = Some("INVALID".to_owned());
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.entries.push(invalid.entries[0].clone());
+    assert!(invalid.validate().is_err());
+    invalid = plan.clone();
+    invalid.entries = vec![entry("note"); MAX_INVENTORY_ENTRIES + 1];
+    assert!(invalid.validate().is_err());
+    assert_invalid_authority_fields(plan);
+}
+
+fn assert_invalid_authority_fields(plan: &InventoryPlan) {
+    let mut invalid = plan.clone();
+    invalid.review_authority = Some(ReviewAuthority {
+        schema_version: 2,
+        kind: "review-authority".to_owned(),
+        id: "test-human".to_owned(),
+        public_key: "invalid".to_owned(),
+        fingerprint: "SHA256:invalid".to_owned(),
+    });
+    assert!(invalid.validate().is_err());
+    invalid.without_review_authority = false;
+    assert!(invalid.validate().is_err());
+}
+
+fn assert_invalid_changes(plan: &InventoryPlan) {
+    for (before, after, detail) in [
+        (Some("../before"), None, "detail"),
+        (None, Some("../after"), "detail"),
+        (None, None, "   "),
+    ] {
+        let mut changed = plan.clone();
+        changed.changes.push(ReconciliationChange {
+            kind: ReconciliationKind::Added,
+            before: before.map(str::to_owned),
+            after: after.map(str::to_owned),
+            detail: detail.to_owned(),
+        });
+        assert!(changed.validate().is_err());
+    }
+    let mut invalid = plan.clone();
+    invalid.changes = vec![
+        ReconciliationChange {
+            kind: ReconciliationKind::Added,
+            before: None,
+            after: Some("note".to_owned()),
+            detail: "detail".to_owned(),
+        };
+        MAX_INVENTORY_ENTRIES * 2 + 1
+    ];
+    assert!(invalid.validate().is_err());
+}

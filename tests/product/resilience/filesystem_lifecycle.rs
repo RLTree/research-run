@@ -3,6 +3,10 @@ use super::*;
 #[path = "filesystem_lifecycle/snapshot_failures.rs"]
 mod snapshot_failures;
 
+fn unanchored_init<'a>(path: &'a str, name: &'a str) -> [&'a str; 5] {
+    ["init", path, "--name", name, "--without-review-authority"]
+}
+
 #[test]
 fn installed_process_exercises_each_lifecycle_storage_boundary() {
     for occurrence in 1..=17 {
@@ -10,7 +14,7 @@ fn installed_process_exercises_each_lifecycle_storage_boundary() {
         let fault = format!("inspect workspace path#{occurrence}");
         let output = run(
             &root.0,
-            &["init", "project", "--name", "Lifecycle stages"],
+            &unanchored_init("project", "Lifecycle stages"),
             Some(&fault),
         );
         assert!(!output.status.success(), "init ignored {fault}");
@@ -20,7 +24,7 @@ fn installed_process_exercises_each_lifecycle_storage_boundary() {
         let fault = format!("create project directory#{occurrence}");
         let output = run(
             &root.0,
-            &["init", "project", "--name", "Directory stages"],
+            &unanchored_init("project", "Directory stages"),
             Some(&fault),
         );
         assert!(!output.status.success(), "init ignored {fault}");
@@ -61,7 +65,7 @@ fn installed_process_exercises_each_lifecycle_storage_boundary() {
     assert!(
         !run(
             &nested.0,
-            &["init", "parent/project", "--name", "Nested"],
+            &unanchored_init("parent/project", "Nested"),
             Some("create project directory#1"),
         )
         .status

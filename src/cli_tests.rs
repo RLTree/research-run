@@ -11,7 +11,7 @@ use crate::domain::{
 
 #[path = "cli_review_tests.rs"]
 mod review_tests;
-use crate::workspace::{ProjectStatus, Status};
+use crate::workspace::{ProjectStatus, ReviewAuthorityStatus, Status};
 
 #[test]
 fn external_artifact_locator_may_contain_colons() {
@@ -191,6 +191,15 @@ fn empty_human_projection_and_current_directory_failure_are_explicit() {
         project: ProjectStatus {
             id: "empty-project".to_owned(),
             name: "Empty project".to_owned(),
+        },
+        review_authority: ReviewAuthorityStatus {
+            mode: "anchored",
+            id: Some("test-human".to_owned()),
+            fingerprint: Some("SHA256:test".to_owned()),
+            promotion_capable: true,
+            repairable: false,
+            blocker: None,
+            next_action: "Prepare a review.",
         },
         claim_ceiling: "Test ceiling",
         counts: std::collections::BTreeMap::new(),

@@ -1,4 +1,50 @@
 use super::*;
+use crate::workspace::references::current_review_bindings;
+
+#[test]
+fn review_graph_validation_uses_one_canonical_binding() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Review binding matrix").expect("initialize");
+    let mut reordered = review("review-reordered", "claim-one");
+    reordered.evidence_ids = vec!["evidence-two".to_owned(), "evidence-one".to_owned()];
+    assert!(reordered.validate().is_err());
+
+    let mut unknown = review("review-unknown", "claim-one");
+    unknown.evidence_ids = vec!["evidence-missing".to_owned()];
+    let mut cross_claim = review("review-cross", "claim-two");
+    cross_claim.evidence_ids = vec!["evidence-one".to_owned()];
+    let incomplete = review("review-incomplete", "claim-one");
+    let snapshot = Snapshot {
+        manifest: ProjectManifest::new("Review binding matrix").expect("manifest"),
+        sources: Vec::new(),
+        claims: vec![claim("claim-one"), claim("claim-two")],
+        evidence: vec![evidence("evidence-one", "claim-one", None)],
+        experiments: Vec::new(),
+        reviews: vec![unknown, cross_claim, incomplete],
+        review_authorities: Vec::new(),
+        inventories: Vec::new(),
+        knowledge: Vec::new(),
+        relationships: Vec::new(),
+        migrations: Vec::new(),
+    };
+    let errors = workspace.reference_errors(&snapshot);
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("unknown evidence"))
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("belongs to claim"))
+    );
+    assert!(
+        current_review_bindings(&workspace, &snapshot)
+            .unwrap()
+            .is_empty()
+    );
+    fs::remove_dir_all(root).expect("remove fixture");
+}
 
 #[test]
 fn review_writes_require_exact_current_subject_and_known_claim() {
@@ -89,6 +135,13 @@ fn legacy_and_missing_experiment_bindings_are_stale() {
     let mut missing_source_review = review("review-source", "claim-three");
     missing_source_review.evidence_ids = vec!["evidence-source".to_owned()];
     missing_source_review.subject_sha256 = Some("b".repeat(64));
+    for review in [&mut legacy, &mut missing, &mut missing_source_review] {
+        review.authorization = Some(crate::domain::ReviewAuthorization {
+            authority_id: "test-human".to_owned(),
+            signer_fingerprint: "SHA256:test".to_owned(),
+            signature: "test-signature".to_owned(),
+        });
+    }
     let snapshot = Snapshot {
         manifest: workspace.read_manifest().expect("manifest"),
         sources: Vec::new(),

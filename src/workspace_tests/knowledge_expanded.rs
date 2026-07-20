@@ -1,7 +1,7 @@
 use super::*;
 use crate::domain::{
-    EntityKind, EntityRef, InventoryPlan, InventorySnapshot, KnowledgeKind, KnowledgeRecord,
-    KnowledgeState, RelationshipKind, RelationshipRecord,
+    EntityKind, EntityRef, InventorySnapshot, KnowledgeKind, KnowledgeRecord, KnowledgeState,
+    RelationshipKind, RelationshipRecord,
 };
 use crate::workspace::MAX_RECORDS_PER_KIND;
 use crate::workspace::knowledge::{ensure_capacity, relationship_reference_errors};
@@ -93,9 +93,9 @@ fn knowledge_relations_resolve_every_entity_kind_and_remain_idempotent() {
 }
 
 fn publish_inventory(workspace: &Workspace) {
-    let inventory = InventorySnapshot::from(InventoryPlan {
+    let inventory = InventorySnapshot {
         schema_version: 1,
-        kind: "inventory-plan".to_owned(),
+        kind: "inventory".to_owned(),
         id: "inventory-one".to_owned(),
         project_name: "Relations".to_owned(),
         project_id: "relations".to_owned(),
@@ -103,7 +103,7 @@ fn publish_inventory(workspace: &Workspace) {
         previous_snapshot_id: None,
         entries: Vec::new(),
         changes: Vec::new(),
-    });
+    };
     workspace
         .publish_record("inventories", &inventory)
         .expect("inventory");

@@ -4,6 +4,52 @@
   "claim_id": "research-run-v0.1-real-use-fitness",
   "status": "withheld",
   "owner": "human product-fitness reviewer",
+  "candidate_binding": {
+    "status": "withheld",
+    "current_candidate": null,
+    "required_identity": "clean Git HEAD plus installed binary digest",
+    "reason": "The final clean candidate and installed-binary receipt do not exist yet."
+  },
+  "audience": [
+    "researcher",
+    "repository owner and review-key signer",
+    "agent operating the CLI"
+  ],
+  "job": "Initialize or retrofit an unfamiliar local project, preserve its evidence graph, obtain an externally approved signed review, and recover safely from interrupted publication.",
+  "context": "A local Git-backed research project operated through the installed Rust CLI without a service, GUI, or model provider.",
+  "desired_outcome": "Durable, navigable, review-governed research state whose claim promotions are explicitly authorized and whose limitations remain visible.",
+  "accessibility_evidence": {
+    "status": "missing",
+    "required": "Exact-candidate assistive-use observation of the installed CLI journey."
+  },
+  "cognitive_load_evidence": {
+    "status": "missing",
+    "required": "Audience observation covering bootstrap, signing, failure diagnosis, and recovery."
+  },
+  "recovery_burden": {
+    "status": "unmeasured",
+    "required": "Observe and record recovery steps, time, errors, and abandoned attempts."
+  },
+  "continuance_evidence": {
+    "status": "missing",
+    "required": "Repeated voluntary use after the first complete journey."
+  },
+  "real_use_evidence": {
+    "status": "none",
+    "synthetic_journeys_are_non_substitutes": true
+  },
+  "dispositions": [
+    {
+      "claim_id": "research-run-v0.1-complete-unfamiliar-project-workflow",
+      "status": "withheld",
+      "reason": "No consenting researcher has completed the exact installed init or retrofit, detached-signature, retrieval, interruption, and recovery journey."
+    },
+    {
+      "claim_id": "research-run-v0.1-real-use-fitness",
+      "status": "withheld",
+      "reason": "No audience-bound human-use or repeated-use evidence exists for the exact candidate."
+    }
+  ],
   "reason": "No audience-bound human-use or repeated-use evidence exists for the exact candidate.",
   "affected_claims": [
     "real-use fitness",
@@ -14,7 +60,9 @@
   "required_follow_up": "Observe a consenting researcher completing the critical unfamiliar-project journey with an exact-candidate installed binary, record recovery burden and outcome evidence, then obtain an actor-disjoint Product Fitness review.",
   "accepted_non_substitutes": [
     "source tests",
+    "coverage or mutation proof",
     "installed journey",
+    "synthetic signing",
     "package proof",
     "benchmark",
     "generic reviewer approval"

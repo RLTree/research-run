@@ -9,9 +9,10 @@ use crate::domain::{
 };
 
 use super::{
-    MAX_RECORD_BYTES, MAX_SNAPSHOT_BYTES, PendingCleanup, ReadBudget, Snapshot, Workspace,
-    WorkspaceWriteLock, create_directory_chain, ensure_no_pending_effect, inject_storage_failure,
-    interrupted_target_name, read_bounded, read_json_with_budget, reject_symlink_chain,
+    MAX_RECORD_BYTES, MAX_SNAPSHOT_BYTES, PendingCleanup, ReadBudget, ReviewBootstrap, Snapshot,
+    Workspace, WorkspaceWriteLock, create_directory_chain, ensure_no_pending_effect,
+    inject_storage_failure, interrupted_target_name, read_bounded, read_json_with_budget,
+    reject_symlink_chain,
 };
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -21,6 +22,8 @@ mod review_signing;
 use review_signing::*;
 #[path = "workspace_tests/coverage_edges.rs"]
 mod coverage_edges;
+#[path = "workspace_tests/inventory_bootstrap_coverage.rs"]
+mod inventory_bootstrap_coverage;
 #[path = "workspace_tests/recovery_coverage_edges.rs"]
 mod recovery_coverage_edges;
 #[path = "workspace_tests/recovery_semantic_coverage.rs"]
@@ -35,6 +38,10 @@ fn temporary() -> std::path::PathBuf {
     let _ = fs::remove_dir_all(&path);
     fs::create_dir(&path).expect("temporary directory");
     path
+}
+
+fn explicit_unanchored_retrofit() -> Option<ReviewBootstrap> {
+    Some(ReviewBootstrap::WithoutReviewAuthority)
 }
 
 #[test]

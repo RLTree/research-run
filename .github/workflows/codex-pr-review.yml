@@ -9,6 +9,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fork-skip:
+    if: github.event.pull_request.head.repo.fork == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Explain trusted-trigger boundary
+        run: |
+          {
+            echo "## Codex review intentionally skipped"
+            echo
+            echo "Fork pull requests do not receive the repository OpenAI API key."
+            echo "The workflow uses pull_request rather than pull_request_target so untrusted code never receives repository secrets."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   review:
     # Fork pull requests do not receive repository secrets. Keep the API key
     # unavailable to untrusted contributors rather than using pull_request_target.
@@ -46,16 +61,48 @@ jobs:
       pull-requests: write
     steps:
       - name: Post code review
-        if: needs.review.outputs.comment != ''
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.0.1
         env:
           COMMENT: ${{ needs.review.outputs.comment }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           github-token: ${{ github.token }}
           script: |
-            await github.rest.issues.createComment({
+            const marker = '<!-- codex-pr-review -->';
+            const review = process.env.COMMENT || `Codex review produced no final message. Workflow result: ${process.env.REVIEW_RESULT}.`;
+            const body = `${marker}
+            ## Codex review
+
+            Base: \`${process.env.BASE_SHA}\`
+            Head: \`${process.env.HEAD_SHA}\`
+            [Workflow run](${process.env.RUN_URL})
+
+            ${review}`;
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body: `## Codex review\n\n${process.env.COMMENT}`,
+              per_page: 100,
             });
+            const existing = comments.find(comment =>
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }

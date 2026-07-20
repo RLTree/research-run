@@ -102,12 +102,36 @@ jq -e '
   .claim_id == "research-run-v0.1-real-use-fitness" and
   .status == "withheld" and
   .owner == "human product-fitness reviewer" and
+  .candidate_binding.status == "withheld" and
+  .candidate_binding.current_candidate == null and
+  (.candidate_binding.required_identity | contains("clean Git HEAD")) and
+  .audience == [
+    "researcher",
+    "repository owner and review-key signer",
+    "agent operating the CLI"
+  ] and
+  (.job | contains("Initialize or retrofit")) and
+  (.context | contains("installed Rust CLI")) and
+  (.desired_outcome | contains("review-governed research state")) and
+  .accessibility_evidence.status == "missing" and
+  .cognitive_load_evidence.status == "missing" and
+  .recovery_burden.status == "unmeasured" and
+  .continuance_evidence.status == "missing" and
+  .real_use_evidence == {
+    "status": "none",
+    "synthetic_journeys_are_non_substitutes": true
+  } and
+  (.dispositions | map(.claim_id) == [
+    "research-run-v0.1-complete-unfamiliar-project-workflow",
+    "research-run-v0.1-real-use-fitness"
+  ]) and
+  all(.dispositions[]; .status == "withheld" and (.reason | length > 40)) and
   (.reason | length > 40) and
   (.affected_claims | type == "array" and length == 4) and
   (.required_follow_up | contains("actor-disjoint Product Fitness review")) and
   (.accepted_non_substitutes == [
-    "source tests", "installed journey", "package proof", "benchmark",
-    "generic reviewer approval"
+    "source tests", "coverage or mutation proof", "installed journey",
+    "synthetic signing", "package proof", "benchmark", "generic reviewer approval"
   ]) and
   (.claim_ceiling | contains("real-use fitness, continuance, and research impact remain withheld"))
 ' agent-standards/product-fitness-disposition.json >/dev/null || {

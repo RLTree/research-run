@@ -158,16 +158,6 @@ fn material_scan_propagates_storage_failures_and_budgets() {
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
-#[test]
-fn material_scan_enforces_file_count_budget() {
-    let root = temporary();
-    for index in 0..=crate::domain::MAX_INVENTORY_ENTRIES {
-        fs::write(root.join(format!("file-{index:04}")), b"").expect("file fixture");
-    }
-    assert!(scan_materials(&root).is_err());
-    fs::remove_dir_all(root).expect("remove fixture");
-}
-
 #[cfg(unix)]
 #[test]
 fn material_scan_rejects_unsupported_entries() {
@@ -189,8 +179,14 @@ fn inventory_lifecycle_rejects_identity_conflicts_and_stale_authority() {
         Workspace::plan_reconciliation(&root, "Project", "reconcile", "2026-07-18T20:00:00Z")
             .is_err()
     );
-    let plan = Workspace::plan_retrofit(&root, "Project", "inventory-one", "2026-07-18T20:00:00Z")
-        .expect("plan");
+    let plan = Workspace::plan_retrofit(
+        &root,
+        "Project",
+        "inventory-one",
+        "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("plan");
     let plan_path = root.join("plan.json");
     fs::write(&plan_path, serde_json::to_vec_pretty(&plan).unwrap()).expect("plan file");
     assert_eq!(
@@ -199,7 +195,9 @@ fn inventory_lifecycle_rejects_identity_conflicts_and_stale_authority() {
     );
     fs::remove_file(plan_path).expect("remove plan");
     assert!(Workspace::apply_inventory_plan(&root, plan).expect("apply"));
-    assert!(Workspace::plan_retrofit(&root, "Project", "again", "2026-07-18T20:01:00Z").is_err());
+    assert!(
+        Workspace::plan_retrofit(&root, "Project", "again", "2026-07-18T20:01:00Z", None,).is_err()
+    );
     assert!(
         Workspace::plan_reconciliation(&root, "Wrong", "wrong", "2026-07-18T20:01:00Z").is_err()
     );

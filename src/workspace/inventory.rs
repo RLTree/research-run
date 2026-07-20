@@ -2,15 +2,22 @@ use std::path::Path;
 
 use crate::domain::{
     FORMAT_VERSION, InventoryPlan, InventorySnapshot, ProjectManifest, ReconciliationKind,
+    ReviewAuthority,
 };
 use crate::{Error, Result};
 
 use super::inventory_reconcile::reconcile;
 use super::inventory_scan::scan_materials;
 use super::path_safety::{create_directory_chain, reject_symlink_chain};
+use super::status_authority::review_authority_status_from_manifest;
 use super::storage::{ReadBudget, read_json_with_budget};
 use super::write_lock::WorkspaceWriteLock;
-use super::{STATE_DIRECTORY, Workspace};
+use super::{InventoryApplyResult, STATE_DIRECTORY, Workspace};
+
+pub enum ReviewBootstrap {
+    Authority(ReviewAuthority),
+    WithoutReviewAuthority,
+}
 
 impl Workspace {
     pub fn plan_retrofit(
@@ -18,8 +25,9 @@ impl Workspace {
         name: &str,
         id: &str,
         observed_at: &str,
+        bootstrap: Option<ReviewBootstrap>,
     ) -> Result<InventoryPlan> {
-        Self::plan_inventory(root, name, id, observed_at, false)
+        Self::plan_inventory(root, name, id, observed_at, false, bootstrap)
     }
 
     pub fn plan_reconciliation(
@@ -28,7 +36,7 @@ impl Workspace {
         id: &str,
         observed_at: &str,
     ) -> Result<InventoryPlan> {
-        Self::plan_inventory(root, name, id, observed_at, true)
+        Self::plan_inventory(root, name, id, observed_at, true, None)
     }
 
     fn plan_inventory(
@@ -37,13 +45,26 @@ impl Workspace {
         id: &str,
         observed_at: &str,
         require_previous: bool,
+        bootstrap: Option<ReviewBootstrap>,
     ) -> Result<InventoryPlan> {
         let (root, entries) = scan_materials(root)?;
         let requested = ProjectManifest::new(name)?;
         let existing = Self::at_exact_root(&root)?;
-        let manifest = match &existing {
-            Some(workspace) => workspace.read_manifest()?,
-            None => requested,
+        let manifest = match (&existing, &bootstrap) {
+            (Some(workspace), None) => workspace.read_manifest()?,
+            (Some(_), Some(_)) => {
+                return Err(Error::Conflict(
+                    "workspace already exists; review authority bootstrap applies only to a new retrofit"
+                        .to_owned(),
+                ));
+            }
+            (None, Some(_)) => requested,
+            (None, None) => {
+                return Err(Error::invalid(
+                    "retrofit review authority",
+                    "supply a review authority or explicitly opt out before planning a new workspace",
+                ));
+            }
         };
         if manifest.name != name {
             return Err(Error::Conflict(format!(
@@ -79,6 +100,14 @@ impl Workspace {
             project_id: manifest.project_id,
             observed_at: observed_at.to_owned(),
             previous_snapshot_id: previous.map(|snapshot| snapshot.id),
+            review_authority: match &bootstrap {
+                Some(ReviewBootstrap::Authority(authority)) => Some(authority.clone()),
+                _ => None,
+            },
+            without_review_authority: matches!(
+                bootstrap,
+                Some(ReviewBootstrap::WithoutReviewAuthority)
+            ),
             entries,
             changes,
         };
@@ -87,6 +116,13 @@ impl Workspace {
     }
 
     pub fn apply_inventory_plan(root: &Path, plan: InventoryPlan) -> Result<bool> {
+        Ok(Self::apply_inventory_plan_with_status(root, plan)?.created)
+    }
+
+    pub(crate) fn apply_inventory_plan_with_status(
+        root: &Path,
+        plan: InventoryPlan,
+    ) -> Result<InventoryApplyResult> {
         plan.validate()?;
         let (root, current) = scan_materials(root)?;
         if current != plan.entries {
@@ -94,10 +130,7 @@ impl Workspace {
                 "project materials changed after planning; create a fresh plan".to_owned(),
             ));
         }
-        let workspace = match Self::at_exact_root(&root)? {
-            Some(workspace) => workspace,
-            None => Self::initialize(&root, &plan.project_name)?,
-        };
+        let workspace = inventory_apply_workspace(&root, &plan)?;
         let manifest = workspace.read_manifest()?;
         if manifest.project_id != plan.project_id || manifest.name != plan.project_name {
             return Err(Error::Conflict(
@@ -118,7 +151,10 @@ impl Workspace {
         }
         let snapshot = InventorySnapshot::from(plan.clone());
         if workspace.record_is_identical("inventories", &snapshot)? {
-            return Ok(false);
+            return Ok(InventoryApplyResult {
+                created: false,
+                review_authority: review_authority_status_from_manifest(&manifest),
+            });
         }
         let latest = workspace.latest_inventory()?;
         if latest.as_ref().map(|value| value.id.as_str()) != plan.previous_snapshot_id.as_deref() {
@@ -144,7 +180,11 @@ impl Workspace {
                 "reconciliation contains ambiguous identity conflicts".to_owned(),
             ));
         }
-        workspace.publish_record("inventories", &snapshot)
+        let created = workspace.publish_record("inventories", &snapshot)?;
+        Ok(InventoryApplyResult {
+            created,
+            review_authority: review_authority_status_from_manifest(&manifest),
+        })
     }
 
     pub fn read_inventory_plan(path: &Path) -> Result<InventoryPlan> {
@@ -178,5 +218,21 @@ impl Workspace {
         };
         workspace.read_manifest()?;
         Ok(Some(workspace))
+    }
+}
+
+fn inventory_apply_workspace(root: &Path, plan: &InventoryPlan) -> Result<Workspace> {
+    match Workspace::at_exact_root(root)? {
+        Some(workspace) => Ok(workspace),
+        None => match (&plan.review_authority, plan.without_review_authority) {
+            (Some(authority), false) => {
+                Workspace::initialize_with_review_authority(root, &plan.project_name, authority)
+            }
+            (None, true) => Workspace::initialize(root, &plan.project_name),
+            _ => Err(Error::invalid(
+                "inventory plan review authority",
+                "new-workspace retrofit requires an authority or explicit unanchored opt-out",
+            )),
+        },
     }
 }

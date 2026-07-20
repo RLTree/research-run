@@ -60,7 +60,13 @@ fn post_initialization_caller_cannot_enroll_a_self_selected_authority() {
     let project = temporary.0.join("project");
     succeeds(
         &temporary.0,
-        &["init", &project.to_string_lossy(), "--name", "No authority"],
+        &[
+            "init",
+            &project.to_string_lossy(),
+            "--name",
+            "No authority",
+            "--without-review-authority",
+        ],
     );
     let rejected = cli(
         &project,

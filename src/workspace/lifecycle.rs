@@ -74,13 +74,30 @@ impl Workspace {
             if let Some(authority) = authority {
                 workspace.publish_record("review-authorities", authority)?;
             }
+            workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
         workspace.publish_value(&workspace.state.join("manifest.json"), &manifest)?;
         if let Some(authority) = authority {
             workspace.publish_record("review-authorities", authority)?;
         }
+        workspace.verify_initialized_authority(authority)?;
         Ok(workspace)
+    }
+
+    fn verify_initialized_authority(&self, expected: Option<&ReviewAuthority>) -> Result<()> {
+        let snapshot = self.load_snapshot()?;
+        match (expected, snapshot.review_authorities.as_slice()) {
+            (Some(expected), [actual]) if actual == expected => Ok(()),
+            (None, []) => Ok(()),
+            (Some(_), _) => Err(Error::Conflict(
+                "initialized workspace does not contain exactly the anchored review authority"
+                    .to_owned(),
+            )),
+            (None, _) => Err(Error::Conflict(
+                "unanchored workspace contains an unexpected review authority".to_owned(),
+            )),
+        }
     }
 
     pub fn discover(start: &Path) -> Result<Self> {

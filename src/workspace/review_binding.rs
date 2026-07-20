@@ -22,6 +22,9 @@ impl Workspace {
     pub(super) fn review_binding_errors(&self, snapshot: &Snapshot) -> Vec<String> {
         let mut errors = Vec::new();
         for review in &snapshot.reviews {
+            if review.authorization.is_none() {
+                continue;
+            }
             if review.evidence_ids != claim_evidence_ids(snapshot, &review.claim_id) {
                 continue;
             }

@@ -4,7 +4,7 @@
   "title": "Research Run ReviewDecision v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "kind", "id", "claim_id", "subject_sha256", "decision", "rationale", "reviewer", "authorization"],
+  "required": ["schema_version", "kind", "id", "claim_id", "subject_sha256", "decision", "rationale", "reviewer"],
   "properties": {
     "schema_version": { "const": 1 },
     "kind": { "const": "review" },

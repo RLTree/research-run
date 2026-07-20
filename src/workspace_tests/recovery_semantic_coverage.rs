@@ -52,6 +52,7 @@ fn recovered_semantics_propagate_scan_and_migration_authority_failures() {
         "Semantic faults",
         "inventory-one",
         "2026-07-20T00:00:00Z",
+        explicit_unanchored_retrofit(),
     )
     .expect("inventory plan");
     let workspace = Workspace::initialize(&root, "Semantic faults").expect("initialize");

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::researcher_journey::{TempDir, cli, succeeds};
 
@@ -67,6 +67,37 @@ fn accepted_v01_workspace_migrates_without_rewriting_authority() {
         ],
     );
     assert!(String::from_utf8_lossy(&human.stdout).contains("Already present"));
+    assert_legacy_review_compatibility(&project);
+}
+
+fn assert_legacy_review_compatibility(project: &std::path::Path) {
+    let validation: Value =
+        serde_json::from_slice(&succeeds(project, &["validate", "--json"]).stdout)
+            .expect("validation JSON");
+    assert_eq!(validation["valid"], true);
+    let status: Value = serde_json::from_slice(&succeeds(project, &["status", "--json"]).stdout)
+        .expect("status JSON");
+    assert_eq!(status["review_authority"]["mode"], "unanchored");
+    assert_eq!(status["review_authority"]["promotion_capable"], false);
+    assert_eq!(status["claims"][0]["assessment"], "unreviewed");
+    succeeds(
+        project,
+        &["show", "--kind", "review", "--id", "review-legacy"],
+    );
+    succeeds(project, &["context", "--limit", "10"]);
+    succeeds(
+        project,
+        &[
+            "handoff",
+            "create",
+            "--id",
+            "handoff-legacy",
+            "--generated-at",
+            "2026-07-18T21:01:00Z",
+            "--limit",
+            "10",
+        ],
+    );
 }
 
 #[test]
@@ -110,7 +141,13 @@ fn legacy_workspace(temporary: &TempDir) -> std::path::PathBuf {
     let project = temporary.0.join("project");
     succeeds(
         &temporary.0,
-        &["init", project.to_str().unwrap(), "--name", "Legacy"],
+        &[
+            "init",
+            project.to_str().unwrap(),
+            "--name",
+            "Legacy",
+            "--without-review-authority",
+        ],
     );
     succeeds(
         &project,
@@ -127,6 +164,41 @@ fn legacy_workspace(temporary: &TempDir) -> std::path::PathBuf {
             "human",
         ],
     );
+    succeeds(
+        &project,
+        &[
+            "claim",
+            "add",
+            "--id",
+            "claim-legacy",
+            "--text",
+            "Legacy unsigned review remains historical.",
+            "--scope",
+            "Migration compatibility",
+            "--owner",
+            "Legacy Researcher",
+            "--authorship",
+            "human",
+        ],
+    );
+    let review = json!({
+        "schema_version": 1,
+        "kind": "review",
+        "id": "review-legacy",
+        "claim_id": "claim-legacy",
+        "evidence_ids": [],
+        "subject_sha256": "a".repeat(64),
+        "decision": "limited",
+        "rationale": "Accepted before signed review authorization was introduced.",
+        "reviewer": "Legacy Researcher"
+    });
+    let mut review_bytes = serde_json::to_vec_pretty(&review).expect("legacy review JSON");
+    review_bytes.push(b'\n');
+    fs::write(
+        project.join(".research-run/reviews/review-legacy.json"),
+        review_bytes,
+    )
+    .expect("legacy review");
     for directory in ["inventories", "knowledge", "relationships", "migrations"] {
         fs::remove_dir(project.join(".research-run").join(directory)).expect("legacy shape");
     }

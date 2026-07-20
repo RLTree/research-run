@@ -94,12 +94,67 @@ fn authority_initialization_retry_restores_the_exact_anchored_record() {
     assert!(Workspace::initialize_with_review_authority(&root, "Retry", &authority).is_err());
     Workspace::initialize_with_review_authority(&root, "Retry", &authority)
         .expect("retry after publication failure");
+    let rogue = ReviewAuthority::from_openssh("rogue-human".to_owned(), &test_review_public_key())
+        .expect("rogue authority");
+    let workspace = Workspace::discover(&root).expect("discover retry workspace");
+    workspace
+        .publish_record("review-authorities", &rogue)
+        .expect("publish rogue fixture");
+    assert!(
+        Workspace::initialize_with_review_authority(&root, "Retry", &authority).is_err(),
+        "retry accepted surplus review authority"
+    );
+    fs::remove_file(root.join(".research-run/review-authorities/rogue-human.json"))
+        .expect("remove rogue authority fixture");
 
     let malformed_root = temporary();
     Workspace::initialize(&malformed_root, "Malformed retry").expect("initialize");
     fs::write(malformed_root.join(".research-run/manifest.json"), b"{").expect("corrupt manifest");
     assert!(Workspace::initialize(&malformed_root, "Malformed retry").is_err());
     fs::remove_dir_all(malformed_root).expect("remove fixture");
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn unanchored_initialization_retry_rejects_a_rogue_authority() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Unanchored retry").expect("initialize");
+    let rogue = ReviewAuthority::from_openssh("rogue-human".to_owned(), &test_review_public_key())
+        .expect("rogue authority");
+    workspace
+        .publish_record("review-authorities", &rogue)
+        .expect("publish rogue fixture");
+    assert!(Workspace::initialize(&root, "Unanchored retry").is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn initialization_propagates_final_authority_snapshot_failure() {
+    let root = temporary();
+    inject_storage_failure("read record directory");
+    assert!(Workspace::initialize(&root, "Snapshot failure").is_err());
+    assert!(root.join(".research-run/manifest.json").is_file());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn unanchored_ai_claim_reports_the_irreversible_promotion_boundary() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Unanchored AI").expect("initialize");
+    let mut record = claim("ai-claim");
+    record.authorship = Authorship::Ai;
+    workspace.add_claim(&record).expect("claim");
+    let status = workspace.status().expect("status");
+    let claim = status
+        .claims
+        .iter()
+        .find(|value| value.id == "ai-claim")
+        .expect("claim status");
+    assert!(
+        claim
+            .next_action
+            .contains("new workspace with an anchored review authority")
+    );
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

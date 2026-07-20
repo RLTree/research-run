@@ -1,7 +1,7 @@
 use super::*;
 use crate::domain::{
-    EntityKind, EntityRef, InventoryPlan, InventorySnapshot, KnowledgeKind, KnowledgeRecord,
-    KnowledgeState, MaterialClass, MaterialEntry, RelationshipKind, RelationshipRecord,
+    EntityKind, EntityRef, InventorySnapshot, KnowledgeKind, KnowledgeRecord, KnowledgeState,
+    MaterialClass, MaterialEntry, RelationshipKind, RelationshipRecord,
 };
 
 fn knowledge(id: &str, kind: KnowledgeKind, state: KnowledgeState) -> KnowledgeRecord {
@@ -145,9 +145,9 @@ fn add_inventories(workspace: &Workspace) {
             Some("inventory-old".to_owned()),
         ),
     ] {
-        let inventory = InventorySnapshot::from(InventoryPlan {
+        let inventory = InventorySnapshot {
             schema_version: 1,
-            kind: "inventory-plan".to_owned(),
+            kind: "inventory".to_owned(),
             id: id.to_owned(),
             project_name: "Retrieval unit".to_owned(),
             project_id: "retrieval-unit".to_owned(),
@@ -160,7 +160,7 @@ fn add_inventories(workspace: &Workspace) {
                 sha256: "a".repeat(64),
             }],
             changes: Vec::new(),
-        });
+        };
         workspace
             .publish_record("inventories", &inventory)
             .expect("inventory");

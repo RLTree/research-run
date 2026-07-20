@@ -168,10 +168,12 @@ source increment.
 
 The recovery repair is exactly commit
 `9e1d411b670eec4d2073cc775d8bf5081f841154`, which passed bounded final Round 2
-signoff. A newer canonical source probe used a clean detached worktree at
-UltraGoal commit `0355039bf621113e7089c235a298c7a8b085397f` and built the `ultragoal`
-binary with `cargo build --locked --offline --package ultragoal --bin ultragoal`.
-Against clean Research Run candidate
+signoff. The following fit observation is historical and non-authoritative for
+the current candidate; it cannot establish current fit classification or
+readiness. A canonical source probe used a clean detached worktree at UltraGoal
+commit `0355039bf621113e7089c235a298c7a8b085397f` and built the `ultragoal` binary
+with `cargo build --locked --offline --package ultragoal --bin ultragoal`.
+Against historical Research Run candidate
 `80657ca065a93a49521f414db891dff775cf45e9`, `fit inspect` and `fit plan`
 classified the retrofit as `conflicting`: 67 missing generated files and four
 conflicts at Research Run-owned `AGENTS.md`, `AGENT_STANDARDS.md`,
@@ -181,9 +183,10 @@ source context was
 UltraGoal's canonical production adapter refuses every conflicting plan before
 effects, so the plan was not accepted or applied. The observed installed cache
 remains 0.0.11 and no installed `ultragoal` command was discovered. These facts
-support a source-built inspection and plan only; package, installed, discovered,
-runtime-active, applied-fit, fit-receipt, and full fitted-governance claims remain
-withheld.
+support a historical source-built inspection and plan only. The current fit
+classification has not been reprobed, no fit receipt exists, and current
+package, installed, discovered, runtime-active, applied-fit, fit-readiness, and
+full fitted-governance claims remain withheld.
 
 The additional validated source-guidance artifact is
 `harness-ultragoal-governance-complete.zip`, SHA-256

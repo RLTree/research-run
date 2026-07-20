@@ -13,13 +13,20 @@ pub(super) fn initialize(
     name: &str,
     review_authority_id: Option<String>,
     review_authority_public_key: Option<String>,
+    without_review_authority: bool,
 ) -> Result<()> {
     let authority = match (review_authority_id, review_authority_public_key) {
         (Some(id), Some(public_key)) => Some(ReviewAuthority::from_openssh(
             id,
             &read_text_input(&public_key)?,
         )?),
-        (None, None) => None,
+        (None, None) if without_review_authority => None,
+        (None, None) => {
+            return Err(Error::invalid(
+                "review authority",
+                "supply a review authority or explicitly use --without-review-authority",
+            ));
+        }
         _ => {
             return Err(Error::invalid(
                 "review authority",
@@ -31,9 +38,17 @@ pub(super) fn initialize(
         Some(ref authority) => Workspace::initialize_with_review_authority(path, name, authority)?,
         None => Workspace::initialize(path, name)?,
     };
+    let mode = match authority {
+        Some(ref authority) => format!(
+            "anchored {} ({})",
+            terminal_text(&authority.id),
+            terminal_text(&authority.fingerprint)
+        ),
+        None => "unanchored; irreversible; claim promotion disabled".to_owned(),
+    };
     print_text(&format!(
-        "Initialized Research Run workspace at {}",
-        terminal_text(&workspace.root().display().to_string())
+        "Initialized Research Run workspace at {}\nReview authority: {mode}",
+        terminal_text(&workspace.root().display().to_string()),
     ))
 }
 

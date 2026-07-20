@@ -64,36 +64,76 @@ pub(super) fn render_human_status(status: &Status) -> String {
     .expect("String rendering is infallible");
     writeln!(&mut output, "Claim ceiling: {}", status.claim_ceiling)
         .expect("String rendering is infallible");
-    writeln!(&mut output, "\nClaims").expect("String rendering is infallible");
+    render_review_authority(&mut output, status);
+    render_claims(&mut output, status);
+    render_ai_drafts(&mut output, status);
+    render_experiments(&mut output, status);
+    output
+}
+
+fn render_review_authority(output: &mut String, status: &Status) {
+    writeln!(output, "\nReview authority").expect("String rendering is infallible");
+    writeln!(
+        output,
+        "- Mode: {}; promotion capable: {}; repairable: {}",
+        status.review_authority.mode,
+        status.review_authority.promotion_capable,
+        status.review_authority.repairable
+    )
+    .expect("String rendering is infallible");
+    if let Some(id) = &status.review_authority.id {
+        writeln!(output, "  ID: {}", terminal_text(id)).expect("String rendering is infallible");
+    }
+    if let Some(fingerprint) = &status.review_authority.fingerprint {
+        writeln!(output, "  Fingerprint: {}", terminal_text(fingerprint))
+            .expect("String rendering is infallible");
+    }
+    if let Some(blocker) = status.review_authority.blocker {
+        writeln!(output, "  Blocker: {}", terminal_text(blocker))
+            .expect("String rendering is infallible");
+    }
+    writeln!(
+        output,
+        "  Next: {}",
+        terminal_text(status.review_authority.next_action)
+    )
+    .expect("String rendering is infallible");
+}
+
+fn render_claims(output: &mut String, status: &Status) {
+    writeln!(output, "\nClaims").expect("String rendering is infallible");
     if status.claims.is_empty() {
-        writeln!(&mut output, "- None. Next action: add a claim.")
+        writeln!(output, "- None. Next action: add a claim.")
             .expect("String rendering is infallible");
     }
     for claim in &status.claims {
         writeln!(
-            &mut output,
+            output,
             "- {}: {:?} — {}",
             terminal_text(&claim.id),
             claim.assessment,
             terminal_text(&claim.text)
         )
         .expect("String rendering is infallible");
-        writeln!(&mut output, "  Scope: {}", terminal_text(&claim.scope))
+        writeln!(output, "  Scope: {}", terminal_text(&claim.scope))
             .expect("String rendering is infallible");
         for blocker in &claim.blockers {
-            writeln!(&mut output, "  Blocker: {}", terminal_text(blocker))
+            writeln!(output, "  Blocker: {}", terminal_text(blocker))
                 .expect("String rendering is infallible");
         }
-        writeln!(&mut output, "  Next: {}", terminal_text(&claim.next_action))
+        writeln!(output, "  Next: {}", terminal_text(&claim.next_action))
             .expect("String rendering is infallible");
     }
-    writeln!(&mut output, "\nUnreviewed AI drafts").expect("String rendering is infallible");
+}
+
+fn render_ai_drafts(output: &mut String, status: &Status) {
+    writeln!(output, "\nUnreviewed AI drafts").expect("String rendering is infallible");
     if status.unreviewed_ai_drafts.is_empty() {
-        writeln!(&mut output, "- None.").expect("String rendering is infallible");
+        writeln!(output, "- None.").expect("String rendering is infallible");
     }
     for draft in &status.unreviewed_ai_drafts {
         writeln!(
-            &mut output,
+            output,
             "- {}/{}: {}",
             terminal_text(draft.kind),
             terminal_text(&draft.id),
@@ -101,36 +141,34 @@ pub(super) fn render_human_status(status: &Status) -> String {
         )
         .expect("String rendering is infallible");
     }
-    writeln!(&mut output, "\nExperiments").expect("String rendering is infallible");
+}
+
+fn render_experiments(output: &mut String, status: &Status) {
+    writeln!(output, "\nExperiments").expect("String rendering is infallible");
     if status.experiments.is_empty() {
-        writeln!(&mut output, "- None.").expect("String rendering is infallible");
+        writeln!(output, "- None.").expect("String rendering is infallible");
     }
     for experiment in &status.experiments {
         writeln!(
-            &mut output,
+            output,
             "- {}: {:?}",
             terminal_text(&experiment.id),
             experiment.outcome
         )
         .expect("String rendering is infallible");
         for observation in &experiment.observations {
-            writeln!(&mut output, "  Observation: {}", terminal_text(observation))
+            writeln!(output, "  Observation: {}", terminal_text(observation))
                 .expect("String rendering is infallible");
         }
         writeln!(
-            &mut output,
+            output,
             "  Interpretation: {}",
             terminal_text(&experiment.interpretation)
         )
         .expect("String rendering is infallible");
-        writeln!(
-            &mut output,
-            "  Next: {}",
-            terminal_text(&experiment.next_move)
-        )
-        .expect("String rendering is infallible");
+        writeln!(output, "  Next: {}", terminal_text(&experiment.next_move))
+            .expect("String rendering is infallible");
     }
-    output
 }
 
 pub(super) fn print_text(value: &str) -> Result<()> {

@@ -2,19 +2,71 @@ use super::*;
 use crate::workspace::inventory_scan::scan_materials;
 
 #[test]
+fn material_scan_enforces_file_count_budget() {
+    let root = temporary();
+    for index in 0..=crate::domain::MAX_INVENTORY_ENTRIES {
+        fs::write(root.join(format!("file-{index:04}")), b"").expect("file fixture");
+    }
+    assert!(scan_materials(&root).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn inventory_planning_propagates_validation_and_storage_failures() {
     let root = temporary();
     fs::write(root.join("note.md"), b"note").expect("note");
     inject_storage_failure("read retrofit directory");
     assert!(
-        Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z").is_err()
+        Workspace::plan_retrofit(
+            &root,
+            "Project",
+            "inventory",
+            "2026-07-18T20:00:00Z",
+            explicit_unanchored_retrofit(),
+        )
+        .is_err()
     );
-    assert!(Workspace::plan_retrofit(&root, "", "inventory", "2026-07-18T20:00:00Z").is_err());
-    assert!(Workspace::plan_retrofit(&root, "Project", "INVALID", "2026-07-18T20:00:00Z").is_err());
+    assert!(
+        Workspace::plan_retrofit(
+            &root,
+            "",
+            "inventory",
+            "2026-07-18T20:00:00Z",
+            explicit_unanchored_retrofit(),
+        )
+        .is_err()
+    );
+    assert!(
+        Workspace::plan_retrofit(
+            &root,
+            "Project",
+            "INVALID",
+            "2026-07-18T20:00:00Z",
+            explicit_unanchored_retrofit(),
+        )
+        .is_err()
+    );
     let workspace = Workspace::initialize(&root, "Project").expect("initialize");
+    assert!(
+        Workspace::plan_reconciliation(&root, "Project", "inventory", "2026-07-18T20:00:00Z",)
+            .is_err(),
+        "reconciliation without a prior inventory was accepted"
+    );
+    assert!(
+        Workspace::plan_retrofit(
+            &root,
+            "Project",
+            "inventory",
+            "2026-07-18T20:00:00Z",
+            explicit_unanchored_retrofit(),
+        )
+        .is_err(),
+        "existing workspace accepted retrofit bootstrap"
+    );
     fs::write(workspace.state.join("manifest.json"), b"{").expect("corrupt manifest");
     assert!(
-        Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z").is_err()
+        Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z", None,)
+            .is_err()
     );
     fs::remove_dir_all(root).expect("remove fixture");
 }
@@ -29,9 +81,14 @@ fn inventory_application_propagates_owned_storage_failures() {
     ] {
         let root = temporary();
         fs::write(root.join("note.md"), b"note").expect("note");
-        let plan =
-            Workspace::plan_retrofit(&root, "Project", "inventory-one", "2026-07-18T20:00:00Z")
-                .expect("plan");
+        let plan = Workspace::plan_retrofit(
+            &root,
+            "Project",
+            "inventory-one",
+            "2026-07-18T20:00:00Z",
+            explicit_unanchored_retrofit(),
+        )
+        .expect("plan");
         inject_storage_failure(point);
         assert!(
             Workspace::apply_inventory_plan(&root, plan).is_err(),
@@ -41,9 +98,14 @@ fn inventory_application_propagates_owned_storage_failures() {
     }
     let root = temporary();
     fs::write(root.join("note.md"), b"note").expect("note");
-    let mut invalid =
-        Workspace::plan_retrofit(&root, "Project", "inventory-one", "2026-07-18T20:00:00Z")
-            .expect("plan");
+    let mut invalid = Workspace::plan_retrofit(
+        &root,
+        "Project",
+        "inventory-one",
+        "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("plan");
     invalid.id = "INVALID".to_owned();
     assert!(Workspace::apply_inventory_plan(&root, invalid).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
@@ -95,11 +157,13 @@ fn inventory_planning_propagates_manifest_and_prior_inventory_failures() {
     let workspace = Workspace::initialize(&root, "Project").expect("initialize");
     inject_storage_failure("inspect record#2");
     assert!(
-        Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z").is_err()
+        Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z", None,)
+            .is_err()
     );
     fs::write(workspace.state.join("inventories/bad.json"), b"{}").expect("bad inventory");
     assert!(
-        Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z").is_err()
+        Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z", None,)
+            .is_err()
     );
     fs::remove_dir_all(root).expect("remove fixture");
 }
@@ -110,12 +174,14 @@ fn inventory_application_propagates_each_post_scan_authority_failure() {
         "inspect record#2",
         "create project directory",
         "open workspace write lock",
+        "publish canonical record",
     ] {
         let root = temporary();
         fs::write(root.join("note.md"), b"note").expect("note");
         let workspace = Workspace::initialize(&root, "Project").expect("initialize");
-        let plan = Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z")
-            .expect("plan");
+        let plan =
+            Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z", None)
+                .expect("plan");
         if point == "create project directory" {
             fs::remove_dir(workspace.state.join("inventories")).expect("remove inventories");
         }
@@ -134,8 +200,9 @@ fn inventory_application_propagates_exact_root_record_and_latest_failures() {
         let root = temporary();
         fs::write(root.join("note.md"), b"note").expect("note");
         let workspace = Workspace::initialize(&root, "Project").expect("initialize");
-        let plan = Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z")
-            .expect("plan");
+        let plan =
+            Workspace::plan_retrofit(&root, "Project", "inventory", "2026-07-18T20:00:00Z", None)
+                .expect("plan");
         match scenario {
             "exact root" => {
                 fs::write(workspace.state.join("manifest.json"), b"{").expect("corrupt")
@@ -172,9 +239,14 @@ fn inventory_read_and_latest_snapshot_failures_are_explicit() {
 
     let plan_root = temporary();
     fs::write(plan_root.join("note.md"), b"note").expect("note");
-    let mut plan =
-        Workspace::plan_retrofit(&plan_root, "Project", "inventory", "2026-07-18T20:00:00Z")
-            .expect("plan");
+    let mut plan = Workspace::plan_retrofit(
+        &plan_root,
+        "Project",
+        "inventory",
+        "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("plan");
     plan.id = "INVALID".to_owned();
     let invalid = plan_root.join("invalid-semantic-plan.json");
     fs::write(&invalid, serde_json::to_vec(&plan).unwrap()).expect("invalid plan");

@@ -36,6 +36,7 @@ fn recovered_inventory_rechecks_prior_authority_and_missing_candidates() {
         "Inventory history",
         "inventory-one",
         "2026-07-20T00:00:00Z",
+        explicit_unanchored_retrofit(),
     )
     .expect("first plan");
     Workspace::apply_inventory_plan(&root, first).expect("first inventory");
