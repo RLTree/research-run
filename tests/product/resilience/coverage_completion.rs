@@ -97,6 +97,41 @@ fn installed_retrofit_inspects_the_empty_bootstrap_scaffold_under_lock() {
     fs::remove_file(input).expect("remove plan");
 }
 
+#[test]
+fn installed_retrofit_reports_exact_plan_recovery_after_publication_lock_fault() {
+    let project = TempDir::new("inventory-bootstrap-lock-guidance");
+    fs::write(project.0.join("note.md"), b"one").expect("material");
+    let planned = run(
+        &project.0,
+        &retrofit_plan("inventory-one", "2026-07-18T20:00:00Z"),
+        None,
+    );
+    assert!(planned.status.success());
+    let input = project.0.with_extension("bootstrap-lock-plan.json");
+    fs::write(&input, planned.stdout).expect("plan file");
+    let args = [
+        "retrofit",
+        "apply",
+        ".",
+        "--input",
+        input.to_str().expect("plan path"),
+    ];
+
+    let failed = run(&project.0, &args, Some("lock identity#3"));
+    assert!(!failed.status.success());
+    let stderr = String::from_utf8(failed.stderr).expect("UTF-8 error");
+    assert!(stderr.contains("inventory bootstrap for inventory-one may be incomplete"));
+    assert!(stderr.contains("reapply the exact accepted plan"));
+    assert!(
+        project
+            .0
+            .join(".research-run/inventory-bootstrap.json")
+            .is_file()
+    );
+    assert!(run(&project.0, &args, None).status.success());
+    fs::remove_file(input).expect("remove plan");
+}
+
 fn add(root: &TempDir, kind: &str, input: &std::path::Path) -> std::process::Output {
     run(
         &root.0,

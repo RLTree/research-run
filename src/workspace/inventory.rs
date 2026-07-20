@@ -132,7 +132,13 @@ impl Workspace {
             ));
         }
         let (workspace, bootstrap_in_progress) = inventory_apply_workspace(&root, &plan)?;
-        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
+        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state).map_err(|error| {
+            if bootstrap_in_progress {
+                inventory_bootstrap_error(&plan, error)
+            } else {
+                error
+            }
+        })?;
         let result = Self::apply_inventory_plan_locked(&root, &workspace, &plan);
         match result {
             Ok(result) => {

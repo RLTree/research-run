@@ -18,6 +18,7 @@ use super::{Workspace, injected_storage_failure};
 pub(super) const INVENTORY_BOOTSTRAP_MARKER: &str = "inventory-bootstrap.json";
 
 #[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 struct InventoryBootstrapMarker {
     schema_version: u32,
     kind: String,

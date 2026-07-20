@@ -102,6 +102,31 @@ fn canonical_marker_conflict_preserves_requested_plan_pending_evidence() {
 }
 
 #[test]
+fn canonical_bootstrap_marker_rejects_unknown_fields_before_effects() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    let pending = write_pending_marker(&root, &plan, 0);
+    let mut marker: serde_json::Value =
+        serde_json::from_slice(&fs::read(&pending).expect("read marker")).expect("parse marker");
+    marker["unexpected"] = true.into();
+    let canonical = root.join(".research-run/inventory-bootstrap.json");
+    fs::write(&canonical, serde_json::to_vec(&marker).expect("serialize")).expect("marker");
+    fs::remove_file(pending).expect("remove pending");
+
+    assert!(Workspace::apply_inventory_plan(&root, plan).is_err());
+    assert!(
+        canonical.is_file(),
+        "conflicting marker evidence was removed"
+    );
+    assert!(
+        !root.join(".research-run/inventories").exists(),
+        "bootstrap effects preceded strict marker validation"
+    );
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn linked_bootstrap_pending_inspection_faults_fail_closed() {
     for fault in [
         "read linked bootstrap state",

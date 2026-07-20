@@ -118,7 +118,20 @@ fn bootstrap_post_initialization_lock_failure_is_retryable() {
     fs::write(root.join("note.md"), b"note").expect("note");
     let plan = retrofit_plan(&root);
     inject_storage_failure("lock identity#3");
-    assert!(Workspace::apply_inventory_plan(&root, plan.clone()).is_err());
+    let error =
+        Workspace::apply_inventory_plan(&root, plan.clone()).expect_err("publication lock fault");
+    assert!(
+        error
+            .to_string()
+            .contains("inventory bootstrap for inventory-one may be incomplete"),
+        "unexpected error: {error}"
+    );
+    assert!(
+        error
+            .to_string()
+            .contains("reapply the exact accepted plan"),
+        "missing operator recovery action: {error}"
+    );
     Workspace::apply_inventory_plan(&root, plan).expect("retry");
     fs::remove_dir_all(root).expect("remove fixture");
 }

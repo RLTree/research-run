@@ -143,6 +143,19 @@ fn identical_inventory_read_failure_propagates_from_apply() {
     )
     .expect("plan");
     Workspace::apply_inventory_plan(&root, plan.clone()).expect("seed inventory");
+    inject_storage_failure("lock identity#2");
+    let error =
+        Workspace::apply_inventory_plan(&root, plan.clone()).expect_err("publication lock fault");
+    assert!(
+        error
+            .to_string()
+            .contains("workspace write lock identity changed during acquisition")
+    );
+    assert!(
+        !error
+            .to_string()
+            .contains("inventory bootstrap for inventory-one")
+    );
     inject_storage_failure("record identity#4");
     assert!(Workspace::apply_inventory_plan(&root, plan).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
