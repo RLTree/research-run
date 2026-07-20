@@ -1,5 +1,5 @@
 use base64ct::{Base64, Base64Unpadded, Encoding};
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, VerifyingKey};
 use sha2::{Digest, Sha256, Sha512};
 
 use crate::domain::ReviewAuthority;
@@ -65,6 +65,12 @@ pub(super) fn parse_openssh_public_key(encoded: &str) -> Result<ParsedPublicKey>
     reader.finish("review authority public_key")?;
     let key = VerifyingKey::from_bytes(&raw_key)
         .map_err(|_| Error::invalid("review authority public_key", "Ed25519 key is invalid"))?;
+    if key.is_weak() {
+        return Err(Error::invalid(
+            "review authority public_key",
+            "weak Ed25519 keys are not supported",
+        ));
+    }
     Ok(ParsedPublicKey { blob, key })
 }
 
@@ -149,12 +155,15 @@ fn verify_signature(
     let signature = Signature::from_slice(signature_reader.string()?)
         .map_err(|_| Error::invalid("review authorization", "Ed25519 signature is malformed"))?;
     signature_reader.finish("review authorization")?;
-    authority.key.verify(&signed, &signature).map_err(|_| {
-        Error::invalid(
-            "review authorization",
-            "signature does not authorize this exact review request",
-        )
-    })
+    authority
+        .key
+        .verify_strict(&signed, &signature)
+        .map_err(|_| {
+            Error::invalid(
+                "review authorization",
+                "signature does not authorize this exact review request",
+            )
+        })
 }
 
 fn decode_armor(armored: &str) -> Result<Vec<u8>> {

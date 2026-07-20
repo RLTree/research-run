@@ -49,6 +49,27 @@ fn openssh_key_parser_rejects_each_malformed_boundary() {
 }
 
 #[test]
+fn openssh_key_parser_rejects_weak_ed25519_authorities() {
+    let weak_vectors = [
+        (
+            "order-2 encoding",
+            [
+                236, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127,
+            ],
+        ),
+        ("order-4 all-zero encoding", [0; 32]),
+    ];
+
+    for (name, weak_key) in weak_vectors {
+        let blob = key_blob(b"ssh-ed25519", &weak_key, false);
+        let encoded = format!("ssh-ed25519 {}", Base64::encode_string(&blob));
+
+        assert!(parse_openssh_public_key(&encoded).is_err(), "{name}");
+    }
+}
+
+#[test]
 fn sshsig_verifier_rejects_malformed_envelopes_and_accepts_sha256() {
     let key = parse_openssh_public_key(&public_key()).expect("key");
     assert!(verify(&key, "namespace", b"message", "not armor").is_err());
