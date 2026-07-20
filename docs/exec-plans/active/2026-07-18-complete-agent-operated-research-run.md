@@ -334,10 +334,10 @@ pass.
 - 2026-07-20: The pending Product Fitness candidate declaration resolves
   `git:HEAD` only from a clean proof-gate worktree and expects the
   `aarch64-apple-darwin` installed binary content digest
-  `dc86ea6d14728ffba444c0c1661d0c811085bc5b100fdca65aadcf42bf591b3f`
+  `754014982aab6e698b4f11467bc28f32fb1bfc39d8759f12b1bc61a477c94839`
   after first verifying and binding the exact empty-entitlement ad-hoc,
   linker-signed profile, then removing that code-signature blob and zeroing the
-  nondeterministic Mach-O `LC_UUID` (2,204,128 normalized bytes; 2,221,520 raw
+  nondeterministic Mach-O `LC_UUID` (2,253,640 normalized bytes; 2,271,424 raw
   bytes). The canonical signature-profile digest is
   `a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd`.
   `scripts/check-product-artifacts` must reproduce and verify these values from
@@ -358,6 +358,15 @@ pass.
   valid ad-hoc linker-signature profile, empty entitlements, absent Team ID and
   authorities, absent internal requirements, and expected CodeDirectory flags
   before removing only that verified signature for content normalization.
+- 2026-07-20: PR review exposed an irreversible retrofit bootstrap gap before
+  inventory publication. The repair now serializes bootstrap-state
+  classification under the workspace write lock, accepts only an empty or
+  exact-plan pending scaffold, validates the canonical marker before cleanup,
+  preserves conflicting pending evidence, and prevents a losing plan from
+  republishing after a concurrent winner completes. Exact production coverage
+  is 8,820/8,820 regions, 4,499/4,499 lines, and 560/560 functions. The final
+  named bootstrap mutation boundary exercised 43 mutants: 36 caught, seven
+  compiler-unviable, zero missed, and zero timed out.
 
 ## Current claim ceiling
 
