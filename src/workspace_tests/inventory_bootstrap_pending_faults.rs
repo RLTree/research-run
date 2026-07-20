@@ -76,6 +76,32 @@ fn linked_bootstrap_marker_cleans_only_exact_pending_state() {
 }
 
 #[test]
+fn canonical_marker_conflict_preserves_requested_plan_pending_evidence() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let requested = retrofit_plan(&root);
+    let canonical = Workspace::plan_retrofit(
+        &root,
+        "Canonical",
+        "inventory-canonical",
+        "2026-07-18T20:00:01Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("canonical plan");
+    let requested_pending = write_pending_marker(&root, &requested, 0);
+    let canonical_pending = write_pending_marker(&root, &canonical, 1);
+    fs::rename(
+        canonical_pending,
+        root.join(".research-run/inventory-bootstrap.json"),
+    )
+    .expect("canonical marker");
+
+    assert!(Workspace::apply_inventory_plan(&root, requested).is_err());
+    assert!(requested_pending.is_file());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn linked_bootstrap_pending_inspection_faults_fail_closed() {
     for fault in [
         "read linked bootstrap state",

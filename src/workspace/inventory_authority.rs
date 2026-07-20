@@ -81,9 +81,8 @@ pub(super) fn inventory_apply_workspace(
         root: root.to_path_buf(),
         state,
     };
-    let marker_path = workspace.state.join(INVENTORY_BOOTSTRAP_MARKER);
-    let marker_exists = marker_path.exists();
     let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
+    let marker_exists = workspace.state.join(INVENTORY_BOOTSTRAP_MARKER).exists();
     if !marker_exists {
         let scaffold = inspect_inventory_bootstrap_scaffold(&workspace, plan)?;
         if scaffold.is_none() && !created_state {
@@ -105,10 +104,11 @@ pub(super) fn inventory_apply_workspace(
             ));
         };
         clear_exact_pending_bootstrap(scaffold)?;
+        ensure_inventory_bootstrap_marker(&workspace, plan)?;
     } else {
+        ensure_inventory_bootstrap_marker(&workspace, plan)?;
         clear_linked_bootstrap_pending(&workspace, plan)?;
     }
-    ensure_inventory_bootstrap_marker(&workspace, plan)?;
     drop(_write_lock);
     initialize_inventory_bootstrap(root, plan)
         .map(|workspace| (workspace, true))

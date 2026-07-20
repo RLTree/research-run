@@ -75,6 +75,29 @@ fn bootstrap_post_initialization_lock_failure_is_retryable() {
 }
 
 #[test]
+fn normal_workspace_handoff_never_republishes_a_losing_plan_marker() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let losing = retrofit_plan(&root);
+    let winner = Workspace::plan_retrofit(
+        &root,
+        "Winner",
+        "inventory-winner",
+        "2026-07-18T20:00:01Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("winner plan");
+    Workspace::apply_inventory_plan(&root, winner).expect("winner");
+    assert!(Workspace::apply_inventory_plan(&root, losing).is_err());
+    assert!(!root.join(".research-run/inventory-bootstrap.json").exists());
+    assert!(
+        root.join(".research-run/inventories/inventory-winner.json")
+            .is_file()
+    );
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn partial_bootstrap_scaffolds_reject_unexpected_shapes() {
     for lock_is_directory in [false, true] {
         let root = temporary();
