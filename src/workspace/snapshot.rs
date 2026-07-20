@@ -38,6 +38,12 @@ impl Workspace {
                 "reference validation failed before mutation",
             ));
         }
+        if !self.review_authorization_errors(&snapshot).is_empty() {
+            return Err(Error::invalid(
+                "existing workspace",
+                "review authorization validation failed before mutation",
+            ));
+        }
         Ok(snapshot)
     }
 

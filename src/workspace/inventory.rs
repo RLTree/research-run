@@ -51,7 +51,6 @@ impl Workspace {
         bootstrap: Option<ReviewBootstrap>,
     ) -> Result<InventoryPlan> {
         let (root, entries) = scan_materials(root)?;
-        let requested = ProjectManifest::new(name)?;
         let existing = Self::at_exact_root(&root)?;
         let existing_snapshot = verified_inventory_plan_snapshot(existing.as_ref())?;
         let manifest = match (&existing_snapshot, &bootstrap) {
@@ -62,7 +61,7 @@ impl Workspace {
                         .to_owned(),
                 ));
             }
-            (None, Some(_)) => requested,
+            (None, Some(_)) => ProjectManifest::new(name)?,
             (None, None) => {
                 return Err(Error::invalid(
                     "retrofit review authority",

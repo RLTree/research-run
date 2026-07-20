@@ -42,7 +42,7 @@ thread_local! {
 }
 
 #[cfg(test)]
-fn inject_random_failure() {
+pub(crate) fn inject_random_failure() {
     RANDOM_FAILURE.set(true);
 }
 

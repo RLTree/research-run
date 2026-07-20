@@ -38,6 +38,30 @@ fn inventory_planning_propagates_each_authority_stage() {
 }
 
 #[test]
+fn existing_workspace_reconciliation_does_not_require_randomness() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let retrofit = Workspace::plan_retrofit(
+        &root,
+        "Project",
+        "inventory-one",
+        "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("retrofit plan");
+    Workspace::apply_inventory_plan(&root, retrofit).expect("apply retrofit");
+
+    crate::domain::inject_random_failure();
+    Workspace::plan_reconciliation(&root, "Project", "inventory-two", "2026-07-18T20:01:00Z")
+        .expect("existing workspace reconciliation");
+    assert!(
+        ProjectManifest::new("Consume injected failure").is_err(),
+        "reconciliation unexpectedly consumed secure randomness"
+    );
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn inventory_authority_helpers_reject_invalid_and_unreachable_shapes() {
     let root = temporary();
     let authority =

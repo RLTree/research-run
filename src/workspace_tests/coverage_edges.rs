@@ -141,6 +141,23 @@ fn unanchored_initialization_retry_rejects_a_rogue_authority() {
 }
 
 #[test]
+fn ordinary_mutation_rejects_a_missing_review_trust_anchor() {
+    let root = temporary();
+    let workspace = review_workspace(&root, "Broken trust anchor");
+    fs::remove_file(workspace.state.join("review-authorities/test-human.json"))
+        .expect("remove authority");
+    assert!(
+        workspace.add_source(&source("source-one")).is_err(),
+        "ordinary mutation accepted a missing enrolled review authority"
+    );
+    assert!(
+        !workspace.state.join("sources/source-one.json").exists(),
+        "rejected mutation published a source"
+    );
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn initialization_propagates_final_authority_snapshot_failure() {
     let root = temporary();
     inject_storage_failure("read record directory");
