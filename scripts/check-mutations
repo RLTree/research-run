@@ -71,7 +71,6 @@ validate_outcomes() {
     $actual_names == $expected_names and
     ($actual_names | unique | length) == ($actual_names | length) and
     all($mutant_outcomes[];
-    .summary == "Success" or
     .summary == "CaughtMutant" or
     .summary == "Unviable") and
     ([$mutant_outcomes[] | select(.summary == "CaughtMutant")] | length > 0)
@@ -89,10 +88,14 @@ trap 'rm -f "$tampered_outcomes"' EXIT
 for transform in \
   'del(.outcomes[1])' \
   '.outcomes += [.outcomes[1]]' \
-  '.outcomes[1].scenario.Mutant.name = "unexpected-mutant"'; do
+  '.outcomes[1].scenario.Mutant.name = "unexpected-mutant"' \
+  '.outcomes[1].summary = "Success"' \
+  '.outcomes[1].summary = "MissedMutant"' \
+  '.outcomes[1].summary = "Timeout"' \
+  '.outcomes[1].summary = "UnknownOutcome"'; do
   jq "$transform" "$outcomes" > "$tampered_outcomes"
   if validate_outcomes "$tampered_outcomes"; then
-    echo "mutation fixture failure: incomplete, duplicate, or unexpected outcomes were accepted" >&2
+    echo "mutation fixture failure: incomplete, duplicate, unexpected, or baseline-only outcomes were accepted" >&2
     echo "withheld: mutation_proof and package_delta_closure" >&2
     exit 1
   fi
