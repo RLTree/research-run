@@ -30,9 +30,26 @@ cargo llvm-cov report --json --output-path "$report"
 # Count each production source coordinate once. LLVM emits duplicate mappings for
 # generic monomorphs and the cfg(test) library build; a covered source region must
 # not become "missed" merely because an unused duplicate codegen copy exists.
+if ! jq -en --arg src "$repo_root/src/" '
+  def production:
+    startswith($src) and
+    (test("(_tests(/|\\.rs$)|/tests\\.rs$|/tests/)") | not);
+  [
+    {path: ($src + "domain/records.rs"), expected: true},
+    {path: ($src + "domain/tests.rs"), expected: false},
+    {path: ($src + "domain/tests/records.rs"), expected: false},
+    {path: ($src + "legacy_tests.rs"), expected: false},
+    {path: ($src + "contest.rs"), expected: true}
+  ] | all(.[]; ((.path | production) == .expected))
+'; then
+  echo "coverage source classification fixture failed" >&2
+  exit 1
+fi
+
 coverage="$(jq -c --arg src "$repo_root/src/" '
   def production:
-    startswith($src) and (test("(_tests(/|\\.rs$)|tests/)") | not);
+    startswith($src) and
+    (test("(_tests(/|\\.rs$)|/tests\\.rs$|/tests/)") | not);
   ([.data[0].functions[] as $function | $function.regions[] as $region
     | {file: $function.filenames[$region[5]],
        key: ([$function.filenames[$region[5]], $region[0], $region[1],
