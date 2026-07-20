@@ -27,7 +27,7 @@ tree="$(git rev-parse 'HEAD^{tree}')"
 version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
 lockfile_sha256="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
 
-jq -n \
+jq -Scn \
   --arg authority_id "$authority_id" \
   --arg signer_fingerprint "$fingerprint" \
   --arg candidate "$candidate" \

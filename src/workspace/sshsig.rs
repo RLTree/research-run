@@ -23,6 +23,12 @@ pub(super) fn parse_authority_key(authority: &ReviewAuthority) -> Result<ParsedP
 }
 
 pub(super) fn parse_openssh_public_key(encoded: &str) -> Result<ParsedPublicKey> {
+    if encoded.is_empty() || encoded.contains('\r') || encoded.contains('\n') {
+        return Err(Error::invalid(
+            "review authority public_key",
+            "exactly one nonempty OpenSSH key record is required",
+        ));
+    }
     let mut fields = encoded.split_whitespace();
     if fields.next() != Some("ssh-ed25519") {
         return Err(Error::invalid(

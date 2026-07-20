@@ -10,7 +10,11 @@ human decision next?** Validation checks the ledger; it does not prove the
 science. A `supported` assessment means reviewed support within the recorded
 workspace scope, not scientific truth in general.
 
-## Five-minute quickstart
+## Source-checkout quickstart
+
+Research Run 0.1.0 is not published. This path requires a local source checkout,
+the pinned Rust toolchain, Git, and an Ed25519 public key. No human timing,
+accessibility, or cognitive-load claim is implied.
 
 Build or install with the pinned Rust toolchain:
 

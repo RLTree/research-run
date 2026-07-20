@@ -55,4 +55,15 @@ scripts/check-product-fitness-receipt /absolute/path/to/receipt.json
 A valid first-use receipt can support the unfamiliar-project workflow
 observation. It cannot establish continuance. Product Fitness remains withheld
 until an actor-disjoint reviewer evaluates the receipt and records a disposition
-bound to the exact candidate.
+bound to the exact candidate and receipt digest. Copy
+`agent-standards/product-fitness-disposition.template.json` outside the repo,
+then validate both external files with:
+
+```console
+scripts/check-product-fitness-disposition \
+  /absolute/path/to/observation.json \
+  /absolute/path/to/disposition.json
+```
+
+The disposition contract permits a bounded first-use workflow assessment but
+fails closed if one session is used to promote general Product Fitness.

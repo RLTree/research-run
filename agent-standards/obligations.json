@@ -210,8 +210,12 @@
       "evidence": [
         "agent-standards/product-fitness-disposition.json",
         "agent-standards/product-fitness-first-use.jq",
+        "agent-standards/product-fitness-session-window.jq",
+        "agent-standards/product-fitness-disposition.jq",
+        "agent-standards/product-fitness-disposition.template.json",
         "docs/release/product-fitness-protocol.md",
         "scripts/check-product-fitness-receipt",
+        "scripts/check-product-fitness-disposition",
         "fixtures/product-fitness",
         "scripts/check-standards"
       ],

@@ -4,6 +4,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
+export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
+export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
+
 case "$repo_root/" in
   /tmp/* | /private/tmp/*)
     echo "worktree custody failure: durable repository work may not run from a temporary filesystem" >&2
@@ -114,9 +118,10 @@ jq -e '
   .claim_id == "research-run-v0.1-real-use-fitness" and
   .status == "withheld" and
   .owner == "human product-fitness reviewer" and
-  .candidate_binding.status == "declared-pending-receipt" and
-  .candidate_binding.current_candidate == "git:HEAD" and
-  (.candidate_binding.resolver | contains("clean worktree")) and
+  .candidate_binding.status == "tracked-declaration-not-evidence" and
+  .candidate_binding.current_candidate == "resolved by the external receipt validator" and
+  (.candidate_binding.resolver | contains("clean Git HEAD")) and
+  (.candidate_binding.resolver | contains("never a receipt")) and
   (.candidate_binding.required_identity | contains("clean Git HEAD")) and
   (.candidate_binding.required_identity | contains("platform-qualified normalized")) and
   .candidate_binding.installed_binary.platform == "aarch64-apple-darwin" and
@@ -162,7 +167,11 @@ jq -e '
     "path": "docs/release/product-fitness-protocol.md",
     "receipt_template": "agent-standards/product-fitness-observation.template.json",
     "first_use_contract": "agent-standards/product-fitness-first-use.jq",
+    "session_window_contract": "agent-standards/product-fitness-session-window.jq",
     "receipt_validator": "scripts/check-product-fitness-receipt",
+    "disposition_template": "agent-standards/product-fitness-disposition.template.json",
+    "disposition_contract": "agent-standards/product-fitness-disposition.jq",
+    "disposition_validator": "scripts/check-product-fitness-disposition",
     "receipt_storage": "external deidentified evidence; no human-subject receipt is tracked by default"
   } and
   (.dispositions | map(.claim_id) == [
@@ -184,8 +193,12 @@ jq -e '
   exit 1
 }
 
-tampered_ledger="$(mktemp "${TMPDIR:-/tmp}/research-run-standards.XXXXXX")"
-trap 'rm -f "$tampered_ledger"' EXIT
+git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+scratch_dir="$git_common_dir/check-scratch"
+mkdir -p "$scratch_dir"
+tampered_ledger="$(mktemp "$scratch_dir/standards.XXXXXX")"
+tampered_disposition=""
+trap 'rm -f "$tampered_ledger" "$tampered_disposition"' EXIT
 for red_transform in fixtures/standards/red/*.jq; do
   jq -f "$red_transform" "$ledger" > "$tampered_ledger"
   if validate_classifications "$tampered_ledger"; then
@@ -194,6 +207,29 @@ for red_transform in fixtures/standards/red/*.jq; do
     exit 1
   fi
 done
+
+disposition_args=(
+  --arg candidate aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  --arg platform test-platform
+  --arg normalized_sha256 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  --argjson normalized_bytes 42
+  --arg receipt_sha256 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+)
+if ! jq -e "${disposition_args[@]}" \
+  -f agent-standards/product-fitness-disposition.jq \
+  fixtures/product-fitness/green/disposition.json >/dev/null; then
+  echo "product fitness fixture failure: a bounded actor-disjoint disposition was rejected" >&2
+  exit 1
+fi
+tampered_disposition="$(mktemp "$scratch_dir/fitness-disposition.XXXXXX")"
+jq -f fixtures/product-fitness/red/overbroad-disposition.jq \
+  fixtures/product-fitness/green/disposition.json >"$tampered_disposition"
+if jq -e "${disposition_args[@]}" \
+  -f agent-standards/product-fitness-disposition.jq \
+  "$tampered_disposition" >/dev/null; then
+  echo "product fitness fixture failure: one first-use receipt promoted general Product Fitness" >&2
+  exit 1
+fi
 
 if ! jq -e -f agent-standards/product-fitness-first-use.jq \
   fixtures/product-fitness/green/first-use.json >/dev/null; then
@@ -205,6 +241,34 @@ if jq -e -f agent-standards/product-fitness-first-use.jq \
   echo "product fitness fixture failure: first-use evidence raised continuance" >&2
   exit 1
 fi
+if ! jq -e -f agent-standards/product-fitness-session-window.jq \
+  fixtures/product-fitness/green/session-window.json >/dev/null; then
+  echo "product fitness fixture failure: a valid session window was rejected" >&2
+  exit 1
+fi
+for invalid_window in \
+  fixtures/product-fitness/red/impossible-session-date.json \
+  fixtures/product-fitness/red/reversed-session-window.json \
+  fixtures/product-fitness/red/inconsistent-recovery.json; do
+  if jq -e -f agent-standards/product-fitness-session-window.jq \
+    "$invalid_window" >/dev/null; then
+    echo "product fitness fixture failure: $invalid_window was accepted" >&2
+    exit 1
+  fi
+done
+scripts/validate-canonical-json.py fixtures/release-authorization/green/canonical.json
+for invalid_json in fixtures/release-authorization/red/*.json; do
+  if scripts/validate-canonical-json.py "$invalid_json" >/dev/null 2>&1; then
+    echo "release authorization fixture failure: $invalid_json was accepted" >&2
+    exit 1
+  fi
+done
+for invalid_jobs in "" 2; do
+  if RESEARCH_RUN_MUTATION_JOBS="$invalid_jobs" scripts/check-mutations >/dev/null 2>&1; then
+    echo "mutation custody fixture failure: worker override '$invalid_jobs' was accepted" >&2
+    exit 1
+  fi
+done
 
 # shellcheck source=scripts/release-authorization-inputs
 source "$repo_root/scripts/release-authorization-inputs"
@@ -232,7 +296,9 @@ fi
 
 for gate in scripts/check scripts/check-coverage scripts/check-standards \
   scripts/check-dependencies scripts/check-mutations scripts/check-product-artifacts \
-  scripts/check-product-fitness-receipt scripts/check-release-candidate \
+  scripts/check-product-fitness-receipt scripts/check-product-fitness-disposition \
+  scripts/check-release-candidate scripts/read-release-policy.py \
+  scripts/snapshot-release-inputs.py scripts/validate-canonical-json.py \
   scripts/prepare-release-authorization scripts/verify-release-authorization; do
   if [[ ! -x "$gate" ]]; then
     echo "standards obligation failure: claimed executable evidence $gate is missing or not executable" >&2

@@ -11,21 +11,27 @@ if [[ "$#" -ne 4 ]]; then
   exit 2
 fi
 
-request="$1"
-signature="$2"
-public_key="$3"
+request_source="$1"
+signature_source="$2"
+public_key_source="$3"
 authority_id="$4"
 validate_release_authority_id "$authority_id"
-for path in "$request" "$signature" "$public_key"; do
-  if [[ ! -f "$path" || -L "$path" ]]; then
-    echo "release authorization inputs must be regular non-symlink files" >&2
-    exit 2
-  fi
-done
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "release authorization verification requires a clean exact candidate" >&2
   exit 1
 fi
+
+git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+snapshot_parent="$git_common_dir/release-evidence"
+mkdir -p "$snapshot_parent"
+snapshot="$(mktemp -d "$snapshot_parent/.verify.XXXXXX")"
+trap 'rm -rf "$snapshot"' EXIT
+scripts/snapshot-release-inputs.py \
+  "$snapshot" "$request_source" "$signature_source" "$public_key_source"
+request="$snapshot/request.json"
+signature="$snapshot/request.sig"
+public_key="$snapshot/owner.pub"
+scripts/validate-canonical-json.py "$request"
 
 public_key_line="$(canonical_release_public_key "$public_key")"
 key_description="$(ssh-keygen -lf "$public_key" -E sha256)"

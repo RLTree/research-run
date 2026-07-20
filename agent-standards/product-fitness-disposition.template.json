@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "kind": "product-fitness-disposition",
+  "candidate": {
+    "git_commit": "0000000000000000000000000000000000000000",
+    "installed_binary": {
+      "platform": "aarch64-apple-darwin",
+      "normalized_sha256": "db5b61dd80b44110846b9330366f52db2d1bbbd1d8e3a79c5e68c33330d82923",
+      "normalized_bytes": 2253608
+    }
+  },
+  "observation": {
+    "kind": "product-fitness-observation",
+    "receipt_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "completed": true
+  },
+  "reviewer": {
+    "authority_id": "product-fitness-reviewer",
+    "role": "actor-disjoint product-fitness reviewer",
+    "actor_disjoint_from_participant": true,
+    "actor_disjoint_from_observer": true
+  },
+  "claims": [
+    {
+      "claim_id": "research-run-v0.1-complete-unfamiliar-project-workflow",
+      "status": "withheld",
+      "audience": ["researcher"],
+      "job": "Complete the installed unfamiliar-project workflow.",
+      "context": "Exact installed candidate in a local Git-backed project.",
+      "outcome": {"completed": true, "limitations": ["Replace with observed limitations."]},
+      "accessibility": {"assistive_mode": "replace with observed mode", "blocker_count": 0},
+      "cognitive_load": {"rating_1_to_5": 1, "confusing_step_count": 0},
+      "recovery_burden": {"error_count": 0, "command_takeovers": 0, "abandoned_attempts": 0, "recovery_seconds": 0},
+      "continuance": {"status": "not_observed", "voluntary_sessions": 1},
+      "real_use_evidence": {"kind": "product-fitness-observation", "receipt_sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+      "non_substitutes_rejected": ["source tests", "coverage or mutation proof", "installed journey", "synthetic signing", "package proof", "benchmark", "generic reviewer approval"],
+      "reason": "Replace with an actor-disjoint assessment of the bounded observation."
+    },
+    {
+      "claim_id": "research-run-v0.1-real-use-fitness",
+      "status": "withheld",
+      "audience": ["researcher"],
+      "job": "Use Research Run as a fit research workflow.",
+      "context": "One exact-candidate first-use session only.",
+      "outcome": {"completed": true, "limitations": ["Continuance was not observed."]},
+      "accessibility": {"assistive_mode": "replace with observed mode", "blocker_count": 0},
+      "cognitive_load": {"rating_1_to_5": 1, "confusing_step_count": 0},
+      "recovery_burden": {"error_count": 0, "command_takeovers": 0, "abandoned_attempts": 0, "recovery_seconds": 0},
+      "continuance": {"status": "not_observed", "voluntary_sessions": 1},
+      "real_use_evidence": {"kind": "product-fitness-observation", "receipt_sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+      "non_substitutes_rejected": ["source tests", "coverage or mutation proof", "installed journey", "synthetic signing", "package proof", "benchmark", "generic reviewer approval"],
+      "reason": "One first-use session cannot establish general Product Fitness or continuance."
+    }
+  ],
+  "claim_ceiling": "Actor-disjoint disposition of one exact-candidate first-use observation; not personhood, continuance, general Product Fitness, scientific truth, scientific impact, or outcome improvement."
+}

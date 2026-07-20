@@ -31,7 +31,7 @@
     "standards-gardening": ["scripts/check-standards", "agent-standards/obligations.json"],
     "cli-authority-proof-surfaces": ["AGENTS.md", "STANDARD.md", "policy.toml"],
     "observability-repair-loop": ["STANDARD.md"],
-    "product-success-quality-in-use": ["agent-standards/product-fitness-disposition.json", "agent-standards/product-fitness-first-use.jq", "docs/release/product-fitness-protocol.md", "scripts/check-product-fitness-receipt", "fixtures/product-fitness", "scripts/check-standards"],
+    "product-success-quality-in-use": ["agent-standards/product-fitness-disposition.json", "agent-standards/product-fitness-first-use.jq", "agent-standards/product-fitness-session-window.jq", "agent-standards/product-fitness-disposition.jq", "agent-standards/product-fitness-disposition.template.json", "docs/release/product-fitness-protocol.md", "scripts/check-product-fitness-receipt", "scripts/check-product-fitness-disposition", "fixtures/product-fitness", "scripts/check-standards"],
     "plugin-activation-distribution": ["STANDARD.md", "policy.toml"],
     "research-improvement-quality-gates": ["docs/research/2026-07-17-v0.1-evidence-and-decisions.md", "scripts/check"],
     "tool-risk-runtime-substrates": ["Cargo.toml", "Cargo.lock", "deny.toml", "rust-toolchain.toml"]

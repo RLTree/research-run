@@ -13,6 +13,7 @@ fn openssh_key_parser_rejects_each_malformed_boundary() {
     assert!(parse_openssh_public_key("rsa AAAA").is_err());
     assert!(parse_openssh_public_key("ssh-ed25519").is_err());
     assert!(parse_openssh_public_key("ssh-ed25519 !").is_err());
+    assert!(parse_openssh_public_key(&format!("{}\n{}", public_key(), public_key())).is_err());
     assert!(
         parse_openssh_public_key(&format!("ssh-ed25519 {}", Base64::encode_string(&[0]))).is_err()
     );

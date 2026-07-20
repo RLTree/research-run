@@ -69,9 +69,16 @@ fn review_binding_covers_experiment_artifact_and_stale_authority() {
     let root = temporary();
     let workspace = review_workspace(&root, "Review subject graph");
     workspace.add_claim(&claim("claim-one")).expect("claim");
-    workspace
-        .add_experiment(&experiment("experiment-one"))
-        .expect("experiment");
+    let mut experiment = experiment("experiment-one");
+    experiment.artifacts.push(ArtifactPointer {
+        locator_type: ArtifactLocatorType::Workspace,
+        locator: "experiment-artifact.txt".to_owned(),
+        description: "Experiment output".to_owned(),
+        digest: None,
+    });
+    fs::write(root.join("experiment-artifact.txt"), b"experiment bytes")
+        .expect("experiment artifact");
+    workspace.add_experiment(&experiment).expect("experiment");
     fs::write(root.join("artifact.txt"), b"observed bytes").expect("artifact");
     let mut linked = evidence("evidence-experiment", "claim-one", None);
     linked.artifact = None;
@@ -91,6 +98,20 @@ fn review_binding_covers_experiment_artifact_and_stale_authority() {
     decision.subject_sha256 = Some(workspace.review_subject_binding("claim-one").unwrap().1);
     authorize_review(&workspace, &mut decision);
     workspace.add_review(&decision).expect("review");
+    fs::write(
+        root.join("experiment-artifact.txt"),
+        b"changed experiment bytes",
+    )
+    .expect("change experiment artifact");
+    let experiment_errors =
+        workspace.review_binding_errors(&workspace.load_snapshot().expect("snapshot"));
+    assert!(
+        experiment_errors
+            .iter()
+            .any(|error| error.contains("reviewed subject authority changed"))
+    );
+    fs::write(root.join("experiment-artifact.txt"), b"experiment bytes")
+        .expect("restore experiment artifact");
     fs::remove_file(root.join("artifact.txt")).expect("remove artifact");
     let errors = workspace.review_binding_errors(&workspace.load_snapshot().expect("snapshot"));
     assert!(errors.iter().any(|error| error.contains("artifact.txt")));

@@ -15,13 +15,23 @@ version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
 rg -q '^## 0\.1\.0 — Unreleased$' CHANGELOG.md
 rg -q 'Validation proves ledger integrity, not scientific truth' CHANGELOG.md
 rg -q 'configured-key control, not personhood' CHANGELOG.md
-rg -q 'publication_authorized = false' policy.toml
-rg -q 'personhood_claim = false' policy.toml
-rg -q 'scientific_truth_claim = false' policy.toml
+release_policy="$(scripts/read-release-policy.py policy.toml)"
+jq -e '
+  . == {
+    class: "technical_preview",
+    contract: "docs/release/0.1.0.md",
+    personhood_claim: false,
+    product_fitness_claim: "withheld_until_external_observation_and_actor_disjoint_review",
+    publication_authorized: false,
+    scientific_truth_claim: false,
+    version: "0.1.0"
+  }
+' <<<"$release_policy" >/dev/null
 rg -q 'Product Fitness' docs/release/0.1.0.md
 rg -q 'remains explicitly withheld' docs/release/0.1.0.md
 rg -q 'does not authorize a merge, tag, package publication' docs/release/0.1.0.md
 [[ -x scripts/check-product-fitness-receipt ]]
+[[ -x scripts/check-product-fitness-disposition ]]
 [[ -x scripts/prepare-release-authorization ]]
 [[ -x scripts/verify-release-authorization ]]
 [[ -z "$(find src -maxdepth 1 -type f -name '*.rs' \
@@ -31,14 +41,15 @@ jq -n \
   --arg candidate "$(git rev-parse HEAD)" \
   --arg tree "$(git rev-parse 'HEAD^{tree}')" \
   --arg version "$version" \
-  --arg lockfile_sha256 "$(shasum -a 256 Cargo.lock | awk '{print $1}')" '{
+  --arg lockfile_sha256 "$(shasum -a 256 Cargo.lock | awk '{print $1}')" \
+  --argjson release_policy "$release_policy" '{
     candidate: $candidate,
     tree: $tree,
     version: $version,
     cargo_lock_sha256: $lockfile_sha256,
-    release_class: "technical-preview",
-    publication_authorized: false,
+    release_class: ($release_policy.class | gsub("_"; "-")),
+    publication_authorized: $release_policy.publication_authorized,
     product_fitness: "withheld-unless-separately-disposed",
-    personhood_claim: false,
-    scientific_truth_claim: false
+    personhood_claim: $release_policy.personhood_claim,
+    scientific_truth_claim: $release_policy.scientific_truth_claim
   }'

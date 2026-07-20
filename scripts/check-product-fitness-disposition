@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+if [[ "$#" -ne 2 ]]; then
+  echo "usage: scripts/check-product-fitness-disposition /absolute/path/to/observation.json /absolute/path/to/disposition.json" >&2
+  exit 2
+fi
+
+for evidence_path in "$1" "$2"; do
+  if [[ "$evidence_path" != /* || ! -f "$evidence_path" || -L "$evidence_path" ]]; then
+    echo "Product Fitness evidence must use absolute regular non-symlink files" >&2
+    exit 2
+  fi
+  resolved="$(realpath "$evidence_path")"
+  if [[ "$resolved" == "$repo_root" || "$resolved" == "$repo_root/"* ]]; then
+    echo "Product Fitness evidence must remain outside the repository" >&2
+    exit 2
+  fi
+done
+
+observation="$(realpath "$1")"
+disposition="$(realpath "$2")"
+scripts/check-product-fitness-receipt "$observation" >/dev/null
+
+candidate="$(git rev-parse HEAD)"
+platform="$(jq -er '.candidate_binding.installed_binary.platform' agent-standards/product-fitness-disposition.json)"
+normalized_sha256="$(jq -er '.candidate_binding.installed_binary.normalized_sha256' agent-standards/product-fitness-disposition.json)"
+normalized_bytes="$(jq -er '.candidate_binding.installed_binary.normalized_bytes' agent-standards/product-fitness-disposition.json)"
+receipt_sha256="$(shasum -a 256 "$observation" | awk '{print $1}')"
+
+jq -e \
+  --arg candidate "$candidate" \
+  --arg platform "$platform" \
+  --arg normalized_sha256 "$normalized_sha256" \
+  --argjson normalized_bytes "$normalized_bytes" \
+  --arg receipt_sha256 "$receipt_sha256" \
+  -f agent-standards/product-fitness-disposition.jq \
+  "$disposition" >/dev/null || {
+  echo "Product Fitness disposition is malformed, overbroad, or bound to different evidence" >&2
+  echo "withheld: product_fitness, continuance, scientific_truth, and research_impact" >&2
+  exit 1
+}
+
+jq -c '{candidate: .candidate, observation: .observation, reviewer: .reviewer, claims: [.claims[] | {claim_id, status}], claim_ceiling}' "$disposition"

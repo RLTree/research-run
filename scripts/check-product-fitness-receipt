@@ -39,6 +39,13 @@ jq -e -f agent-standards/product-fitness-first-use.jq \
   exit 1
 }
 
+jq -e -f agent-standards/product-fitness-session-window.jq \
+  "$resolved_receipt" >/dev/null || {
+  echo "product fitness receipt has an invalid or inconsistent session window" >&2
+  echo "withheld: unfamiliar_project_workflow, product_fitness, and recovery_burden" >&2
+  exit 1
+}
+
 jq -e \
   --arg candidate "$candidate" \
   --arg platform "$platform" \
@@ -47,9 +54,6 @@ jq -e \
   def exact_keys($keys): (keys | sort) == ($keys | sort);
   def bounded_text:
     type == "string" and (length > 0) and (length <= 1024);
-  def utc_timestamp:
-    type == "string" and
-    test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$");
   exact_keys([
     "schema_version", "kind", "candidate", "consent", "participant", "observer",
     "session", "accessibility", "cognitive_load", "outcome", "continuance",
@@ -87,8 +91,8 @@ jq -e \
     "started_at", "completed_at", "journey", "errors", "command_takeovers",
     "abandoned_attempts", "recovery_seconds"
   ])) and
-  (.session.started_at | utc_timestamp) and
-  (.session.completed_at | utc_timestamp) and
+  (.session.started_at | type == "string") and
+  (.session.completed_at | type == "string") and
   (.session.journey | exact_keys([
     "installed_candidate_used", "initialized_or_retrofitted",
     "recorded_scoped_evidence", "retained_negative_or_ambiguous_outcome",

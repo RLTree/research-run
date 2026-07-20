@@ -88,7 +88,9 @@ validate_outcomes "$outcomes" || {
   exit 1
 }
 
-tampered_outcomes="$(mktemp "${TMPDIR:-/tmp}/research-run-mutation-outcomes.XXXXXX")"
+git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+mkdir -p "$git_common_dir/check-scratch"
+tampered_outcomes="$(mktemp "$git_common_dir/check-scratch/mutation-outcomes.XXXXXX")"
 trap 'rm -f "$tampered_outcomes"' EXIT
 for transform in \
   'del(.outcomes[1])' \
