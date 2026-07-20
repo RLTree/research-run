@@ -66,6 +66,7 @@
     "status": "ready-unobserved",
     "path": "docs/release/product-fitness-protocol.md",
     "receipt_template": "agent-standards/product-fitness-observation.template.json",
+    "first_use_contract": "agent-standards/product-fitness-first-use.jq",
     "receipt_validator": "scripts/check-product-fitness-receipt",
     "receipt_storage": "external deidentified evidence; no human-subject receipt is tracked by default"
   },

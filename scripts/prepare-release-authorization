@@ -3,6 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
+# shellcheck source=scripts/release-authorization-inputs
+source "$repo_root/scripts/release-authorization-inputs"
 
 if [[ "$#" -ne 2 ]]; then
   echo "usage: scripts/prepare-release-authorization PUBLIC_KEY AUTHORITY_ID" >&2
@@ -11,24 +13,14 @@ fi
 
 public_key="$1"
 authority_id="$2"
-if [[ ! "$authority_id" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-  echo "release authority ID must be a lowercase slug" >&2
-  exit 2
-fi
-if [[ ! -f "$public_key" || -L "$public_key" ]]; then
-  echo "release authority public key must be a regular non-symlink file" >&2
-  exit 2
-fi
+validate_release_authority_id "$authority_id"
+canonical_release_public_key "$public_key" >/dev/null
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "release authorization preparation requires a clean exact candidate" >&2
   exit 1
 fi
 
 key_description="$(ssh-keygen -lf "$public_key" -E sha256)"
-if [[ "$key_description" != *"(ED25519)"* ]]; then
-  echo "release authority must be an Ed25519 public key" >&2
-  exit 2
-fi
 fingerprint="$(awk '{print $2}' <<<"$key_description")"
 candidate="$(git rev-parse HEAD)"
 tree="$(git rev-parse 'HEAD^{tree}')"

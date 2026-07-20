@@ -60,7 +60,7 @@
         "status": "not_applicable",
         "evidence": ["Cargo.toml", "policy.toml"],
         "claim_impact": "fuzz, compile_fail, async, daemon, telemetry, official_release, overlay_enforcement claims unavailable",
-        "reason": "The bounded CLI has no macros or type-state API, shared ownership graph, async tasks, daemon, telemetry backend, official release, or downstream policy-enforcement role; deterministic parser matrices cover its finite inputs without new fuzz dependencies."
+        "reason": "The bounded CLI has no macros or type-state API, shared ownership graph, async tasks, daemon, telemetry backend, published official release, or downstream policy-enforcement role; its separately governed technical-preview candidate boundary does not trigger the remaining specialist laws, and deterministic parser matrices cover its finite inputs without new fuzz dependencies."
       },
       {
         "id": "gold-stack-untriggered-services-and-release",
@@ -69,7 +69,7 @@
         "status": "not_applicable",
         "evidence": ["Cargo.toml", "policy.toml"],
         "claim_impact": "generated_client, service, database, telemetry, infrastructure, production_slo, release claims unavailable",
-        "reason": "No generated client lane, Python, database, cache, queue, service, telemetry backend, cloud infrastructure, production SLO, signing, or release boundary exists in v0.1."
+        "reason": "No generated client lane, Python, database, cache, queue, service, telemetry backend, cloud infrastructure, production SLO, or published official release exists in v0.1; the local technical-preview candidate and owner-signature boundary is separately governed without triggering service or infrastructure law."
       },
       {
         "id": "typescript-ui-overlay",
@@ -164,7 +164,12 @@
       "status": "mechanized",
       "evidence": [
         "STANDARD.md",
-        "policy.toml"
+        "policy.toml",
+        "docs/release/0.1.0.md",
+        "scripts/prepare-release-authorization",
+        "scripts/verify-release-authorization",
+        "scripts/release-authorization-inputs",
+        "fixtures/release-authorization"
       ],
       "reason": "Bounded decision-boundary review cadence and claim ceilings are explicit; this classification does not assert that a human completion review has occurred."
     },
@@ -204,8 +209,10 @@
       "status": "mechanized",
       "evidence": [
         "agent-standards/product-fitness-disposition.json",
+        "agent-standards/product-fitness-first-use.jq",
         "docs/release/product-fitness-protocol.md",
         "scripts/check-product-fitness-receipt",
+        "fixtures/product-fitness",
         "scripts/check-standards"
       ],
       "reason": "A consent-first external receipt makes audience-bound first-use evidence executable while the typed disposition withholds Product Fitness and continuance until their separate review boundaries close."

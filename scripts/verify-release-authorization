@@ -3,6 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
+# shellcheck source=scripts/release-authorization-inputs
+source "$repo_root/scripts/release-authorization-inputs"
 
 if [[ "$#" -ne 4 ]]; then
   echo "usage: scripts/verify-release-authorization REQUEST SIGNATURE PUBLIC_KEY AUTHORITY_ID" >&2
@@ -13,6 +15,7 @@ request="$1"
 signature="$2"
 public_key="$3"
 authority_id="$4"
+validate_release_authority_id "$authority_id"
 for path in "$request" "$signature" "$public_key"; do
   if [[ ! -f "$path" || -L "$path" ]]; then
     echo "release authorization inputs must be regular non-symlink files" >&2
@@ -24,11 +27,8 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+public_key_line="$(canonical_release_public_key "$public_key")"
 key_description="$(ssh-keygen -lf "$public_key" -E sha256)"
-if [[ "$key_description" != *"(ED25519)"* ]]; then
-  echo "release authority must be an Ed25519 public key" >&2
-  exit 2
-fi
 fingerprint="$(awk '{print $2}' <<<"$key_description")"
 candidate="$(git rev-parse HEAD)"
 tree="$(git rev-parse 'HEAD^{tree}')"
@@ -76,7 +76,7 @@ jq -e \
 allowed_signers="$(mktemp "${TMPDIR:-/tmp}/research-run-release-signers.XXXXXX")"
 trap 'rm -f "$allowed_signers"' EXIT
 printf '%s namespaces="research-run-release-v1" %s\n' \
-  "$authority_id" "$(cat "$public_key")" >"$allowed_signers"
+  "$authority_id" "$public_key_line" >"$allowed_signers"
 ssh-keygen -Y verify \
   -f "$allowed_signers" \
   -I "$authority_id" \

@@ -32,6 +32,13 @@ normalized_sha256="$(jq -er '.candidate_binding.installed_binary.normalized_sha2
 normalized_bytes="$(jq -er '.candidate_binding.installed_binary.normalized_bytes' \
   agent-standards/product-fitness-disposition.json)"
 
+jq -e -f agent-standards/product-fitness-first-use.jq \
+  "$resolved_receipt" >/dev/null || {
+  echo "first-use Product Fitness receipts cannot establish continuance" >&2
+  echo "withheld: continuance and research_impact" >&2
+  exit 1
+}
+
 jq -e \
   --arg candidate "$candidate" \
   --arg platform "$platform" \
@@ -118,13 +125,7 @@ jq -e \
   (.outcome.limitations | type == "array" and length <= 16) and
   all(.outcome.limitations[]; bounded_text) and
   (.continuance | exact_keys(["status", "voluntary_sessions"])) and
-  (
-    (.continuance.status == "not_observed" and
-      .continuance.voluntary_sessions == 1) or
-    (.continuance.status == "observed" and
-      (.continuance.voluntary_sessions |
-        type == "number" and floor == . and . >= 2))
-  ) and
+  .continuance == {status: "not_observed", voluntary_sessions: 1} and
   .claim_ceiling ==
     "One deidentified exact-candidate first-use observation; not personhood, continuance, scientific truth, scientific impact, or general Product Fitness."
 ' "$resolved_receipt" >/dev/null || {

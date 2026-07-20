@@ -153,6 +153,7 @@ jq -e '
     "status": "ready-unobserved",
     "path": "docs/release/product-fitness-protocol.md",
     "receipt_template": "agent-standards/product-fitness-observation.template.json",
+    "first_use_contract": "agent-standards/product-fitness-first-use.jq",
     "receipt_validator": "scripts/check-product-fitness-receipt",
     "receipt_storage": "external deidentified evidence; no human-subject receipt is tracked by default"
   } and
@@ -182,6 +183,33 @@ for red_transform in fixtures/standards/red/*.jq; do
   if validate_classifications "$tampered_ledger"; then
     echo "standards fixture failure: $red_transform bypassed exact classification validation" >&2
     echo "withheld: agent_standard_closure and material_completion" >&2
+    exit 1
+  fi
+done
+
+if ! jq -e -f agent-standards/product-fitness-first-use.jq \
+  fixtures/product-fitness/green/first-use.json >/dev/null; then
+  echo "product fitness fixture failure: a bounded first-use receipt was rejected" >&2
+  exit 1
+fi
+if jq -e -f agent-standards/product-fitness-first-use.jq \
+  fixtures/product-fitness/red/false-continuance.json >/dev/null; then
+  echo "product fitness fixture failure: first-use evidence raised continuance" >&2
+  exit 1
+fi
+
+# shellcheck source=scripts/release-authorization-inputs
+source "$repo_root/scripts/release-authorization-inputs"
+validate_release_authority_id "repository-owner"
+if validate_release_authority_id "repository owner" >/dev/null 2>&1; then
+  echo "release authorization fixture failure: a non-slug authority ID was accepted" >&2
+  exit 1
+fi
+canonical_release_public_key \
+  fixtures/release-authorization/green/owner.pub >/dev/null
+for invalid_key in fixtures/release-authorization/red/*.pub; do
+  if canonical_release_public_key "$invalid_key" >/dev/null 2>&1; then
+    echo "release authorization fixture failure: $invalid_key was accepted" >&2
     exit 1
   fi
 done
