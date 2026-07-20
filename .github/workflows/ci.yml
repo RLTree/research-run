@@ -34,6 +34,9 @@ jobs:
         run: cargo package --locked
 
   secrets:
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
