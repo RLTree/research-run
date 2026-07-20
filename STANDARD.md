@@ -31,9 +31,9 @@ runtime dependency budget is deliberately small:
 - `sha2`: portable SHA-256 material identity for byte-preserving retrofit and
   reconciliation plans; fingerprints detect exact content identity but do not
   infer scientific meaning.
-- `base64ct`, `ed25519-dalek`, and `sha2`: narrowly parse OpenSSH Ed25519 public
-  keys and SSHSIG envelopes, verify detached signatures, and compute bounded
-  material identities. Research Run never reads or stores a review private key.
+- `base64ct` and `ed25519-dalek`: narrowly parse OpenSSH Ed25519 public keys and
+  SSHSIG envelopes and verify detached signatures. Research Run never reads or
+  stores a review private key.
 - `getrandom`: generate an immutable 256-bit workspace authorization-domain ID
   during initialization.
 

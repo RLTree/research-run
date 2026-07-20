@@ -56,17 +56,47 @@ if (( selected < 223 )); then
 fi
 
 outcomes="mutants.out/outcomes.json"
-jq -e '
-  all(.outcomes[];
+validate_outcomes() {
+  local outcomes_path="$1"
+  jq -e --slurpfile inventory "$inventory" '
+    ($inventory[0] | map(.name) | sort) as $expected_names |
+    ([.outcomes[] | select(.scenario == "Baseline")]) as $baselines |
+    ([.outcomes[] | select(
+      (.scenario | type) == "object" and (.scenario | has("Mutant"))
+    )]) as $mutant_outcomes |
+    ($mutant_outcomes | map(.scenario.Mutant.name) | sort) as $actual_names |
+    ($baselines | length) == 1 and
+    $baselines[0].summary == "Success" and
+    (.outcomes | length) == (($expected_names | length) + 1) and
+    $actual_names == $expected_names and
+    ($actual_names | unique | length) == ($actual_names | length) and
+    all($mutant_outcomes[];
     .summary == "Success" or
     .summary == "CaughtMutant" or
     .summary == "Unviable") and
-  ([.outcomes[] | select(.summary == "CaughtMutant")] | length > 0)
-' "$outcomes" >/dev/null || {
+    ([$mutant_outcomes[] | select(.summary == "CaughtMutant")] | length > 0)
+  ' "$outcomes_path" >/dev/null
+}
+
+validate_outcomes "$outcomes" || {
   echo "mutation failure: selected boundary set contains a missed, timed-out, or otherwise unresolved mutant" >&2
   echo "withheld: mutation_proof and package_delta_closure" >&2
   exit 1
 }
+
+tampered_outcomes="$(mktemp "${TMPDIR:-/tmp}/research-run-mutation-outcomes.XXXXXX")"
+trap 'rm -f "$tampered_outcomes"' EXIT
+for transform in \
+  'del(.outcomes[1])' \
+  '.outcomes += [.outcomes[1]]' \
+  '.outcomes[1].scenario.Mutant.name = "unexpected-mutant"'; do
+  jq "$transform" "$outcomes" > "$tampered_outcomes"
+  if validate_outcomes "$tampered_outcomes"; then
+    echo "mutation fixture failure: incomplete, duplicate, or unexpected outcomes were accepted" >&2
+    echo "withheld: mutation_proof and package_delta_closure" >&2
+    exit 1
+  fi
+done
 
 caught="$(jq '[.outcomes[] | select(.summary == "CaughtMutant")] | length' "$outcomes")"
 unbuildable="$(jq '[.outcomes[] | select(.summary == "Unviable")] | length' "$outcomes")"
