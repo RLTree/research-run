@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::domain::InventoryPlan;
+use crate::domain::{InventoryPlan, ReviewAuthority};
 use crate::{Error, Result};
 
 use super::path_safety::{interrupted_target_name, reject_symlink_chain};
@@ -183,16 +183,14 @@ pub(super) fn initialize_inventory_bootstrap(
     root: &Path,
     plan: &InventoryPlan,
 ) -> Result<Workspace> {
+    let authority = resolved_bootstrap_authority(plan)?;
+    Workspace::initialize_for_inventory(root, &plan.project_name, authority, &plan.workspace_id)
+}
+
+fn resolved_bootstrap_authority(plan: &InventoryPlan) -> Result<Option<&ReviewAuthority>> {
     match (&plan.review_authority, plan.without_review_authority) {
-        (Some(authority), false) => Workspace::initialize_for_inventory(
-            root,
-            &plan.project_name,
-            Some(authority),
-            &plan.workspace_id,
-        ),
-        (None, true) => {
-            Workspace::initialize_for_inventory(root, &plan.project_name, None, &plan.workspace_id)
-        }
+        (Some(authority), false) => Ok(Some(authority)),
+        (None, true) => Ok(None),
         _ => Err(Error::invalid(
             "inventory plan review authority",
             "new-workspace retrofit requires an authority or explicit unanchored opt-out",
@@ -201,13 +199,7 @@ pub(super) fn initialize_inventory_bootstrap(
 }
 
 pub(super) fn validate_new_inventory_bootstrap(plan: &InventoryPlan) -> Result<()> {
-    match (&plan.review_authority, plan.without_review_authority) {
-        (Some(_), false) | (None, true) => Ok(()),
-        _ => Err(Error::invalid(
-            "inventory plan review authority",
-            "new-workspace retrofit requires an authority or explicit unanchored opt-out",
-        )),
-    }
+    resolved_bootstrap_authority(plan).map(|_| ())
 }
 
 pub(super) fn finish_inventory_bootstrap(workspace: &Workspace) -> Result<()> {

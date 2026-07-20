@@ -70,6 +70,21 @@ fn bounded_storage_and_directory_shapes_fail_closed() {
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
+#[cfg(unix)]
+#[test]
+fn bounded_record_read_rejects_fifo_swap_without_blocking() {
+    let root = temporary();
+    let record = root.join("record.json");
+    fs::write(&record, b"{}").expect("record fixture");
+
+    inject_storage_failure("record open fifo race");
+    let error = read_bounded(&record).expect_err("FIFO swap must fail closed");
+    assert!(error.to_string().contains("regular file"));
+
+    fs::remove_file(&record).expect("remove FIFO fixture");
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
 #[test]
 fn pending_cleanup_reports_removal_and_directory_sync_failures() {
     let root = temporary();
