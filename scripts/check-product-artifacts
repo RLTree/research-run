@@ -66,7 +66,7 @@ jq -e \
   --arg normalized_sha256 "$normalized_sha256" \
   --argjson bytes "$binary_bytes" \
   --argjson normalized_bytes "$normalized_bytes" '
-    .candidate_binding.status == "bound" and
+    .candidate_binding.status == "declared-pending-receipt" and
     .candidate_binding.current_candidate == "git:HEAD" and
     .candidate_binding.installed_binary.platform == $platform and
     .candidate_binding.installed_binary.raw_bytes == $bytes and

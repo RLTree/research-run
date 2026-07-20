@@ -5,7 +5,7 @@
   "status": "withheld",
   "owner": "human product-fitness reviewer",
   "candidate_binding": {
-    "status": "bound",
+    "status": "declared-pending-receipt",
     "current_candidate": "git:HEAD",
     "resolver": "Resolve git:HEAD only from a clean worktree at the exact proof gate.",
     "required_identity": "clean Git HEAD plus platform-qualified normalized installed binary digest and raw size",
@@ -17,7 +17,7 @@
       "normalized_bytes": 2204128,
       "receipt": "scripts/check-product-artifacts (clean HEAD package/install journey with exact digest and byte verification)"
     },
-    "reason": "Source and platform-qualified installed mechanics are candidate-bound; Product Fitness remains withheld because those deterministic proofs are not human-use evidence."
+    "reason": "The expected platform-qualified installed identity is declared but is not evidence until scripts/check-product-artifacts succeeds from a clean exact HEAD; Product Fitness remains withheld because deterministic mechanics are not human-use evidence."
   },
   "audience": [
     "researcher",

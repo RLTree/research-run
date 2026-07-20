@@ -331,14 +331,15 @@ pass.
   legacy `(None, false)` acceptance only for an unanchored target. Dedicated
   no-effect race fixtures pass. Exact production coverage is 8,477/8,477
   regions, 4,328/4,328 lines, and 542/542 functions.
-- 2026-07-20: Product Fitness candidate binding resolves `git:HEAD` only from a
-  clean proof-gate worktree and binds the `aarch64-apple-darwin` installed
-  binary content digest
+- 2026-07-20: The pending Product Fitness candidate declaration resolves
+  `git:HEAD` only from a clean proof-gate worktree and expects the
+  `aarch64-apple-darwin` installed binary content digest
   `e308c4524f7552c021958d607c670f01528f478a9ad184df3989b5bda6f484e8`
   after removing the ad-hoc code-signature blob and zeroing the nondeterministic
   Mach-O `LC_UUID` (2,204,128 normalized bytes; 2,221,520 raw bytes).
   `scripts/check-product-artifacts` must reproduce and verify these values from
-  a clean exact `HEAD` while completing the installed journey. The raw
+  a clean exact `HEAD` while completing the installed journey; until that
+  command succeeds, the values are a declaration rather than proof. The raw
   per-build hash remains observable in the receipt but is not misrepresented as
   stable; the normalized digest is platform-qualified, not a cross-platform
   reproducibility claim. This proves installed mechanics only. Accessibility,
@@ -347,18 +348,20 @@ pass.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. The clean candidate resolved as
-`git:HEAD` at each final gate may claim only the exact local source,
-dependency/security, standards, coverage, combined bounded-mutation,
-package/install, and synthetic-journey observations that name that surface.
-GitHub and CodeRabbit proof remain pending until the branch is pushed and the PR
-settles. The product has an external configured-key authorization mechanism and
-a separately provisioned 1Password signer. That closes the self-asserted-review
-defect at the source boundary; it does not prove personhood, owner bootstrap,
-private-key custody, or an actual human-approved signing journey. The prior
-UltraGoal fit record is historical and non-authoritative; current fit
-classification, applied fit, receipt, and fitted-governance readiness remain
-withheld because no current reprobe has run. Audience-bound Product Fitness
-proof remains withheld on its own surface. Release, scientific truth,
-scientific impact, continuance, and unobserved real researcher usefulness are
-outside this run.
+No completion claim is active for this plan. Exact-current package/install,
+installed journey, and targeted mutation proof remain pending for the clean
+candidate resolved as `git:HEAD`; the `7607c23` full mutation run and `abfe80b`
+survivor delta are historical inputs only and cannot substitute for the
+post-repair delta. The clean candidate may claim only the exact local source,
+dependency/security, standards, and coverage observations already run against
+its unchanged production bytes. GitHub and CodeRabbit proof remain pending
+until the branch is pushed and the PR settles. The product has an external
+configured-key authorization mechanism and a separately provisioned 1Password
+signer. That closes the self-asserted-review defect at the source boundary; it
+does not prove personhood, owner bootstrap, private-key custody, or an actual
+human-approved signing journey. The prior UltraGoal fit record is historical
+and non-authoritative; current fit classification, applied fit, receipt, and
+fitted-governance readiness remain withheld because no current reprobe has run.
+Audience-bound Product Fitness proof remains withheld on its own surface.
+Release, scientific truth, scientific impact, continuance, and unobserved real
+researcher usefulness are outside this run.
