@@ -32,7 +32,7 @@ fi
 fingerprint="$(awk '{print $2}' <<<"$key_description")"
 candidate="$(git rev-parse HEAD)"
 tree="$(git rev-parse 'HEAD^{tree}')"
-version="$(sed -n 's/^version = \"\\([^\"]*\\)\"$/\\1/p' Cargo.toml | head -n 1)"
+version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
 lockfile_sha256="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
 
 jq -n \
