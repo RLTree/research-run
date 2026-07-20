@@ -10,6 +10,21 @@ export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
 
 mode="${1:-fast}"
 
+run_supported_artifact_gate() {
+  local actual_platform expected_platform
+  actual_platform="$(rustc -vV | sed -n 's/^host: //p')"
+  expected_platform="$(
+    jq -er '.candidate_binding.installed_binary.platform' \
+      agent-standards/product-fitness-disposition.json
+  )"
+  if [[ "$actual_platform" == "$expected_platform" ]]; then
+    scripts/check-product-artifacts
+    return
+  fi
+  echo "artifact proof skipped: host $actual_platform does not match declared platform $expected_platform"
+  echo "withheld: package, install, journey, performance_baseline, and compactness_baseline"
+}
+
 case "$mode" in
   fast)
     cargo fmt --check
@@ -29,7 +44,7 @@ case "$mode" in
     gitleaks git --no-banner --redact .
     actionlint
     scripts/check-mutations
-    scripts/check-product-artifacts
+    run_supported_artifact_gate
     ;;
   coverage)
     exec "$repo_root/scripts/check-coverage"

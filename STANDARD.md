@@ -102,8 +102,10 @@ scripts/check artifacts
 ```
 
 `scripts/check fast` is the inner loop. `scripts/check full` is the broad clean-
-candidate source, dependency, security, mutation, package, install, journey, and
-observation gate and runs only when a claim can move. `scripts/check
+candidate source, dependency, security, and mutation gate and runs only when a
+claim can move. It also runs the package, install, journey, and observation gate
+when the current host matches the platform declared by the artifact disposition;
+otherwise it reports those distinct claims as withheld. `scripts/check
 coverage` requires `cargo-llvm-cov` and enforces 100% line, function, and region
 coverage over every target with every production file retained in the
 denominator. The checker counts each source coordinate once because LLVM emits

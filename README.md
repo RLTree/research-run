@@ -244,7 +244,8 @@ a no-op.
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact
 gates. Use `scripts/check fast` during implementation and `scripts/check full`
-when a source or package claim can move. `scripts/check coverage` is the separate
+when a source claim can move; its artifact sub-gate runs only on the platform
+declared by the artifact disposition. `scripts/check coverage` is the separate
 100% line/function/region source-coverage authority and requires
 `cargo-llvm-cov`; a test pass is not a coverage pass. Source, tests, package
 creation, local install, runtime
