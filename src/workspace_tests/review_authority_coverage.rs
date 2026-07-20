@@ -41,6 +41,40 @@ fn review_authority_construction_and_preparation_propagate_owned_validation() {
 }
 
 #[test]
+fn review_preparation_rejects_tampered_key_and_manifest_anchor() {
+    for tamper_key in [true, false] {
+        let root = temporary();
+        let workspace = review_workspace(&root, "Tampered preparation");
+        workspace.add_claim(&claim("claim-one")).expect("claim");
+        if tamper_key {
+            let path = workspace.state.join("review-authorities/test-human.json");
+            let mut authority: ReviewAuthority =
+                serde_json::from_slice(&fs::read(&path).expect("authority")).expect("parse");
+            authority.public_key = "ssh-ed25519 malformed".to_owned();
+            fs::write(path, serde_json::to_vec(&authority).expect("serialize")).expect("tamper");
+        } else {
+            let path = workspace.state.join("manifest.json");
+            let mut manifest: ProjectManifest =
+                serde_json::from_slice(&fs::read(&path).expect("manifest")).expect("parse");
+            manifest.review_authority_id = Some("other-human".to_owned());
+            fs::write(path, serde_json::to_vec(&manifest).expect("serialize")).expect("tamper");
+        }
+        assert!(
+            workspace
+                .prepare_review_request(
+                    "review-one".to_owned(),
+                    "claim-one".to_owned(),
+                    Assessment::Limited,
+                    "Rationale".to_owned(),
+                    "Reviewer".to_owned(),
+                )
+                .is_err()
+        );
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+}
+
+#[test]
 fn review_authorization_propagates_request_snapshot_key_and_nested_validation() {
     let root = temporary();
     let workspace = review_workspace(&root, "Authorization propagation");

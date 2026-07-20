@@ -14,6 +14,7 @@ use super::inventory_bootstrap::{finish_inventory_bootstrap, inventory_bootstrap
 use super::inventory_reconcile::reconcile;
 use super::inventory_scan::scan_materials;
 use super::path_safety::{create_directory_chain, reject_symlink_chain};
+use super::sshsig::parse_authority_key;
 use super::storage::{ReadBudget, read_json_with_budget};
 use super::write_lock::WorkspaceWriteLock;
 use super::{InventoryApplyResult, STATE_DIRECTORY, Workspace};
@@ -125,6 +126,9 @@ impl Workspace {
         plan: InventoryPlan,
     ) -> Result<InventoryApplyResult> {
         plan.validate()?;
+        if let Some(authority) = &plan.review_authority {
+            parse_authority_key(authority)?;
+        }
         let (root, current) = scan_materials(root)?;
         if current != plan.entries {
             return Err(Error::Conflict(

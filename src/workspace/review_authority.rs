@@ -35,12 +35,9 @@ impl Workspace {
         reviewer: String,
     ) -> Result<ReviewRequest> {
         let snapshot = self.load_snapshot()?;
-        if snapshot.review_authorities.len() != 1 {
-            return Err(Error::invalid(
-                "review authority",
-                "exactly one review authority must be enrolled before preparing a review",
-            ));
-        }
+        let authority = sole_authority(&snapshot)?;
+        parse_authority_key(authority)?;
+        authority_matches_manifest(&snapshot, authority)?;
         let (evidence_ids, subject_sha256) = self.review_subject_binding(&claim_id)?;
         let request = ReviewRequest {
             schema_version: FORMAT_VERSION,

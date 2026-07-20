@@ -131,6 +131,30 @@ fn inventory_initialization_rejects_invalid_key_and_workspace_identity() {
 }
 
 #[test]
+fn inventory_apply_rejects_a_malformed_plan_authority_before_effects() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let mut plan = Workspace::plan_retrofit(
+        &root,
+        "Project",
+        "inventory-one",
+        "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("plan");
+    let mut authority =
+        ReviewAuthority::from_openssh("test-human".to_owned(), &test_review_public_key())
+            .expect("authority");
+    authority.public_key = "ssh-ed25519 malformed".to_owned();
+    plan.review_authority = Some(authority);
+    plan.without_review_authority = false;
+
+    assert!(Workspace::apply_inventory_plan(&root, plan).is_err());
+    assert!(!root.join(".research-run").exists());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn identical_inventory_read_failure_propagates_from_apply() {
     let root = temporary();
     fs::write(root.join("note.md"), b"note").expect("note");
