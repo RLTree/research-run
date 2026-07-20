@@ -26,6 +26,7 @@ mod recovery_optional;
 mod recovery_plan;
 mod recovery_preflight;
 mod recovery_review;
+mod recovery_semantics;
 mod references;
 mod retrieval;
 mod retrieval_canonical;

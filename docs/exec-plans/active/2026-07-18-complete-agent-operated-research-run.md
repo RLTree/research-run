@@ -248,16 +248,32 @@ pass.
   `7b18fe8` outside this run's merge authority. The merged branch has no open
   PR or remaining delta. A subsequent follow-up PR may record this state, but
   cannot retroactively make the original delivery's open-PR condition true.
+- 2026-07-19: Codex Security deep scan
+  `194a70ad-2bda-4248-bb21-04d5abf3ec14` completed against immutable revision
+  `acee890a4dcc9c1377a954961e782b8f685a5b58` after six discovery passes and
+  642 independent review receipts. Validation and attack-path analysis retained
+  six reportable findings: five bounded recovery/projection defects and one
+  external human-authorization boundary.
+- 2026-07-19: The bounded security repair on PR #7 rejects cyclic recovered
+  history, recomputes recovered inventory and migration authority before any
+  effect, validates an existing manifest before recovery effects, and rejects
+  duplicate current review projections. The four original dynamic exploits,
+  correct-identity forged-content variants, all 51 product tests, the fast gate,
+  standards, formatting, and Clippy pass under serial single-job Rust
+  verification. Mutation and coverage were not rerun because no new named
+  decision boundary has authorized those resource-intensive surfaces.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. Candidate `33c2725` has current
-fast-check and package/install journey evidence, plus machine-local artifact
-observations. Its mutation evidence is incomplete, so the affected mutation and
-package-delta closure remains withheld. The original delivery's open-PR condition
-is also absent because PR #4 is already merged. The canonical UltraGoal retrofit
-remains blocked by four protected authority conflicts, and final independent
-review, human-authority proof, and audience-bound Product Fitness proof remain
-pending or withheld on their own surfaces. Release, scientific truth, scientific
-impact, continuance, and unobserved real researcher usefulness are outside this
-run.
+No completion claim is active for this plan. The PR #7 security repair candidate
+has local proof for five bounded Codex Security findings, but is not yet proven
+by GitHub. The human-authorization finding remains open: this repository still
+has no external user-controlled signing or approval mechanism that distinguishes
+a human decision from an agent with the same filesystem and CLI authority.
+Mutation and package-delta closure remain withheld because the earlier mutation
+run was incomplete and was not restarted for this repair. The canonical
+UltraGoal retrofit remains blocked by four protected authority conflicts, and
+final independent review, human-authority proof, and audience-bound Product
+Fitness proof remain pending or withheld on their own surfaces. Release,
+scientific truth, scientific impact, continuance, and unobserved real researcher
+usefulness are outside this run.

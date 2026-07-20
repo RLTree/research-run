@@ -24,6 +24,30 @@ fn review_binding_stales_on_same_id_subject_mutation() {
     assert_stale_subject_is_unreviewed(&project.0, "review-second");
 }
 
+#[test]
+fn direct_projection_rejects_duplicate_current_review_authority() {
+    let project = workspace("duplicate-review-projection");
+    add_subject_graph(&project.0);
+    add_review(&project.0, "review-first");
+    succeeds(&project.0, &["list", "--limit", "10"]);
+
+    let reviews = project.0.join(".research-run/reviews");
+    let first: Value =
+        serde_json::from_slice(&fs::read(reviews.join("review-first.json")).unwrap()).unwrap();
+    let mut second = first;
+    second["id"] = Value::String("review-second".to_owned());
+    second["decision"] = Value::String("contradicted".to_owned());
+    fs::write(
+        reviews.join("review-second.json"),
+        serde_json::to_vec_pretty(&second).unwrap(),
+    )
+    .expect("write duplicate review");
+
+    let output = cli(&project.0, &["list", "--limit", "10"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("ambiguous current binding"));
+}
+
 fn add_subject_graph(project: &Path) {
     succeeds(
         project,

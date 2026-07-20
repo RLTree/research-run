@@ -16,6 +16,7 @@ use super::recovery_commit::commit_recovery;
 use super::recovery_optional::{OptionalRecovery, preflight_optional};
 use super::recovery_plan::PendingRecord;
 use super::recovery_review::validate_pending_review_graphs;
+use super::recovery_semantics::validate_recovered_authority;
 use super::storage::{ReadBudget, parse_json, read_bounded, read_json_with_budget};
 use super::{RecoveryResult, Snapshot, Workspace, injected_storage_failure};
 
@@ -82,27 +83,56 @@ impl Workspace {
             relationships,
             migrations,
         };
+        let batch = RecoveryBatch {
+            manifest: manifest_pending,
+            sources: source_pending,
+            claims: claim_pending,
+            experiments: experiment_pending,
+            evidence: evidence_pending,
+            reviews: review_pending,
+            inventories: inventory_pending,
+            knowledge: knowledge_pending,
+            relationships: relationship_pending,
+            migrations: migration_pending,
+        };
+        batch.validate(self, &snapshot)?;
+        Ok(batch)
+    }
+}
+
+fn collect_named(workspace: &Workspace, name: &str) -> Result<Vec<PendingRecord>> {
+    workspace.collect_recovery_pending(&workspace.state.join(name))
+}
+
+impl RecoveryBatch {
+    fn validate(&self, workspace: &Workspace, snapshot: &Snapshot) -> Result<()> {
+        validate_recovered_authority(
+            workspace,
+            snapshot,
+            &self.inventories,
+            &self.migrations,
+            [
+                &self.manifest,
+                &self.sources,
+                &self.claims,
+                &self.experiments,
+                &self.evidence,
+                &self.reviews,
+                &self.inventories,
+                &self.knowledge,
+                &self.relationships,
+            ],
+        )?;
         if injected_storage_failure("final snapshot load") {
             return Err(Error::invalid(
                 "recovery plan",
                 "injected final snapshot failure",
             ));
         }
-        let errors = self.reference_errors(&snapshot);
-        validate_pending_review_graphs(self, &snapshot, &review_pending)?;
+        let errors = workspace.reference_errors(snapshot);
+        validate_pending_review_graphs(workspace, snapshot, &self.reviews)?;
         if errors.is_empty() && !injected_storage_failure("recovered references") {
-            Ok(RecoveryBatch {
-                manifest: manifest_pending,
-                sources: source_pending,
-                claims: claim_pending,
-                experiments: experiment_pending,
-                evidence: evidence_pending,
-                reviews: review_pending,
-                inventories: inventory_pending,
-                knowledge: knowledge_pending,
-                relationships: relationship_pending,
-                migrations: migration_pending,
-            })
+            Ok(())
         } else {
             Err(Error::invalid(
                 "recovery plan",
@@ -113,13 +143,7 @@ impl Workspace {
             ))
         }
     }
-}
 
-fn collect_named(workspace: &Workspace, name: &str) -> Result<Vec<PendingRecord>> {
-    workspace.collect_recovery_pending(&workspace.state.join(name))
-}
-
-impl RecoveryBatch {
     pub(super) fn publish(self, workspace: &Workspace, result: &mut RecoveryResult) -> Result<()> {
         commit_recovery(&workspace.state, self.manifest, result)?;
         for (directory, pending) in [
@@ -164,7 +188,9 @@ fn canonical_manifest(
         for record in unique {
             ensure_identical_target(record)?;
         }
-        return read_json_with_budget::<ProjectManifest>(&target, budget);
+        let manifest = read_json_with_budget::<ProjectManifest>(&target, budget)?;
+        manifest.validate()?;
+        return Ok(manifest);
     }
     candidate.ok_or_else(|| Error::NotFound("recovery requires a project manifest".to_owned()))
 }

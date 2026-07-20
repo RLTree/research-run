@@ -133,8 +133,15 @@ pub(super) fn current_review_bindings<'a>(
         if review.evidence_ids == claim_evidence_ids(snapshot, &review.claim_id)
             && let Some(expected) = &review.subject_sha256
             && workspace.review_subject_sha256(snapshot, &review.claim_id)? == *expected
+            && let Some(existing) = bindings.insert(review.claim_id.as_str(), review)
         {
-            bindings.insert(review.claim_id.as_str(), review);
+            return Err(crate::Error::invalid(
+                "review authority",
+                format!(
+                    "reviews/{} and reviews/{} have an ambiguous current binding",
+                    existing.id, review.id
+                ),
+            ));
         }
     }
     Ok(bindings)
