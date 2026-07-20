@@ -378,23 +378,30 @@ pass.
   effect and tampered preparation keys and anchors. The focused call-site
   mutation boundary exercised five mutants: three caught, two
   compiler-unviable, zero missed, and zero timed out.
+- 2026-07-20: Current-head Codex review then found that direct anchored
+  initialization published the discoverable manifest before its review
+  authority. New anchored workspaces now publish the validated authority first
+  and expose the manifest only after that publication succeeds. Fault fixtures
+  prove both authority-publication and manifest-publication interruption states
+  remain undiscoverable and retry safely. The exact production totals remain
+  8,842/8,842 regions, 4,506/4,506 lines, and 561/561 functions. The named
+  `initialize_inner` mutation boundary at `bb43273` exercised six mutants: five
+  caught, one compiler-unviable, zero missed, and zero timed out.
 
 ## Current claim ceiling
 
-No completion claim is active for this plan. Exact-current package/install,
-installed journey, and targeted mutation proof remain pending for the clean
-candidate resolved as `git:HEAD`; the `7607c23` full mutation run and `abfe80b`
-survivor delta are historical inputs only and cannot substitute for the
-post-repair delta. The clean candidate may claim only the exact local source,
-dependency/security, standards, and coverage observations already run against
-its unchanged production bytes. GitHub and CodeRabbit proof remain pending
-until the branch is pushed and the PR settles. The product has an external
-configured-key authorization mechanism and a separately provisioned 1Password
-signer. That closes the self-asserted-review defect at the source boundary; it
-does not prove personhood, owner bootstrap, private-key custody, or an actual
-human-approved signing journey. The prior UltraGoal fit record is historical
-and non-authoritative; current fit classification, applied fit, receipt, and
-fitted-governance readiness remain withheld because no current reprobe has run.
-Audience-bound Product Fitness proof remains withheld on its own surface.
-Release, scientific truth, scientific impact, continuance, and unobserved real
-researcher usefulness are outside this run.
+No completion claim is active for this plan. The current production and test
+bytes have exact local source, standards, full-suite, coverage, and named
+lifecycle mutation proof. Exact-current package/install and installed-journey
+proof remain pending for the final clean `git:HEAD`; prior package receipts
+cannot substitute for that final identity. GitHub, Codex, and CodeRabbit proof
+also remain pending until the branch is pushed and the PR settles. The product
+has an external configured-key authorization mechanism and a separately
+provisioned 1Password signer. That closes the self-asserted-review defect at the
+source boundary; it does not prove personhood, owner bootstrap, private-key
+custody, or an actual human-approved signing journey. The prior UltraGoal fit
+record is historical and non-authoritative; current fit classification, applied
+fit, receipt, and fitted-governance readiness remain withheld because no current
+reprobe has run. Audience-bound Product Fitness proof remains withheld on its
+own surface. Release, scientific truth, scientific impact, continuance, and
+unobserved real researcher usefulness are outside this run.
