@@ -114,8 +114,9 @@ jq -e \
   --argjson signature_profile "$signature_profile" \
   --argjson bytes "$binary_bytes" \
   --argjson normalized_bytes "$normalized_bytes" '
-    .candidate_binding.status == "declared-pending-receipt" and
-    .candidate_binding.current_candidate == "git:HEAD" and
+    .candidate_binding.status == "tracked-declaration-not-evidence" and
+    .candidate_binding.current_candidate == "resolved by the external receipt validator" and
+    (.candidate_binding.resolver | contains("never a receipt")) and
     .candidate_binding.installed_binary.platform == $platform and
     .candidate_binding.installed_binary.raw_bytes == $bytes and
     .candidate_binding.installed_binary.signature_profile == $signature_profile and
