@@ -84,8 +84,31 @@ fn inventory_apply_rejects_an_under_lock_change() {
     )
     .expect("plan");
     inject_storage_failure("materials changed under lock");
-    let error = Workspace::apply_inventory_plan(&root, plan).expect_err("under-lock change");
+    let error =
+        Workspace::apply_inventory_plan(&root, plan.clone()).expect_err("under-lock change");
     assert!(error.to_string().contains("acquiring inventory authority"));
+    assert!(
+        error
+            .to_string()
+            .contains("reapply the exact accepted plan")
+    );
+    assert!(
+        root.join(".research-run/inventory-bootstrap.json")
+            .is_file()
+    );
+    assert_eq!(
+        fs::read_dir(root.join(".research-run/inventories"))
+            .expect("inventory directory")
+            .count(),
+        0
+    );
+    let mut different = plan.clone();
+    different.id = "inventory-other".to_owned();
+    let mismatch =
+        Workspace::apply_inventory_plan(&root, different).expect_err("different recovery plan");
+    assert!(mismatch.to_string().contains("different plan"));
+    assert!(Workspace::apply_inventory_plan(&root, plan).expect("resume exact plan"));
+    assert!(!root.join(".research-run/inventory-bootstrap.json").exists());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

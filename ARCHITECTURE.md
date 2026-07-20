@@ -37,6 +37,9 @@ only an exact unchanged plan, then publishes the complete inventory as one
 atomic record. Later reconciliation records added, changed, moved, missing,
 duplicate, or ambiguous material without editing project bytes or converting
 absence into deletion.
+New-workspace apply retains a plan-digest bootstrap marker until that inventory
+commits. A failure after initialization is therefore an explicit ambiguous
+effect recoverable only by reapplying the exact accepted plan.
 
 Knowledge records cover goals, research questions, hypotheses, protocols,
 methods, observations, measurements, analyses, interpretations, decisions,

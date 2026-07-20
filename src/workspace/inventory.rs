@@ -7,7 +7,8 @@ use crate::domain::{
 use crate::{Error, Result};
 
 use super::inventory_authority::{
-    inventory_apply_workspace, inventory_plan_review_authority, latest_inventory_from_snapshot,
+    finish_inventory_bootstrap, inventory_apply_workspace, inventory_bootstrap_error,
+    inventory_plan_review_authority, latest_inventory_from_snapshot,
     verified_inventory_plan_snapshot, verify_inventory_target,
 };
 use super::inventory_reconcile::reconcile;
@@ -130,9 +131,28 @@ impl Workspace {
                 "project materials changed after planning; create a fresh plan".to_owned(),
             ));
         }
-        let workspace = inventory_apply_workspace(&root, &plan)?;
+        let (workspace, bootstrap_in_progress) = inventory_apply_workspace(&root, &plan)?;
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
-        let (_, locked_entries) = scan_materials(&root)?;
+        let result = Self::apply_inventory_plan_locked(&root, &workspace, &plan);
+        match result {
+            Ok(result) => {
+                if bootstrap_in_progress {
+                    finish_inventory_bootstrap(&workspace)
+                        .map_err(|error| inventory_bootstrap_error(&plan, error))?;
+                }
+                Ok(result)
+            }
+            Err(error) if bootstrap_in_progress => Err(inventory_bootstrap_error(&plan, error)),
+            Err(error) => Err(error),
+        }
+    }
+
+    fn apply_inventory_plan_locked(
+        root: &Path,
+        workspace: &Workspace,
+        plan: &InventoryPlan,
+    ) -> Result<InventoryApplyResult> {
+        let (_, locked_entries) = scan_materials(root)?;
         if super::injected_storage_failure("materials changed under lock")
             || locked_entries != plan.entries
         {
@@ -142,7 +162,7 @@ impl Workspace {
             ));
         }
         let authority_snapshot = workspace.load_snapshot()?;
-        let review_authority = verify_inventory_target(&workspace, &authority_snapshot, &plan)?;
+        let review_authority = verify_inventory_target(workspace, &authority_snapshot, plan)?;
         let directory = workspace.state.join("inventories");
         create_directory_chain(&directory)?;
         let snapshot = InventorySnapshot::from(plan.clone());

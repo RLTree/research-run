@@ -164,6 +164,9 @@ irreversible non-promoting opt-out as `init`. After files change,
 `reconcile plan` compares the current directory with the latest inventory and
 reports added, changed, moved, missing, duplicate, or ambiguous material.
 Ambiguous identity conflicts cannot be applied.
+If initialization commits but inventory publication does not, apply reports an
+ambiguous effect and retains a plan-digest marker; reapply that exact accepted
+plan to finish the combined bootstrap transaction.
 
 ## Capture typed project knowledge
 

@@ -31,7 +31,24 @@ fn inventory_application_requires_explicit_bootstrap_and_propagates_anchored_ini
     )
     .expect("anchored plan");
     inject_storage_failure("create project directory");
-    assert!(Workspace::apply_inventory_plan(&anchored_root, plan).is_err());
+    let error = Workspace::apply_inventory_plan(&anchored_root, plan.clone())
+        .expect_err("injected initialization failure");
+    assert!(
+        error
+            .to_string()
+            .contains("reapply the exact accepted plan")
+    );
+    assert!(
+        anchored_root
+            .join(".research-run/inventory-bootstrap.json")
+            .is_file()
+    );
+    assert!(Workspace::apply_inventory_plan(&anchored_root, plan).expect("resume bootstrap"));
+    assert!(
+        !anchored_root
+            .join(".research-run/inventory-bootstrap.json")
+            .exists()
+    );
     fs::remove_dir_all(anchored_root).expect("remove fixture");
 }
 
