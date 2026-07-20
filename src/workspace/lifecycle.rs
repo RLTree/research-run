@@ -103,10 +103,10 @@ impl Workspace {
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
-        workspace.publish_value(&manifest_path, &manifest)?;
         if let Some(authority) = authority {
             workspace.publish_record("review-authorities", authority)?;
         }
+        workspace.publish_value(&manifest_path, &manifest)?;
         workspace.verify_initialized_authority(authority)?;
         Ok(workspace)
     }

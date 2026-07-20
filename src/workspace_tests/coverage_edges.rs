@@ -88,11 +88,14 @@ fn authority_initialization_retry_restores_the_exact_anchored_record() {
     );
     inject_storage_failure("publish canonical record#2");
     assert!(Workspace::initialize_with_review_authority(&root, "Retry", &authority).is_err());
-    assert!(root.join(".research-run/manifest.json").is_file());
     assert!(
-        !root
-            .join(".research-run/review-authorities/test-human.json")
-            .exists()
+        root.join(".research-run/review-authorities/test-human.json")
+            .is_file()
+    );
+    assert!(!root.join(".research-run/manifest.json").exists());
+    assert!(
+        Workspace::discover(&root).is_err(),
+        "authority-first partial state became discoverable"
     );
     Workspace::initialize_with_review_authority(&root, "Retry", &authority)
         .expect("idempotent retry");

@@ -30,6 +30,8 @@ mod inventory_bootstrap_coverage;
 mod inventory_bootstrap_faults;
 #[path = "workspace_tests/inventory_bootstrap_pending_faults.rs"]
 mod inventory_bootstrap_pending_faults;
+#[path = "workspace_tests/lifecycle_publication.rs"]
+mod lifecycle_publication;
 #[path = "workspace_tests/recovery_coverage_edges.rs"]
 mod recovery_coverage_edges;
 #[path = "workspace_tests/recovery_semantic_coverage.rs"]
