@@ -90,6 +90,12 @@ fn assert_invalid_authority_fields(plan: &InventoryPlan) {
     legacy.without_review_authority = false;
     legacy.workspace_id.clear();
     assert!(legacy.validate().is_ok());
+    legacy.workspace_id = "INVALID".to_owned();
+    assert!(legacy.validate().is_err());
+
+    let mut explicit_unanchored = plan.clone();
+    explicit_unanchored.workspace_id.clear();
+    assert!(explicit_unanchored.validate().is_err());
 
     let mut invalid = plan.clone();
     invalid.review_authority = Some(ReviewAuthority {

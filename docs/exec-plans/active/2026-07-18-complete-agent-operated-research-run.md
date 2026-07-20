@@ -335,8 +335,11 @@ pass.
   `git:HEAD` only from a clean proof-gate worktree and expects the
   `aarch64-apple-darwin` installed binary content digest
   `e308c4524f7552c021958d607c670f01528f478a9ad184df3989b5bda6f484e8`
-  after removing the ad-hoc code-signature blob and zeroing the nondeterministic
-  Mach-O `LC_UUID` (2,204,128 normalized bytes; 2,221,520 raw bytes).
+  after first verifying and binding the exact empty-entitlement ad-hoc,
+  linker-signed profile, then removing that code-signature blob and zeroing the
+  nondeterministic Mach-O `LC_UUID` (2,204,128 normalized bytes; 2,221,520 raw
+  bytes). The canonical signature-profile digest is
+  `a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd`.
   `scripts/check-product-artifacts` must reproduce and verify these values from
   a clean exact `HEAD` while completing the installed journey; until that
   command succeeds, the values are a declaration rather than proof. The raw
@@ -345,6 +348,16 @@ pass.
   reproducibility claim. This proves installed mechanics only. Accessibility,
   cognitive load, recovery burden, continuance, audience-bound real use,
   research impact, and actual owner-approved signing remain withheld.
+- 2026-07-20: The first post-repair targeted mutation run at `2398903`
+  exercised 52 mutants: 40 caught, ten compiler-unviable, two missed, and zero
+  timed out. Both survivors were distinct legacy workspace-ID boolean
+  combinations in `InventoryPlan::validate`; exact regression cases are now
+  present and their focused rerun remains pending on the next clean candidate.
+  Security review also found that normalized Mach-O content cannot substitute
+  for runtime-signature authority. The artifact gate now verifies and binds the
+  valid ad-hoc linker-signature profile, empty entitlements, absent Team ID and
+  authorities, absent internal requirements, and expected CodeDirectory flags
+  before removing only that verified signature for content normalization.
 
 ## Current claim ceiling
 
