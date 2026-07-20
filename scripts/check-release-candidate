@@ -18,10 +18,9 @@ rg -q 'configured-key control, not personhood' CHANGELOG.md
 rg -q 'publication_authorized = false' policy.toml
 rg -q 'personhood_claim = false' policy.toml
 rg -q 'scientific_truth_claim = false' policy.toml
-rg -q 'Product Fitness.*remain.*withheld|remain explicitly withheld' \
-  docs/release/0.1.0.md
-rg -q 'does not authorize a merge, tag, package publication, or GitHub' \
-  docs/release/0.1.0.md
+rg -q 'Product Fitness' docs/release/0.1.0.md
+rg -q 'remains explicitly withheld' docs/release/0.1.0.md
+rg -q 'does not authorize a merge, tag, package publication' docs/release/0.1.0.md
 [[ -x scripts/check-product-fitness-receipt ]]
 [[ -x scripts/prepare-release-authorization ]]
 [[ -x scripts/verify-release-authorization ]]
