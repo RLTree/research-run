@@ -32,11 +32,14 @@ fn direct_projection_rejects_duplicate_current_review_authority() {
     succeeds(&project.0, &["list", "--limit", "10"]);
 
     let reviews = project.0.join(".research-run/reviews");
-    let first: Value =
-        serde_json::from_slice(&fs::read(reviews.join("review-first.json")).unwrap()).unwrap();
-    let mut second = first;
-    second["id"] = Value::String("review-second".to_owned());
-    second["decision"] = Value::String("contradicted".to_owned());
+    let second = crate::review_test_signing::signed_review_record(
+        &project.0,
+        "review-second",
+        "claim-one",
+        "contradicted",
+        "Independent contradictory review",
+        "Example Researcher",
+    );
     fs::write(
         reviews.join("review-second.json"),
         serde_json::to_vec_pretty(&second).unwrap(),
@@ -45,7 +48,7 @@ fn direct_projection_rejects_duplicate_current_review_authority() {
 
     let output = cli(&project.0, &["list", "--limit", "10"]);
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("review authorization"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("ambiguous current binding"));
 }
 
 fn add_subject_graph(project: &Path) {

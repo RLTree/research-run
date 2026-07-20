@@ -25,7 +25,7 @@
       "required": ["authority_id", "signer_fingerprint", "signature"],
       "properties": {
         "authority_id": { "$ref": "types.schema.json#/$defs/id" },
-        "signer_fingerprint": { "$ref": "types.schema.json#/$defs/text" },
+        "signer_fingerprint": { "type": "string", "pattern": "^SHA256:[A-Za-z0-9+/]{43}$" },
         "signature": { "$ref": "types.schema.json#/$defs/text" }
       }
     }

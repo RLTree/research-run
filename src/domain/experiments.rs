@@ -69,11 +69,8 @@ pub struct ReviewRequest {
 }
 
 impl ReviewRequest {
-    pub fn validate(&self) -> Result<()> {
-        validate_record_header(self.schema_version, &self.kind, "review-request", &self.id)?;
-        validate_id(&self.project_id, "review request project_id")?;
-        validate_hex_digest(&self.workspace_id, "review request workspace_id")?;
-        let decision = ReviewDecision {
+    fn to_decision(&self, authorization: Option<ReviewAuthorization>) -> ReviewDecision {
+        ReviewDecision {
             schema_version: self.schema_version,
             kind: "review".to_owned(),
             id: self.id.clone(),
@@ -83,24 +80,19 @@ impl ReviewRequest {
             decision: self.decision,
             rationale: self.rationale.clone(),
             reviewer: self.reviewer.clone(),
-            authorization: None,
-        };
-        decision.validate()
+            authorization,
+        }
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        validate_record_header(self.schema_version, &self.kind, "review-request", &self.id)?;
+        validate_id(&self.project_id, "review request project_id")?;
+        validate_hex_digest(&self.workspace_id, "review request workspace_id")?;
+        self.to_decision(None).validate()
     }
 
     pub fn into_review(self, authorization: ReviewAuthorization) -> ReviewDecision {
-        ReviewDecision {
-            schema_version: self.schema_version,
-            kind: "review".to_owned(),
-            id: self.id,
-            claim_id: self.claim_id,
-            evidence_ids: self.evidence_ids,
-            subject_sha256: Some(self.subject_sha256),
-            decision: self.decision,
-            rationale: self.rationale,
-            reviewer: self.reviewer,
-            authorization: Some(authorization),
-        }
+        self.to_decision(Some(authorization))
     }
 }
 

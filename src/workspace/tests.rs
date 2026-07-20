@@ -219,5 +219,7 @@ mod review_binding_expanded;
 mod snapshot_expanded;
 #[path = "tests/sshsig.rs"]
 mod sshsig;
+#[path = "tests/status_authority.rs"]
+mod status_authority;
 #[path = "tests/storage.rs"]
 mod storage;

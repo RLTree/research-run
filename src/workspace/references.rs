@@ -130,6 +130,7 @@ pub(super) fn current_review_bindings<'a>(
 ) -> Result<BTreeMap<&'a str, &'a ReviewDecision>> {
     let mut bindings = BTreeMap::new();
     for review in &snapshot.reviews {
+        // Unsigned reviews cannot be canonical bindings, so they cannot be current or ambiguous.
         if review.authorization.is_none() {
             continue;
         }

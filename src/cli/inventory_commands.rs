@@ -1,7 +1,7 @@
 use crate::workspace::Workspace;
 use crate::{Error, Result};
 
-use super::input::read_text_input;
+use super::input::read_review_authority_pair;
 use super::inventory_arguments::InventoryCommand;
 use super::render::{print_json, print_text, terminal_text};
 
@@ -28,25 +28,17 @@ pub(super) fn execute(command: InventoryCommand, reconcile: bool) -> Result<()> 
                 }
                 Workspace::plan_reconciliation(&path, &name, &id, &observed_at)
             } else {
-                let bootstrap = match (review_authority_id, review_authority_public_key) {
-                    (Some(id), Some(public_key)) => {
-                        Some(crate::workspace::ReviewBootstrap::Authority(
-                            crate::domain::ReviewAuthority::from_openssh(
-                                id,
-                                &read_text_input(&public_key)?,
-                            )?,
-                        ))
+                let bootstrap = match read_review_authority_pair(
+                    review_authority_id,
+                    review_authority_public_key,
+                )? {
+                    Some(authority) => {
+                        Some(crate::workspace::ReviewBootstrap::Authority(authority))
                     }
-                    (None, None) if without_review_authority => {
+                    None if without_review_authority => {
                         Some(crate::workspace::ReviewBootstrap::WithoutReviewAuthority)
                     }
-                    (None, None) => None,
-                    _ => {
-                        return Err(Error::invalid(
-                            "review authority",
-                            "id and public key must be supplied together",
-                        ));
-                    }
+                    None => None,
                 };
                 Workspace::plan_retrofit(&path, &name, &id, &observed_at, bootstrap)
             }?;

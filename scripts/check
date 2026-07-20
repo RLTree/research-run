@@ -36,7 +36,7 @@ run_supported_artifact_gate() {
   local actual_platform expected_platform
   actual_platform="$(rustc -vV | sed -n 's/^host: //p')"
   expected_platform="$(
-    jq -er '.candidate_binding.installed_binary.platform' \
+    jq -er '.candidate_binding.installed_binary.platform | select(type == "string" and length > 0)' \
       agent-standards/product-fitness-disposition.json
   )"
   if [[ "$actual_platform" == "$expected_platform" ]]; then

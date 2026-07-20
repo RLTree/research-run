@@ -5,9 +5,7 @@ use std::sync::OnceLock;
 use base64ct::{Base64, Encoding};
 use ed25519_dalek::{Signer, SigningKey};
 use research_run::domain::REVIEW_SIGNATURE_NAMESPACE;
-#[cfg(coverage)]
 use research_run::domain::ReviewRequest;
-#[cfg(coverage)]
 use research_run::workspace::Workspace;
 use sha2::{Digest, Sha256, Sha512};
 
@@ -88,7 +86,6 @@ pub(super) fn prepare_signed_review(
     }
 }
 
-#[cfg(coverage)]
 pub(super) fn signed_review_record(
     project: &Path,
     id: &str,

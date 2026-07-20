@@ -103,6 +103,7 @@ jobs:
     if: always() && needs.review.outputs.number != ''
     needs: review
     runs-on: ubuntu-latest
+    # Required only to publish the review as a pull-request conversation comment.
     permissions:
       issues: write
     steps:

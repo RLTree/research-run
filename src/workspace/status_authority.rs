@@ -22,7 +22,7 @@ pub(super) fn review_authority_status_from_manifest(
             blocker: None,
             next_action: "Prepare a review request and obtain the configured key's detached signature.",
         },
-        _ => ReviewAuthorityStatus {
+        (None, None) => ReviewAuthorityStatus {
             mode: "unanchored",
             id: None,
             fingerprint: None,
@@ -32,6 +32,17 @@ pub(super) fn review_authority_status_from_manifest(
                 "Workspace has no review authority; claims can never be promoted in this workspace.",
             ),
             next_action: "Create a new workspace with --review-authority-id and --review-authority-public-key.",
+        },
+        (id, fingerprint) => ReviewAuthorityStatus {
+            mode: "identity-conflict",
+            id: id.clone(),
+            fingerprint: fingerprint.clone(),
+            promotion_capable: false,
+            repairable: false,
+            blocker: Some(
+                "Workspace review authority identity is incomplete; status and claim promotion are blocked.",
+            ),
+            next_action: "Restore the exact missing authority identity field from trusted workspace evidence.",
         },
     }
 }

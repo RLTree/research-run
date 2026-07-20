@@ -22,6 +22,7 @@ impl Workspace {
     pub(super) fn review_binding_errors(&self, snapshot: &Snapshot) -> Vec<String> {
         let mut errors = Vec::new();
         for review in &snapshot.reviews {
+            // Unsigned reviews cannot be canonical bindings, so staleness does not apply to them.
             if review.authorization.is_none() {
                 continue;
             }
