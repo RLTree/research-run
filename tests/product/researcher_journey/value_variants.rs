@@ -3,7 +3,11 @@ use super::*;
 #[test]
 fn human_commands_cover_every_public_value_variant() {
     let temporary = TempDir::new("human-variants");
-    succeeds(&temporary.0, &["init", ".", "--name", "Human variants"]);
+    crate::review_test_signing::initialize_with_test_authority(
+        &temporary.0,
+        &temporary.0,
+        "Human variants",
+    );
     add_each_source_provenance(&temporary.0);
     add_each_review_assessment(&temporary.0);
     add_each_evidence_stance(&temporary.0);
@@ -80,22 +84,13 @@ fn add_each_review_assessment(project: &Path) {
                 ],
             );
         }
-        succeeds(
+        crate::review_test_signing::add_signed_review(
             project,
-            &[
-                "review",
-                "add",
-                "--id",
-                &review,
-                "--claim",
-                &claim,
-                "--decision",
-                decision,
-                "--rationale",
-                "Rationale",
-                "--reviewer",
-                "Researcher",
-            ],
+            &review,
+            &claim,
+            decision,
+            "Rationale",
+            "Researcher",
         );
     }
 }

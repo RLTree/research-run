@@ -9,11 +9,15 @@ decision may set a claim assessment to `supported`, `limited`, `contradicted`, o
 `unsupported`. `supported` means reviewed support within this workspace and
 scope—not general scientific truth.
 
-Each review binds to the sorted immutable evidence IDs present for its claim at
-the decision boundary. Later evidence makes that decision historical and returns
-the claim to `unreviewed` until a new human review binds the changed graph.
+Each review binds to the immutable random workspace identity and the sorted
+immutable evidence IDs present for its claim at the decision boundary. It
+carries an SSHSIG from the Ed25519 key anchored during owner-controlled
+workspace initialization. Cryptography proves configured-key control, not
+personhood. Reviewer text is metadata and never authorizes promotion. Later
+evidence makes that decision historical and returns the claim to `unreviewed`
+until a new signed review binds the changed graph.
 `supported` requires at least one recorded evidence link; recovery and direct
-record ingestion enforce the same binding as the CLI.
+record ingestion enforce the same content and signature binding as the CLI.
 
 ## Current stack
 
@@ -27,6 +31,11 @@ runtime dependency budget is deliberately small:
 - `sha2`: portable SHA-256 material identity for byte-preserving retrofit and
   reconciliation plans; fingerprints detect exact content identity but do not
   infer scientific meaning.
+- `base64ct` and `ed25519-dalek`: narrowly parse OpenSSH Ed25519 public keys and
+  SSHSIG envelopes and verify detached signatures. Research Run never reads or
+  stores a review private key.
+- `getrandom`: generate an immutable 256-bit workspace authorization-domain ID
+  during initialization.
 
 No async runtime, database, network client, logging/telemetry stack, temporary
 file crate, schema framework, or UI dependency is justified by the v0.1 job.
@@ -59,6 +68,13 @@ directory publication.
   product mode and every read still rechecks opened-file identity.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
+- Review preparation is read-only. The repository owner anchors the one Ed25519
+  authority during initialization; post-initialization enrollment and rotation
+  are unsupported. Promotion requires import of a detached
+  `research-run-review-v1` SSH signature from that authority over the immutable
+  workspace ID and exact request. Missing, malformed, wrong-key, replayed,
+  cross-workspace, and modified-request signatures fail closed during
+  publication, recovery, validation, and status.
 - Typed knowledge records are append-only. `revises`, `supersedes`, and
   `invalidates` relationships require knowledge endpoints and must remain
   acyclic. Generic relationships may describe a contradiction or dependency,
@@ -86,8 +102,10 @@ scripts/check artifacts
 ```
 
 `scripts/check fast` is the inner loop. `scripts/check full` is the broad clean-
-candidate source, dependency, security, mutation, package, install, journey, and
-observation gate and runs only when a claim can move. `scripts/check
+candidate source, dependency, security, and mutation gate and runs only when a
+claim can move. It also runs the package, install, journey, and observation gate
+when the current host matches the platform declared by the artifact disposition;
+otherwise it reports those distinct claims as withheld. `scripts/check
 coverage` requires `cargo-llvm-cov` and enforces 100% line, function, and region
 coverage over every target with every production file retained in the
 denominator. The checker counts each source coordinate once because LLVM emits
@@ -111,6 +129,20 @@ latency, size, install-footprint, and target-growth observations. There is no
 cross-machine performance or regression-budget claim. CI and local gitleaks prove
 their own secret-scan surfaces. Package, install, runtime, journey, GitHub,
 release, and real-user evidence remain distinct.
+
+## Release boundary
+
+The v0.1 release class is a technical preview governed by
+`docs/release/0.1.0.md`. Release readiness may claim exact-candidate ledger
+integrity, package/install mechanics, and the installed journey on named
+platforms. It cannot claim personhood, scientific truth, general Product
+Fitness, continuance, or scientific impact. A Product Fitness observation uses
+the consent-first external-receipt protocol in
+`docs/release/product-fitness-protocol.md`; synthetic and agent-operated
+journeys remain non-substitutes. A detached release-candidate signature proves
+configured-key control over the exact request, not identity beyond the
+repository owner's key choice. No repository check publishes, tags, merges, or
+creates a release.
 
 ### Tool contract
 
@@ -152,10 +184,12 @@ source increment.
 
 The recovery repair is exactly commit
 `9e1d411b670eec4d2073cc775d8bf5081f841154`, which passed bounded final Round 2
-signoff. A newer canonical source probe used a clean detached worktree at
-UltraGoal commit `0355039bf621113e7089c235a298c7a8b085397f` and built the `ultragoal`
-binary with `cargo build --locked --offline --package ultragoal --bin ultragoal`.
-Against clean Research Run candidate
+signoff. The following fit observation is historical and non-authoritative for
+the current candidate; it cannot establish current fit classification or
+readiness. A canonical source probe used a clean detached worktree at UltraGoal
+commit `0355039bf621113e7089c235a298c7a8b085397f` and built the `ultragoal` binary
+with `cargo build --locked --offline --package ultragoal --bin ultragoal`.
+Against historical Research Run candidate
 `80657ca065a93a49521f414db891dff775cf45e9`, `fit inspect` and `fit plan`
 classified the retrofit as `conflicting`: 67 missing generated files and four
 conflicts at Research Run-owned `AGENTS.md`, `AGENT_STANDARDS.md`,
@@ -165,9 +199,10 @@ source context was
 UltraGoal's canonical production adapter refuses every conflicting plan before
 effects, so the plan was not accepted or applied. The observed installed cache
 remains 0.0.11 and no installed `ultragoal` command was discovered. These facts
-support a source-built inspection and plan only; package, installed, discovered,
-runtime-active, applied-fit, fit-receipt, and full fitted-governance claims remain
-withheld.
+support a historical source-built inspection and plan only. The current fit
+classification has not been reprobed, no fit receipt exists, and current
+package, installed, discovered, runtime-active, applied-fit, fit-readiness, and
+full fitted-governance claims remain withheld.
 
 The additional validated source-guidance artifact is
 `harness-ultragoal-governance-complete.zip`, SHA-256

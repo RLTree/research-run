@@ -18,7 +18,17 @@ fn exercise_workspace_lifecycle_failures() {
 
     let invalid_name = TempDir::new("invalid-name");
     assert_fails(
-        &run(&invalid_name.0, &["init", "project", "--name", ""], None),
+        &run(
+            &invalid_name.0,
+            &[
+                "init",
+                "project",
+                "--name",
+                "",
+                "--without-review-authority",
+            ],
+            None,
+        ),
         "empty project name",
     );
 
@@ -33,7 +43,13 @@ fn exercise_workspace_lifecycle_failures() {
         let root = TempDir::new(fault);
         let output = run(
             &root.0,
-            &["init", "project", "--name", "Lifecycle"],
+            &[
+                "init",
+                "project",
+                "--name",
+                "Lifecycle",
+                "--without-review-authority",
+            ],
             Some(fault),
         );
         assert_fails(&output, fault);
@@ -124,6 +140,7 @@ fn exercise_direct_workspace_symlink() {
                     link.to_str().expect("UTF-8 link"),
                     "--name",
                     "Unsafe",
+                    "--without-review-authority",
                 ],
                 None,
             ),

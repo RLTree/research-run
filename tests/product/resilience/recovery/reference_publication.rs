@@ -55,36 +55,24 @@ fn recover_experiment_and_artifact_evidence(root: &Path) {
 }
 
 fn reject_second_review_during_recovery(root: &Path) {
-    assert!(
-        run(
-            root,
-            &[
-                "review",
-                "add",
-                "--id",
-                "review-one",
-                "--claim",
-                "claim-one",
-                "--decision",
-                "supported",
-                "--rationale",
-                "Rationale",
-                "--reviewer",
-                "Reviewer",
-            ],
-            None,
-        )
-        .status
-        .success()
+    crate::review_test_signing::add_signed_review(
+        root,
+        "review-one",
+        "claim-one",
+        "supported",
+        "Rationale",
+        "Reviewer",
     );
     let reviews = root.join(".research-run/reviews");
     let pending = reviews.join(".review-two.json.9.1.tmp");
-    let mut second: serde_json::Value =
-        serde_json::from_slice(&fs::read(reviews.join("review-one.json")).expect("current review"))
-            .expect("review JSON");
-    second["id"] = json!("review-two");
-    second["decision"] = json!("limited");
-    second["rationale"] = json!("Second");
+    let second = crate::review_test_signing::signed_review_record(
+        root,
+        "review-two",
+        "claim-one",
+        "limited",
+        "Second",
+        "Reviewer",
+    );
     fs::write(
         &pending,
         serde_json::to_vec_pretty(&second).expect("review JSON"),

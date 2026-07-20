@@ -24,6 +24,33 @@ fn review_binding_stales_on_same_id_subject_mutation() {
     assert_stale_subject_is_unreviewed(&project.0, "review-second");
 }
 
+#[test]
+fn direct_projection_rejects_duplicate_current_review_authority() {
+    let project = workspace("duplicate-review-projection");
+    add_subject_graph(&project.0);
+    add_review(&project.0, "review-first");
+    succeeds(&project.0, &["list", "--limit", "10"]);
+
+    let reviews = project.0.join(".research-run/reviews");
+    let second = crate::review_test_signing::signed_review_record(
+        &project.0,
+        "review-second",
+        "claim-one",
+        "contradicted",
+        "Independent contradictory review",
+        "Example Researcher",
+    );
+    fs::write(
+        reviews.join("review-second.json"),
+        serde_json::to_vec_pretty(&second).unwrap(),
+    )
+    .expect("write duplicate review");
+
+    let output = cli(&project.0, &["list", "--limit", "10"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("ambiguous current binding"));
+}
+
 fn add_subject_graph(project: &Path) {
     succeeds(
         project,
@@ -79,22 +106,13 @@ fn add_subject_graph(project: &Path) {
 }
 
 fn add_review(project: &Path, id: &str) {
-    succeeds(
+    crate::review_test_signing::add_signed_review(
         project,
-        &[
-            "review",
-            "add",
-            "--id",
-            id,
-            "--claim",
-            "claim-one",
-            "--decision",
-            "supported",
-            "--rationale",
-            "Reviewed subject authority",
-            "--reviewer",
-            "Example Researcher",
-        ],
+        id,
+        "claim-one",
+        "supported",
+        "Reviewed subject authority",
+        "Example Researcher",
     );
 }
 

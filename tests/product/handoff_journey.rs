@@ -73,14 +73,10 @@ fn fresh_process_consumes_handoff_without_source_workspace() {
 
 pub(super) fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
     let project = temporary.0.join("project");
-    succeeds(
+    crate::review_test_signing::initialize_with_test_authority(
         &temporary.0,
-        &[
-            "init",
-            project.to_str().unwrap(),
-            "--name",
-            "Handoff project",
-        ],
+        &project,
+        "Handoff project",
     );
     add_research_graph(&project);
     for (id, kind, title, at) in [
@@ -187,22 +183,13 @@ fn add_research_graph(project: &std::path::Path) {
             "human",
         ],
     );
-    succeeds(
+    crate::review_test_signing::add_signed_review(
         project,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-assay",
-            "--claim",
-            "claim-assay",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Reviewed within the synthetic fixture.",
-            "--reviewer",
-            "Example Researcher",
-        ],
+        "review-assay",
+        "claim-assay",
+        "limited",
+        "Reviewed within the synthetic fixture.",
+        "Example Researcher",
     );
 }
 

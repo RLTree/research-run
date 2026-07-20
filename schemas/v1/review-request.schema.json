@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-request.schema.json",
+  "title": "Research Run ReviewRequest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "project_id",
+    "workspace_id",
+    "id",
+    "claim_id",
+    "evidence_ids",
+    "subject_sha256",
+    "decision",
+    "rationale",
+    "reviewer"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "review-request" },
+    "project_id": { "$ref": "types.schema.json#/$defs/id" },
+    "workspace_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "claim_id": { "$ref": "types.schema.json#/$defs/id" },
+    "evidence_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "types.schema.json#/$defs/id" }
+    },
+    "subject_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "decision": { "enum": ["unsupported", "limited", "supported", "contradicted"] },
+    "rationale": { "$ref": "types.schema.json#/$defs/text" },
+    "reviewer": { "$ref": "types.schema.json#/$defs/text" }
+  }
+}

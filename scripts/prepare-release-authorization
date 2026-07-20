@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+# shellcheck source=scripts/release-authorization-inputs
+source "$repo_root/scripts/release-authorization-inputs"
+
+if [[ "$#" -ne 2 ]]; then
+  echo "usage: scripts/prepare-release-authorization PUBLIC_KEY AUTHORITY_ID" >&2
+  exit 2
+fi
+
+public_key="$1"
+authority_id="$2"
+validate_release_authority_id "$authority_id"
+canonical_release_public_key "$public_key" >/dev/null
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "release authorization preparation requires a clean exact candidate" >&2
+  exit 1
+fi
+
+key_description="$(ssh-keygen -lf "$public_key" -E sha256)"
+fingerprint="$(awk '{print $2}' <<<"$key_description")"
+candidate="$(git rev-parse HEAD)"
+tree="$(git rev-parse 'HEAD^{tree}')"
+version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
+lockfile_sha256="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
+
+jq -Scn \
+  --arg authority_id "$authority_id" \
+  --arg signer_fingerprint "$fingerprint" \
+  --arg candidate "$candidate" \
+  --arg tree "$tree" \
+  --arg version "$version" \
+  --arg lockfile_sha256 "$lockfile_sha256" '{
+    format_version: 1,
+    kind: "release-candidate-authorization",
+    namespace: "research-run-release-v1",
+    authority_id: $authority_id,
+    signer_fingerprint: $signer_fingerprint,
+    candidate: {
+      git_commit: $candidate,
+      git_tree: $tree,
+      cargo_version: $version,
+      cargo_lock_sha256: $lockfile_sha256
+    },
+    decision: "candidate-ready-for-material-review",
+    publishing_authorized: false,
+    claims: {
+      personhood: false,
+      scientific_truth: false,
+      product_fitness: "withheld-unless-separately-disposed",
+      continuance: "withheld"
+    },
+    claim_ceiling: "Configured-key approval of this exact release candidate for material review; no merge, tag, publication, personhood, scientific truth, Product Fitness, or continuance claim."
+  }'

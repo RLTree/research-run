@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "kind": "product-fitness-observation",
+  "candidate": {
+    "git_commit": "0000000000000000000000000000000000000000",
+    "installed_binary": {
+      "platform": "aarch64-apple-darwin",
+      "normalized_sha256": "fcf4b74b6a60e179a5e85c68e1e9c06d308c6e3d4b45c8b3413c454ca929351c",
+      "normalized_bytes": 2253760
+    }
+  },
+  "consent": {
+    "obtained": false,
+    "withdrawal_explained": false,
+    "retained_fields_explained": false,
+    "sensitive_data_retained": false
+  },
+  "participant": {
+    "role": "researcher",
+    "prior_research_run_use": "none"
+  },
+  "observer": {
+    "role": "product-fitness observer",
+    "actor_disjoint_from_participant": true
+  },
+  "session": {
+    "started_at": "2026-07-20T00:00:00Z",
+    "completed_at": "2026-07-20T00:00:00Z",
+    "journey": {
+      "installed_candidate_used": false,
+      "initialized_or_retrofitted": false,
+      "recorded_scoped_evidence": false,
+      "retained_negative_or_ambiguous_outcome": false,
+      "retrieved_context": false,
+      "approved_detached_signature": false,
+      "recovered_interrupted_publication": false,
+      "validated_workspace": false,
+      "explained_claim_ceiling": false
+    },
+    "errors": [],
+    "command_takeovers": 0,
+    "abandoned_attempts": 0,
+    "recovery_seconds": 0
+  },
+  "accessibility": {
+    "assistive_mode": "none",
+    "blockers": []
+  },
+  "cognitive_load": {
+    "rating_1_to_5": 0,
+    "confusing_steps": []
+  },
+  "outcome": {
+    "completed": false,
+    "would_use_again": "uncertain",
+    "limitations": []
+  },
+  "continuance": {
+    "status": "not_observed",
+    "voluntary_sessions": 1
+  },
+  "claim_ceiling": "One deidentified exact-candidate first-use observation; not personhood, continuance, scientific truth, scientific impact, or general Product Fitness."
+}

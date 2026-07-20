@@ -10,15 +10,29 @@ human decision next?** Validation checks the ledger; it does not prove the
 science. A `supported` assessment means reviewed support within the recorded
 workspace scope, not scientific truth in general.
 
-## Five-minute quickstart
+## Source-checkout quickstart
+
+Research Run 0.1.0 is not published. This path requires a local source checkout,
+the pinned Rust toolchain, Git, and an Ed25519 public key. No human timing,
+accessibility, or cognitive-load claim is implied.
 
 Build or install with the pinned Rust toolchain:
 
 ```console
 cargo install --path . --locked
-research-run init my-study --name "My study"
+REVIEW_PUBLIC_KEY="$(pwd)/researcher-review.pub"
+research-run init my-study \
+  --name "My study" \
+  --review-authority-id primary-researcher \
+  --review-authority-public-key "$REVIEW_PUBLIC_KEY"
 cd my-study
 ```
+
+Initialization anchors the one permitted Ed25519 review authority. The public
+key may come from a hardware-backed key or 1Password SSH Agent; its private key
+and each signing approval stay outside Research Run and the agent process.
+`--without-review-authority` is an explicit irreversible opt-out that disables
+claim promotion for that workspace.
 
 Add a source and a scoped claim:
 
@@ -66,19 +80,37 @@ research-run experiment add \
   --artifact "workspace:artifacts/summary.txt:Deidentified summary"
 ```
 
-Inspect the claim ceiling, then record an explicit human review:
+The quickstart created the workspace with its one review key anchored in the
+immutable manifest. This initialization is the repository owner's
+trust-bootstrap boundary; there is no post-initialization enrollment command.
+Inspect the claim ceiling, prepare the exact request, sign it outside the agent
+process, and import the detached SSH signature:
 
 ```console
 research-run status
-research-run review add \
+research-run review prepare \
   --id review-binding \
   --claim claim-binding \
   --decision limited \
   --rationale "The paper supports the claim, but the negative repeat limits it." \
-  --reviewer "Researcher Name"
+  --reviewer "Researcher Name" > review-binding.json
+ssh-keygen -Y sign \
+  -f "$REVIEW_PUBLIC_KEY" \
+  -n research-run-review-v1 \
+  review-binding.json
+research-run review add \
+  --request review-binding.json \
+  --signature review-binding.json.sig
 research-run validate
 research-run status --json
 ```
+
+The signer may be a hardware-backed key or a 1Password SSH Agent key. Keep its
+private key and signing approval outside the agent-accessible environment.
+Research Run stores only the public key and detached signature. Cryptography
+proves control of that configured key, not human personhood; repository access
+control and owner-run initialization establish who may choose the key. v0.1
+provides neither post-initialization enrollment nor key rotation.
 
 Canonical records live under `.research-run/` as deterministic, versioned JSON.
 The machine-readable v1 contracts are in [`schemas/v1`](schemas/v1). The complete
@@ -98,12 +130,12 @@ synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
   published. Recovery never silently chooses conflicting content.
 - Diagnostics identify a path and invariant, not record bodies or secret values.
 
-Review decisions are local assertions made by the CLI user; v0.1 has no account
-system or identity verification. Treat Git review and repository access controls
-as the human-authorship boundary.
-The CLI records the claim's current sorted evidence IDs with each review. Adding
-later evidence makes the old decision historical and returns the claim to
-`unreviewed` until another explicit human review covers the changed graph.
+Reviewer text is metadata, not authority. A review affects assessment only when
+its detached SSH signature verifies against the workspace's one enrolled
+Ed25519 authority over the exact immutable workspace identity, project, claim,
+decision, rationale, evidence IDs, and subject digest. Adding later evidence
+makes the old decision historical and returns the claim to `unreviewed` until
+another signed review covers the changed graph.
 
 Automation can distinguish failure classes by exit status: `1` is local I/O,
 `2` is malformed or invalid input, `3` is not found, `4` is conflicting or
@@ -119,17 +151,26 @@ target so writing the plan itself cannot change the candidate it describes:
 research-run retrofit plan existing-project \
   --name "Existing project" \
   --id inventory-initial \
-  --observed-at 2026-07-18T20:00:00Z > /tmp/research-run-plan.json
+  --observed-at 2026-07-18T20:00:00Z \
+  --review-authority-id primary-researcher \
+  --review-authority-public-key researcher-review.pub \
+  > /tmp/research-run-plan.json
 research-run retrofit apply existing-project \
   --input /tmp/research-run-plan.json --json
 ```
 
 Apply rescans every indexed byte and fails if the project changed after
 planning. It creates only `.research-run/`, never modifies existing project
-files, and repeating the same accepted plan is a no-op. After files change,
+files, and repeating the same accepted plan is a no-op. The accepted plan binds
+the authority decision used if apply creates the workspace. Passing
+`--without-review-authority` to `retrofit plan` instead is the same explicit,
+irreversible non-promoting opt-out as `init`. After files change,
 `reconcile plan` compares the current directory with the latest inventory and
 reports added, changed, moved, missing, duplicate, or ambiguous material.
 Ambiguous identity conflicts cannot be applied.
+If initialization commits but inventory publication does not, apply reports an
+ambiguous effect and retains a plan-digest marker; reapply that exact accepted
+plan to finish the combined bootstrap transaction.
 
 ## Capture typed project knowledge
 
@@ -147,8 +188,8 @@ risks, blockers, uncertainties, contradictions, next actions, plans,
 presentations, and session summaries. Relationships are append-only and typed;
 revision, supersession, and invalidation history remains acyclic and never
 erases the older record. These relationships cannot promote a claim. Claim
-assessment still requires an explicit human `review add` decision bound to the
-current evidence graph.
+assessment still requires a signed human `review add` decision bound to the
+current evidence graph and enrolled review authority.
 
 ## Retrieve bounded context
 
@@ -210,10 +251,17 @@ a no-op.
 
 See [`STANDARD.md`](STANDARD.md) for invariants, budgets, dependencies, and exact
 gates. Use `scripts/check fast` during implementation and `scripts/check full`
-when a source or package claim can move. `scripts/check coverage` is the separate
+when a source claim can move; its artifact sub-gate runs only on the platform
+declared by the artifact disposition. `scripts/check coverage` is the separate
 100% line/function/region source-coverage authority and requires
 `cargo-llvm-cov`; a test pass is not a coverage pass. Source, tests, package
 creation, local install, runtime
 journey, CI, pull request, release, and real researcher use are separate proof
 surfaces. v0.1 does not include a GUI, service, sync, telemetry, database, LLM
 provider, or generic workflow engine.
+
+The unreleased `0.1.0` candidate is governed by
+[`docs/release/0.1.0.md`](docs/release/0.1.0.md). Product Fitness observations
+use the consent-first
+[`docs/release/product-fitness-protocol.md`](docs/release/product-fitness-protocol.md)
+and remain external, deidentified evidence by default.

@@ -7,8 +7,8 @@ use crate::domain::{
 };
 
 use super::Workspace;
+use super::recovery_canonical::canonical_records;
 use super::recovery_plan::PendingRecord;
-use super::recovery_preflight::canonical_records;
 use super::storage::ReadBudget;
 
 pub(super) struct OptionalRecovery {

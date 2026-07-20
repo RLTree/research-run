@@ -10,26 +10,65 @@ export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
 
 mode="${1:-fast}"
 
+candidate="$(git rev-parse HEAD)"
+candidate_tree="$(git rev-parse 'HEAD^{tree}')"
+
+assert_candidate() {
+  local phase="$1"
+  if [[ "$(git rev-parse HEAD)" != "$candidate" ]] ||
+    [[ "$(git rev-parse 'HEAD^{tree}')" != "$candidate_tree" ]] ||
+    [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+    echo "candidate custody failure during $phase" >&2
+    echo "withheld: aggregate_gate and exact_candidate_proof" >&2
+    exit 1
+  fi
+}
+
+run_bound_gate() {
+  local phase="$1"
+  shift
+  assert_candidate "before $phase"
+  "$@"
+  assert_candidate "after $phase"
+}
+
+run_supported_artifact_gate() {
+  local actual_platform expected_platform
+  actual_platform="$(rustc -vV | sed -n 's/^host: //p')"
+  expected_platform="$(
+    jq -er '.candidate_binding.installed_binary.platform | select(type == "string" and length > 0)' \
+      agent-standards/product-fitness-disposition.json
+  )"
+  if [[ "$actual_platform" == "$expected_platform" ]]; then
+    scripts/check-product-artifacts
+    return
+  fi
+  echo "artifact proof skipped: host $actual_platform does not match declared platform $expected_platform"
+  echo "withheld: package, install, journey, performance_baseline, and compactness_baseline"
+}
+
 case "$mode" in
   fast)
-    cargo fmt --check
-    cargo check --locked --all-targets
-    cargo test --locked --test product repository_authority::
-    scripts/check-standards
+    assert_candidate "fast gate entry"
+    run_bound_gate formatting cargo fmt --check
+    run_bound_gate check cargo check --locked --all-targets
+    run_bound_gate repository-authority cargo test --locked --test product repository_authority::
+    run_bound_gate standards scripts/check-standards
     ;;
   full)
-    cargo fmt --check
-    cargo check --locked --all-targets
-    cargo nextest run --locked --all-targets --test-threads 1
-    cargo test --locked --doc
-    cargo clippy --locked --all-targets -- -D warnings
-    scripts/check-standards
-    scripts/check-coverage
-    scripts/check-dependencies
-    gitleaks git --no-banner --redact .
-    actionlint
-    scripts/check-mutations
-    scripts/check-product-artifacts
+    assert_candidate "full gate entry"
+    run_bound_gate formatting cargo fmt --check
+    run_bound_gate check cargo check --locked --all-targets
+    run_bound_gate nextest cargo nextest run --locked --all-targets --test-threads 1
+    run_bound_gate doctests cargo test --locked --doc
+    run_bound_gate clippy cargo clippy --locked --all-targets -- -D warnings
+    run_bound_gate standards scripts/check-standards
+    run_bound_gate coverage scripts/check-coverage
+    run_bound_gate dependencies scripts/check-dependencies
+    run_bound_gate secrets gitleaks git --no-banner --redact .
+    run_bound_gate actions actionlint
+    run_bound_gate mutations scripts/check-mutations
+    run_bound_gate artifacts run_supported_artifact_gate
     ;;
   coverage)
     exec "$repo_root/scripts/check-coverage"

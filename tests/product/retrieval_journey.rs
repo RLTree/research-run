@@ -4,6 +4,13 @@ use serde_json::{Value, json};
 
 use super::researcher_journey::{TempDir, cli, succeeds};
 
+fn unanchored_init<'a>(path: &'a str, name: &'a str) -> [&'a str; 5] {
+    ["init", path, "--name", name, "--without-review-authority"]
+}
+
+#[path = "retrieval_journey/defense.rs"]
+mod defense;
+
 #[test]
 fn bounded_retrieval_commands_explain_matches_and_preserve_history() {
     let temporary = TempDir::new("retrieval");
@@ -14,62 +21,11 @@ fn bounded_retrieval_commands_explain_matches_and_preserve_history() {
     assert_context_and_human(&project);
 }
 
-#[test]
-fn retrieval_rejects_empty_queries_and_invalid_limits() {
-    let temporary = TempDir::new("retrieval-defense");
-    let project = setup(&temporary);
-    for args in [
-        vec!["search", "   "],
-        vec!["list", "--limit", "0"],
-        vec!["recent", "--limit", "257"],
-        vec!["timeline", "--limit", "0"],
-        vec!["unresolved", "--limit", "0"],
-        vec!["blockers", "--limit", "0"],
-        vec!["next", "--limit", "0"],
-        vec![
-            "related",
-            "--kind",
-            "knowledge",
-            "--id",
-            "x",
-            "--limit",
-            "0",
-        ],
-        vec!["context", "--limit", "0"],
-        vec!["context", "--query", "   "],
-        vec![
-            "handoff",
-            "create",
-            "--id",
-            "handoff-invalid",
-            "--generated-at",
-            "2026-07-18T20:00:00Z",
-            "--limit",
-            "0",
-        ],
-    ] {
-        assert!(!cli(&project, &args).status.success(), "{args:?}");
-    }
-    let missing = cli(
-        &project,
-        &["show", "--kind", "knowledge", "--id", "not-present"],
-    );
-    assert_eq!(missing.status.code(), Some(3));
-    let empty = TempDir::new("retrieval-empty");
-    let empty_project = empty.0.join("project");
-    succeeds(
-        &empty.0,
-        &["init", empty_project.to_str().unwrap(), "--name", "Empty"],
-    );
-    let human = succeeds(&empty_project, &["list", "--human"]);
-    assert!(String::from_utf8_lossy(&human.stdout).contains("- None."));
-}
-
 fn setup(temporary: &TempDir) -> std::path::PathBuf {
     let project = temporary.0.join("project");
     succeeds(
         &temporary.0,
-        &["init", project.to_str().unwrap(), "--name", "Retrieval"],
+        &unanchored_init(project.to_str().unwrap(), "Retrieval"),
     );
     for (id, kind, title, at) in [
         (

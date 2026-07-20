@@ -78,27 +78,13 @@ fn seed_each_typed_record(root: &Path) {
         .status
         .success()
     );
-    assert!(
-        run(
-            root,
-            &[
-                "review",
-                "add",
-                "--id",
-                "review-one",
-                "--claim",
-                "claim-one",
-                "--decision",
-                "supported",
-                "--rationale",
-                "Rationale",
-                "--reviewer",
-                "Reviewer"
-            ],
-            None
-        )
-        .status
-        .success()
+    crate::review_test_signing::add_signed_review(
+        root,
+        "review-one",
+        "claim-one",
+        "supported",
+        "Rationale",
+        "Reviewer",
     );
 }
 

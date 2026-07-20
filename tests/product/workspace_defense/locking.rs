@@ -20,31 +20,41 @@ fn concurrent_review_commands_leave_one_authoritative_decision() {
             "human",
         ],
     );
+    let first_review = crate::review_test_signing::prepare_signed_review(
+        &project.0,
+        "review-one",
+        "claim-one",
+        "limited",
+        "Bounded support",
+        "Researcher",
+    );
+    let second_review = crate::review_test_signing::prepare_signed_review(
+        &project.0,
+        "review-two",
+        "claim-one",
+        "limited",
+        "Bounded support",
+        "Researcher",
+    );
     let binary = std::env::var("CARGO_BIN_EXE_research-run").expect("binary path");
-    let args = |id: &str| {
+    let args = |review: &crate::review_test_signing::SignedReview| {
         vec![
             "review".to_owned(),
             "add".to_owned(),
-            "--id".to_owned(),
-            id.to_owned(),
-            "--claim".to_owned(),
-            "claim-one".to_owned(),
-            "--decision".to_owned(),
-            "limited".to_owned(),
-            "--rationale".to_owned(),
-            "Bounded support".to_owned(),
-            "--reviewer".to_owned(),
-            "Researcher".to_owned(),
+            "--request".to_owned(),
+            review.request.to_string_lossy().into_owned(),
+            "--signature".to_owned(),
+            review.signature.to_string_lossy().into_owned(),
         ]
     };
     let mut first = Command::new(&binary)
         .current_dir(&project.0)
-        .args(args("review-one"))
+        .args(args(&first_review))
         .spawn()
         .expect("first review");
     let mut second = Command::new(&binary)
         .current_dir(&project.0)
-        .args(args("review-two"))
+        .args(args(&second_review))
         .spawn()
         .expect("second review");
     let first_status = first.wait().expect("first status");

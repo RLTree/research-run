@@ -43,6 +43,8 @@ fn every_versioned_schema_is_well_formed_json() {
         "migration.schema.json",
         "project-manifest.schema.json",
         "projection.schema.json",
+        "review-authority.schema.json",
+        "review-request.schema.json",
         "review.schema.json",
         "relationship.schema.json",
         "source.schema.json",

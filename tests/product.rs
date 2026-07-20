@@ -27,5 +27,7 @@ mod retrofit_journey;
 mod retry_behavior;
 #[path = "product/review_authority.rs"]
 mod review_authority;
+#[path = "product/review_test_signing.rs"]
+mod review_test_signing;
 #[path = "product/workspace_defense.rs"]
 mod workspace_defense;

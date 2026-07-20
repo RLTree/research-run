@@ -4,6 +4,88 @@
   "claim_id": "research-run-v0.1-real-use-fitness",
   "status": "withheld",
   "owner": "human product-fitness reviewer",
+  "candidate_binding": {
+    "status": "tracked-declaration-not-evidence",
+    "current_candidate": "resolved by the external receipt validator",
+    "resolver": "Resolve the clean Git HEAD at validation time and bind it in the external observation and disposition; this tracked declaration is never a receipt.",
+    "required_identity": "clean Git HEAD plus platform-qualified normalized installed binary digest and raw size",
+    "installed_binary": {
+      "platform": "aarch64-apple-darwin",
+      "raw_bytes": 2271536,
+      "signature_profile": {
+        "verification": "codesign --verify --strict",
+        "format": "Mach-O thin (arm64)",
+        "signature": "adhoc",
+        "code_directory_flags": "0x20002(adhoc,linker-signed)",
+        "hash_type": "sha256",
+        "team_identifier": "not set",
+        "info_plist": "not bound",
+        "sealed_resources": "none",
+        "internal_requirements": "none",
+        "executable_segment_flags": "0x1",
+        "authorities": [],
+        "entitlements": "empty"
+      },
+      "signature_profile_sha256": "a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd",
+      "normalization": "removed ad-hoc code signature and zeroed Mach-O LC_UUID",
+      "normalized_sha256": "fcf4b74b6a60e179a5e85c68e1e9c06d308c6e3d4b45c8b3413c454ca929351c",
+      "normalized_bytes": 2253760,
+      "receipt": "scripts/check-product-artifacts (clean HEAD package/install journey with exact digest and byte verification)"
+    },
+    "reason": "The expected platform-qualified installed identity is declared but is not evidence until scripts/check-product-artifacts succeeds from a clean exact HEAD; Product Fitness remains withheld because deterministic mechanics are not human-use evidence."
+  },
+  "audience": [
+    "researcher",
+    "repository owner and review-key signer",
+    "agent operating the CLI"
+  ],
+  "job": "Initialize or retrofit an unfamiliar local project, preserve its evidence graph, obtain an externally approved signed review, and recover safely from interrupted publication.",
+  "context": "A local Git-backed research project operated through the installed Rust CLI without a service, GUI, or model provider.",
+  "desired_outcome": "Durable, navigable, review-governed research state whose claim promotions are explicitly authorized and whose limitations remain visible.",
+  "accessibility_evidence": {
+    "status": "missing",
+    "required": "Exact-candidate assistive-use observation of the installed CLI journey."
+  },
+  "cognitive_load_evidence": {
+    "status": "missing",
+    "required": "Audience observation covering bootstrap, signing, failure diagnosis, and recovery."
+  },
+  "recovery_burden": {
+    "status": "unmeasured",
+    "required": "Observe and record recovery steps, time, errors, and abandoned attempts."
+  },
+  "continuance_evidence": {
+    "status": "missing",
+    "required": "Repeated voluntary use after the first complete journey."
+  },
+  "real_use_evidence": {
+    "status": "none",
+    "synthetic_journeys_are_non_substitutes": true
+  },
+  "observation_protocol": {
+    "status": "ready-unobserved",
+    "path": "docs/release/product-fitness-protocol.md",
+    "receipt_template": "agent-standards/product-fitness-observation.template.json",
+    "first_use_contract": "agent-standards/product-fitness-first-use.jq",
+    "session_window_contract": "agent-standards/product-fitness-session-window.jq",
+    "receipt_validator": "scripts/check-product-fitness-receipt",
+    "disposition_template": "agent-standards/product-fitness-disposition.template.json",
+    "disposition_contract": "agent-standards/product-fitness-disposition.jq",
+    "disposition_validator": "scripts/check-product-fitness-disposition",
+    "receipt_storage": "external deidentified evidence; no human-subject receipt is tracked by default"
+  },
+  "dispositions": [
+    {
+      "claim_id": "research-run-v0.1-complete-unfamiliar-project-workflow",
+      "status": "withheld",
+      "reason": "No consenting researcher has completed the exact installed init or retrofit, detached-signature, retrieval, interruption, and recovery journey."
+    },
+    {
+      "claim_id": "research-run-v0.1-real-use-fitness",
+      "status": "withheld",
+      "reason": "No audience-bound human-use or repeated-use evidence exists for the exact candidate."
+    }
+  ],
   "reason": "No audience-bound human-use or repeated-use evidence exists for the exact candidate.",
   "affected_claims": [
     "real-use fitness",
@@ -11,10 +93,12 @@
     "continuance",
     "research outcome improvement"
   ],
-  "required_follow_up": "Observe a consenting researcher completing the critical unfamiliar-project journey with an exact-candidate installed binary, record recovery burden and outcome evidence, then obtain an actor-disjoint Product Fitness review.",
+  "required_follow_up": "Run docs/release/product-fitness-protocol.md with a consenting researcher, validate the external receipt with scripts/check-product-fitness-receipt, then obtain an actor-disjoint Product Fitness review.",
   "accepted_non_substitutes": [
     "source tests",
+    "coverage or mutation proof",
     "installed journey",
+    "synthetic signing",
     "package proof",
     "benchmark",
     "generic reviewer approval"

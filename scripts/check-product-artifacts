@@ -4,6 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
+artifact_platform="$(rustc -vV | sed -n 's/^host: //p')"
+
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "artifact proof requires a clean commit candidate" >&2
   echo "withheld: package, install, journey, performance_baseline, and compactness_baseline" >&2
@@ -22,9 +24,113 @@ tar -xzf "$archive" -C "$observation_root"
 cargo install --path "$observation_root/research-run-0.1.0" --locked \
   --root "$observation_root/install"
 binary="$observation_root/install/bin/research-run"
+signature_profile='null'
+signature_profile_sha256=''
+if [[ "$artifact_platform" == *-apple-darwin ]]; then
+  codesign --verify --strict "$binary"
+  signature_metadata="$(codesign -d --verbose=4 "$binary" 2>&1)"
+  if ! grep -Eq '^CodeDirectory v=20400 size=[0-9]+ flags=0x20002\(adhoc,linker-signed\) hashes=[0-9]+\+0 location=embedded$' \
+    <<<"$signature_metadata"; then
+    echo "artifact proof rejected unexpected CodeDirectory metadata" >&2
+    exit 1
+  fi
+  for expected in \
+    "Format=Mach-O thin (arm64)" \
+    "Hash type=sha256 size=32" \
+    "Executable Segment flags=0x1" \
+    "Signature=adhoc" \
+    "Info.plist=not bound" \
+    "TeamIdentifier=not set" \
+    "Sealed Resources=none" \
+    "Internal requirements=none"; do
+    grep -Fxq "$expected" <<<"$signature_metadata"
+  done
+  if grep -q '^Authority=' <<<"$signature_metadata"; then
+    echo "artifact proof rejected a certificate-backed authority" >&2
+    exit 1
+  fi
+  entitlements="$(codesign -d --entitlements - "$binary" 2>/dev/null)"
+  if [[ -n "$entitlements" ]]; then
+    echo "artifact proof rejected non-empty entitlements" >&2
+    exit 1
+  fi
+  signature_profile="$(jq -cn '{
+    verification:"codesign --verify --strict",
+    format:"Mach-O thin (arm64)",
+    signature:"adhoc",
+    code_directory_flags:"0x20002(adhoc,linker-signed)",
+    hash_type:"sha256",
+    team_identifier:"not set",
+    info_plist:"not bound",
+    sealed_resources:"none",
+    internal_requirements:"none",
+    executable_segment_flags:"0x1",
+    authorities:[],
+    entitlements:"empty"
+  }')"
+  signature_profile_sha256="$(printf '%s' "$signature_profile" | shasum -a 256 | awk '{print $1}')"
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  binary_raw_sha256="$(sha256sum "$binary" | awk '{print $1}')"
+else
+  binary_raw_sha256="$(shasum -a 256 "$binary" | awk '{print $1}')"
+fi
+binary_bytes="$(wc -c < "$binary" | tr -d ' ')"
+normalized_binary="$observation_root/research-run-normalized"
+cp "$binary" "$normalized_binary"
+if [[ "$artifact_platform" == *-apple-darwin ]]; then
+  codesign --remove-signature "$normalized_binary"
+  uuid_offset="$(otool -l "$normalized_binary" | awk '
+    BEGIN { offset = 32 }
+    /^[[:space:]]*cmd / {
+      if ($2 == "LC_UUID") {
+        print offset + 8
+        exit
+      }
+    }
+    /^[[:space:]]*cmdsize / { offset += $2 }
+  ')"
+  if [[ -z "$uuid_offset" ]]; then
+    echo "artifact proof could not locate the Mach-O LC_UUID command" >&2
+    exit 1
+  fi
+  dd if=/dev/zero of="$normalized_binary" bs=1 seek="$uuid_offset" \
+    count=16 conv=notrunc 2>/dev/null
+  normalization="removed ad-hoc code signature and zeroed Mach-O LC_UUID"
+else
+  normalization="raw executable bytes"
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  normalized_sha256="$(sha256sum "$normalized_binary" | awk '{print $1}')"
+else
+  normalized_sha256="$(shasum -a 256 "$normalized_binary" | awk '{print $1}')"
+fi
+normalized_bytes="$(wc -c < "$normalized_binary" | tr -d ' ')"
+jq -e \
+  --arg platform "$artifact_platform" \
+  --arg normalization "$normalization" \
+  --arg normalized_sha256 "$normalized_sha256" \
+  --arg signature_profile_sha256 "$signature_profile_sha256" \
+  --argjson signature_profile "$signature_profile" \
+  --argjson bytes "$binary_bytes" \
+  --argjson normalized_bytes "$normalized_bytes" '
+    .candidate_binding.status == "tracked-declaration-not-evidence" and
+    .candidate_binding.current_candidate == "resolved by the external receipt validator" and
+    (.candidate_binding.resolver | contains("never a receipt")) and
+    .candidate_binding.installed_binary.platform == $platform and
+    .candidate_binding.installed_binary.raw_bytes == $bytes and
+    .candidate_binding.installed_binary.signature_profile == $signature_profile and
+    .candidate_binding.installed_binary.signature_profile_sha256 == $signature_profile_sha256 and
+    .candidate_binding.installed_binary.normalization == $normalization and
+    .candidate_binding.installed_binary.normalized_sha256 == $normalized_sha256 and
+    .candidate_binding.installed_binary.normalized_bytes == $normalized_bytes
+  ' agent-standards/product-fitness-disposition.json >/dev/null
 
 workspace="$observation_root/journey"
-"$binary" init "$workspace" --name "Installed researcher journey" >/dev/null
+ssh-keygen -q -t ed25519 -N '' -f "$observation_root/review-key"
+"$binary" init "$workspace" --name "Installed researcher journey" \
+  --review-authority-id researcher \
+  --review-authority-public-key "$observation_root/review-key.pub" >/dev/null
 
 installed_command() {
   (cd "$workspace" && "$binary" "$@")
@@ -39,8 +145,13 @@ installed_command evidence add --id evidence-one --claim claim-one --source sour
 installed_command experiment add --id experiment-one --question 'Question?' --method-ref method.md \
   --observation Observed --interpretation Interpretation --limitation Limited \
   --outcome negative --next-move Repeat >/dev/null
-installed_command review add --id review-one --claim claim-one --decision limited \
-  --rationale 'Negative repeat limits the claim.' --reviewer Researcher >/dev/null
+installed_command review prepare --id review-one --claim claim-one --decision limited \
+  --rationale 'Negative repeat limits the claim.' --reviewer Researcher \
+  >"$observation_root/review-request.json"
+ssh-keygen -Y sign -f "$observation_root/review-key" \
+  -n research-run-review-v1 "$observation_root/review-request.json" >/dev/null
+installed_command review add --request "$observation_root/review-request.json" \
+  --signature "$observation_root/review-request.json.sig" >/dev/null
 installed_command validate --json | jq -e '.valid == true' >/dev/null
 installed_command status --json | jq -e \
   '.claims[0].assessment == "limited" and .experiments[0].outcome == "negative"' >/dev/null
@@ -95,7 +206,6 @@ cp "$binary" "$stripped"
 strip "$stripped"
 
 archive_bytes="$(wc -c < "$archive" | tr -d ' ')"
-binary_bytes="$(wc -c < "$binary" | tr -d ' ')"
 stripped_binary_bytes="$(wc -c < "$stripped" | tr -d ' ')"
 install_kib="$(du -sk "$observation_root/install" | awk '{print $1}')"
 target_after_kib="$(du -sk target | awk '{print $1}')"
@@ -104,8 +214,15 @@ coverage_target_kib="$(du -sk target/llvm-cov-target 2>/dev/null | awk '{print $
 jq -n \
   --arg candidate "$(git rev-parse HEAD)" \
   --arg cache_state "warm Cargo cache; clean source candidate" \
+  --arg installed_binary_platform "$artifact_platform" \
+  --arg installed_binary_raw_sha256 "$binary_raw_sha256" \
+  --arg installed_binary_signature_profile_sha256 "$signature_profile_sha256" \
+  --argjson installed_binary_signature_profile "$signature_profile" \
+  --arg installed_binary_normalization "$normalization" \
+  --arg installed_binary_normalized_sha256 "$normalized_sha256" \
   --argjson archive_bytes "$archive_bytes" \
   --argjson binary_bytes "$binary_bytes" \
+  --argjson normalized_binary_bytes "$normalized_bytes" \
   --argjson stripped_binary_bytes "$stripped_binary_bytes" \
   --argjson install_kib "$install_kib" \
   --argjson target_before_kib "$target_before_kib" \
@@ -117,4 +234,4 @@ jq -n \
   --argjson status_warm_seconds "$status_warm_seconds" \
   --argjson recovery_cold_seconds "$recovery_cold_seconds" \
   --argjson recovery_warm_seconds "$recovery_warm_seconds" \
-  '{candidate:$candidate, cache_state:$cache_state, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine reproducible observation only; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'
+  '{candidate:$candidate, cache_state:$cache_state, installed_binary_platform:$installed_binary_platform, installed_binary_raw_sha256:$installed_binary_raw_sha256, installed_binary_signature_profile:$installed_binary_signature_profile, installed_binary_signature_profile_sha256:$installed_binary_signature_profile_sha256, installed_binary_normalization:$installed_binary_normalization, installed_binary_normalized_sha256:$installed_binary_normalized_sha256, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,normalized_binary:$normalized_binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine, platform-qualified reproducible observation only; the raw Mach-O signature is verified as empty-entitlement ad-hoc linker signing and its canonical profile is bound before normalization; the ephemeral raw hash is reported but content binding then removes only that verified signature and zeroes LC_UUID; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'

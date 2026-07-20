@@ -107,6 +107,7 @@ fn review(id: &str) -> ReviewDecision {
         decision: Assessment::Limited,
         rationale: "Rationale".to_owned(),
         reviewer: "Reviewer".to_owned(),
+        authorization: None,
     }
 }
 

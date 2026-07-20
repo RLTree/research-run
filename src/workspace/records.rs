@@ -115,6 +115,7 @@ impl Workspace {
                 "must exactly bind the current claim, evidence, and referenced authority",
             ));
         }
+        self.verify_review_authorization(&snapshot, record)?;
         if snapshot.reviews.iter().any(|review| {
             review.claim_id == record.claim_id
                 && review.evidence_ids == record.evidence_ids
@@ -142,6 +143,7 @@ impl Workspace {
                 let counts = snapshot.counts();
                 let mut errors = self.reference_errors(&snapshot);
                 errors.extend(self.review_binding_errors(&snapshot));
+                errors.extend(self.review_authorization_errors(&snapshot));
                 ValidationResult {
                     valid: errors.is_empty(),
                     errors,

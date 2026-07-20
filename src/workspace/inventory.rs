@@ -2,15 +2,27 @@ use std::path::Path;
 
 use crate::domain::{
     FORMAT_VERSION, InventoryPlan, InventorySnapshot, ProjectManifest, ReconciliationKind,
+    ReviewAuthority,
 };
 use crate::{Error, Result};
 
+use super::inventory_authority::{
+    inventory_apply_workspace, inventory_plan_review_authority, latest_inventory_from_snapshot,
+    verified_inventory_plan_snapshot, verify_inventory_target,
+};
+use super::inventory_bootstrap::{finish_inventory_bootstrap, inventory_bootstrap_error};
 use super::inventory_reconcile::reconcile;
 use super::inventory_scan::scan_materials;
 use super::path_safety::{create_directory_chain, reject_symlink_chain};
+use super::sshsig::parse_authority_key;
 use super::storage::{ReadBudget, read_json_with_budget};
 use super::write_lock::WorkspaceWriteLock;
-use super::{STATE_DIRECTORY, Workspace};
+use super::{InventoryApplyResult, STATE_DIRECTORY, Workspace};
+
+pub enum ReviewBootstrap {
+    Authority(ReviewAuthority),
+    WithoutReviewAuthority,
+}
 
 impl Workspace {
     pub fn plan_retrofit(
@@ -18,8 +30,9 @@ impl Workspace {
         name: &str,
         id: &str,
         observed_at: &str,
+        bootstrap: Option<ReviewBootstrap>,
     ) -> Result<InventoryPlan> {
-        Self::plan_inventory(root, name, id, observed_at, false)
+        Self::plan_inventory(root, name, id, observed_at, false, bootstrap)
     }
 
     pub fn plan_reconciliation(
@@ -28,7 +41,7 @@ impl Workspace {
         id: &str,
         observed_at: &str,
     ) -> Result<InventoryPlan> {
-        Self::plan_inventory(root, name, id, observed_at, true)
+        Self::plan_inventory(root, name, id, observed_at, true, None)
     }
 
     fn plan_inventory(
@@ -37,13 +50,26 @@ impl Workspace {
         id: &str,
         observed_at: &str,
         require_previous: bool,
+        bootstrap: Option<ReviewBootstrap>,
     ) -> Result<InventoryPlan> {
         let (root, entries) = scan_materials(root)?;
-        let requested = ProjectManifest::new(name)?;
         let existing = Self::at_exact_root(&root)?;
-        let manifest = match &existing {
-            Some(workspace) => workspace.read_manifest()?,
-            None => requested,
+        let existing_snapshot = verified_inventory_plan_snapshot(existing.as_ref())?;
+        let manifest = match (&existing_snapshot, &bootstrap) {
+            (Some(snapshot), None) => snapshot.manifest.clone(),
+            (Some(_), Some(_)) => {
+                return Err(Error::Conflict(
+                    "workspace already exists; review authority bootstrap applies only to a new retrofit"
+                        .to_owned(),
+                ));
+            }
+            (None, Some(_)) => ProjectManifest::new(name)?,
+            (None, None) => {
+                return Err(Error::invalid(
+                    "retrofit review authority",
+                    "supply a review authority or explicitly opt out before planning a new workspace",
+                ));
+            }
         };
         if manifest.name != name {
             return Err(Error::Conflict(format!(
@@ -71,14 +97,19 @@ impl Workspace {
             .as_ref()
             .map(|snapshot| reconcile(&snapshot.entries, &entries))
             .unwrap_or_default();
+        let (review_authority, without_review_authority) =
+            inventory_plan_review_authority(existing_snapshot.as_ref(), bootstrap.as_ref())?;
         let plan = InventoryPlan {
             schema_version: FORMAT_VERSION,
             kind: "inventory-plan".to_owned(),
             id: id.to_owned(),
             project_name: manifest.name,
             project_id: manifest.project_id,
+            workspace_id: manifest.workspace_id,
             observed_at: observed_at.to_owned(),
             previous_snapshot_id: previous.map(|snapshot| snapshot.id),
+            review_authority,
+            without_review_authority,
             entries,
             changes,
         };
@@ -87,27 +118,51 @@ impl Workspace {
     }
 
     pub fn apply_inventory_plan(root: &Path, plan: InventoryPlan) -> Result<bool> {
+        Ok(Self::apply_inventory_plan_with_status(root, plan)?.created)
+    }
+
+    pub(crate) fn apply_inventory_plan_with_status(
+        root: &Path,
+        plan: InventoryPlan,
+    ) -> Result<InventoryApplyResult> {
         plan.validate()?;
+        if let Some(authority) = &plan.review_authority {
+            parse_authority_key(authority)?;
+        }
         let (root, current) = scan_materials(root)?;
         if current != plan.entries {
             return Err(Error::Conflict(
                 "project materials changed after planning; create a fresh plan".to_owned(),
             ));
         }
-        let workspace = match Self::at_exact_root(&root)? {
-            Some(workspace) => workspace,
-            None => Self::initialize(&root, &plan.project_name)?,
-        };
-        let manifest = workspace.read_manifest()?;
-        if manifest.project_id != plan.project_id || manifest.name != plan.project_name {
-            return Err(Error::Conflict(
-                "inventory plan project identity does not match target workspace".to_owned(),
-            ));
+        let (workspace, bootstrap_in_progress) = inventory_apply_workspace(&root, &plan)?;
+        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state).map_err(|error| {
+            if bootstrap_in_progress {
+                inventory_bootstrap_error(&plan, error)
+            } else {
+                error
+            }
+        })?;
+        let result = Self::apply_inventory_plan_locked(&root, &workspace, &plan);
+        match result {
+            Ok(result) => {
+                if bootstrap_in_progress {
+                    finish_inventory_bootstrap(&workspace)
+                        .map_err(|error| inventory_bootstrap_error(&plan, error))?;
+                }
+                Ok(result)
+            }
+            Err(error) if bootstrap_in_progress => Err(inventory_bootstrap_error(&plan, error)),
+            Err(error) => Err(error),
         }
-        let directory = workspace.state.join("inventories");
-        create_directory_chain(&directory)?;
-        let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
-        let (_, locked_entries) = scan_materials(&root)?;
+    }
+
+    fn apply_inventory_plan_locked(
+        root: &Path,
+        workspace: &Workspace,
+        plan: &InventoryPlan,
+    ) -> Result<InventoryApplyResult> {
+        let (_, locked_entries) = scan_materials(root)?;
         if super::injected_storage_failure("materials changed under lock")
             || locked_entries != plan.entries
         {
@@ -116,11 +171,18 @@ impl Workspace {
                     .to_owned(),
             ));
         }
+        let authority_snapshot = workspace.load_snapshot()?;
+        let review_authority = verify_inventory_target(workspace, &authority_snapshot, plan)?;
+        let directory = workspace.state.join("inventories");
+        create_directory_chain(&directory)?;
         let snapshot = InventorySnapshot::from(plan.clone());
         if workspace.record_is_identical("inventories", &snapshot)? {
-            return Ok(false);
+            return Ok(InventoryApplyResult {
+                created: false,
+                review_authority,
+            });
         }
-        let latest = workspace.latest_inventory()?;
+        let latest = latest_inventory_from_snapshot(&authority_snapshot);
         if latest.as_ref().map(|value| value.id.as_str()) != plan.previous_snapshot_id.as_deref() {
             return Err(Error::Conflict(
                 "inventory authority changed after planning; create a fresh plan".to_owned(),
@@ -144,7 +206,11 @@ impl Workspace {
                 "reconciliation contains ambiguous identity conflicts".to_owned(),
             ));
         }
-        workspace.publish_record("inventories", &snapshot)
+        let created = workspace.publish_record("inventories", &snapshot)?;
+        Ok(InventoryApplyResult {
+            created,
+            review_authority,
+        })
     }
 
     pub fn read_inventory_plan(path: &Path) -> Result<InventoryPlan> {

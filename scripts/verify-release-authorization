@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+# shellcheck source=scripts/release-authorization-inputs
+source "$repo_root/scripts/release-authorization-inputs"
+
+if [[ "$#" -ne 4 ]]; then
+  echo "usage: scripts/verify-release-authorization REQUEST SIGNATURE PUBLIC_KEY AUTHORITY_ID" >&2
+  exit 2
+fi
+
+request_source="$1"
+signature_source="$2"
+public_key_source="$3"
+authority_id="$4"
+validate_release_authority_id "$authority_id"
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "release authorization verification requires a clean exact candidate" >&2
+  exit 1
+fi
+
+git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+snapshot_parent="$git_common_dir/release-evidence"
+mkdir -p "$snapshot_parent"
+snapshot="$(mktemp -d "$snapshot_parent/.verify.XXXXXX")"
+trap 'rm -rf "$snapshot"' EXIT
+scripts/snapshot-release-inputs.py \
+  "$snapshot" "$request_source" "$signature_source" "$public_key_source"
+request="$snapshot/request.json"
+signature="$snapshot/request.sig"
+public_key="$snapshot/owner.pub"
+scripts/validate-canonical-json.py "$request"
+
+public_key_line="$(canonical_release_public_key "$public_key")"
+key_description="$(ssh-keygen -lf "$public_key" -E sha256)"
+fingerprint="$(awk '{print $2}' <<<"$key_description")"
+candidate="$(git rev-parse HEAD)"
+tree="$(git rev-parse 'HEAD^{tree}')"
+version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
+lockfile_sha256="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
+
+jq -e \
+  --arg authority_id "$authority_id" \
+  --arg signer_fingerprint "$fingerprint" \
+  --arg candidate "$candidate" \
+  --arg tree "$tree" \
+  --arg version "$version" \
+  --arg lockfile_sha256 "$lockfile_sha256" '
+  (keys | sort) == ([
+    "format_version", "kind", "namespace", "authority_id",
+    "signer_fingerprint", "candidate", "decision", "publishing_authorized",
+    "claims", "claim_ceiling"
+  ] | sort) and
+  .format_version == 1 and
+  .kind == "release-candidate-authorization" and
+  .namespace == "research-run-release-v1" and
+  .authority_id == $authority_id and
+  .signer_fingerprint == $signer_fingerprint and
+  .candidate == {
+    git_commit: $candidate,
+    git_tree: $tree,
+    cargo_version: $version,
+    cargo_lock_sha256: $lockfile_sha256
+  } and
+  .decision == "candidate-ready-for-material-review" and
+  .publishing_authorized == false and
+  .claims == {
+    personhood: false,
+    scientific_truth: false,
+    product_fitness: "withheld-unless-separately-disposed",
+    continuance: "withheld"
+  } and
+  .claim_ceiling ==
+    "Configured-key approval of this exact release candidate for material review; no merge, tag, publication, personhood, scientific truth, Product Fitness, or continuance claim."
+' "$request" >/dev/null || {
+  echo "release authorization request is malformed, overbroad, or bound to a different candidate" >&2
+  exit 1
+}
+
+allowed_signers="$(mktemp "${TMPDIR:-/tmp}/research-run-release-signers.XXXXXX")"
+trap 'rm -f "$allowed_signers"' EXIT
+printf '%s namespaces="research-run-release-v1" %s\n' \
+  "$authority_id" "$public_key_line" >"$allowed_signers"
+ssh-keygen -Y verify \
+  -f "$allowed_signers" \
+  -I "$authority_id" \
+  -n research-run-release-v1 \
+  -s "$signature" <"$request" >/dev/null
+
+jq -n \
+  --arg candidate "$candidate" \
+  --arg authority_id "$authority_id" \
+  --arg signer_fingerprint "$fingerprint" \
+  --arg request_sha256 "$(shasum -a 256 "$request" | awk '{print $1}')" \
+  --arg signature_sha256 "$(shasum -a 256 "$signature" | awk '{print $1}')" '{
+    candidate: $candidate,
+    authority_id: $authority_id,
+    signer_fingerprint: $signer_fingerprint,
+    request_sha256: $request_sha256,
+    signature_sha256: $signature_sha256,
+    verified: true,
+    proof: "configured-key control of the exact request; not personhood or publication authority"
+  }'

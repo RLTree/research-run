@@ -4,6 +4,7 @@ use std::path::Path;
 
 use serde::de::DeserializeOwned;
 
+use crate::domain::ReviewAuthority;
 use crate::{Error, Result};
 
 const MAX_INPUT_BYTES: u64 = 1_048_576;
@@ -11,6 +12,33 @@ const MAX_INPUT_BYTES: u64 = 1_048_576;
 pub(super) fn read_json_input<T: DeserializeOwned>(input: &str) -> Result<T> {
     let (bytes, label) = read_json_bytes(input)?;
     serde_json::from_slice(&bytes).map_err(|_| Error::MalformedJson { path: label })
+}
+
+pub(super) fn read_text_input(input: &str) -> Result<String> {
+    let (bytes, label) = read_json_bytes(input)?;
+    String::from_utf8(bytes).map_err(|_| {
+        Error::invalid(
+            "structured input",
+            format!("{} is not UTF-8", label.display()),
+        )
+    })
+}
+
+pub(super) fn read_review_authority_pair(
+    id: Option<String>,
+    public_key: Option<String>,
+) -> Result<Option<ReviewAuthority>> {
+    match (id, public_key) {
+        (Some(id), Some(public_key)) => Ok(Some(ReviewAuthority::from_openssh(
+            id,
+            &read_text_input(&public_key)?,
+        )?)),
+        (None, None) => Ok(None),
+        _ => Err(Error::invalid(
+            "review authority",
+            "id and public key must be supplied together",
+        )),
+    }
 }
 
 fn read_json_bytes(input: &str) -> Result<(Vec<u8>, std::path::PathBuf)> {

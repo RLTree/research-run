@@ -18,10 +18,16 @@ records inside one workspace without silently raising scientific claims.
    output and receipts cannot promote a claim.
 
 Canonical authority lives only in `.research-run/`: one manifest plus source,
-claim, evidence, experiment, human-review, inventory, typed knowledge, and
-relationship JSON records. A review decision is
-the only semantic authority that changes a claim assessment. It stores the
-sorted evidence IDs reviewed by the human; status applies it only while that
+claim, evidence, experiment, review-authority, human-review, inventory, typed
+knowledge, and relationship JSON records. A signed review decision is the only
+semantic authority that changes a claim assessment. The agent prepares a
+canonical request; a separately controlled Ed25519 key signs it under the
+`research-run-review-v1` namespace; import, recovery, validation, and status
+verify the detached SSHSIG against the public key anchored by the repository
+owner during initialization. The manifest's immutable random workspace ID
+prevents same-name workspace replay. This proves configured-key control, while
+human custody remains an operational boundary. The review also stores the
+sorted evidence IDs reviewed by the human, and status applies it only while that
 binding exactly matches the current claim evidence graph.
 
 Retrofit and reconciliation use the same authority path. A read-only plan scans
@@ -31,6 +37,9 @@ only an exact unchanged plan, then publishes the complete inventory as one
 atomic record. Later reconciliation records added, changed, moved, missing,
 duplicate, or ambiguous material without editing project bytes or converting
 absence into deletion.
+New-workspace apply retains a plan-digest bootstrap marker until that inventory
+commits. A failure after initialization is therefore an explicit ambiguous
+effect recoverable only by reapplying the exact accepted plan.
 
 Knowledge records cover goals, research questions, hypotheses, protocols,
 methods, observations, measurements, analyses, interpretations, decisions,

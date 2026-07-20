@@ -88,22 +88,13 @@ fn identical_pending_review_is_cleanup_not_a_semantic_conflict() {
             "human",
         ],
     );
-    succeeds(
+    crate::review_test_signing::add_signed_review(
         &project.0,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-one",
-            "--claim",
-            "claim-one",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Bounded support",
-            "--reviewer",
-            "Researcher",
-        ],
+        "review-one",
+        "claim-one",
+        "limited",
+        "Bounded support",
+        "Researcher",
     );
     let reviews = project.0.join(".research-run/reviews");
     let canonical = reviews.join("review-one.json");

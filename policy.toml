@@ -37,6 +37,15 @@ conflicting_identity = "fail_closed"
 distinct = ["source", "package", "install", "cache", "discovery", "runtime", "journey", "github", "release", "real_use", "product"]
 withheld = ["scientific_truth", "real_world_usefulness", "scientific_impact", "ultragoal_install", "ultragoal_discovery", "ultragoal_runtime_activation", "full_fitted_governance"]
 
+[release]
+version = "0.1.0"
+class = "technical_preview"
+contract = "docs/release/0.1.0.md"
+publication_authorized = false
+personhood_claim = false
+scientific_truth_claim = false
+product_fitness_claim = "withheld_until_external_observation_and_actor_disjoint_review"
+
 [checks]
 fast = "scripts/check fast"
 full = "scripts/check full"
@@ -83,6 +92,9 @@ source_commit = "0355039bf621113e7089c235a298c7a8b085397f"
 installed_cache_version_observed = "0.0.11"
 fit_candidate = "80657ca065a93a49521f414db891dff775cf45e9"
 fit_classification = "conflicting"
+fit_record_status = "historical_non_authoritative"
+current_fit_classification = "withheld_not_reprobed"
+fit_receipt = "absent"
 fit_missing_files = 67
 fit_conflicts = ["AGENTS.md", "AGENT_STANDARDS.md", "ARCHITECTURE.md", "scripts/check"]
 fit_plan_sha256 = "71dd2b2a2bb8246586596de234d9e5cf5b53827ea15446de78b0a0ba4efdd7a2"

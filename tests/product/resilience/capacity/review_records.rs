@@ -3,55 +3,44 @@ use super::*;
 pub(super) fn review_capacity() {
     let root = initialize("review-capacity");
     seed_claims(&root.0, RECORD_CAPACITY);
+    let signer = crate::review_test_signing::ReviewSigner::for_project(&root.0);
     for index in 0..RECORD_CAPACITY - 1 {
         write_record(
             &root.0,
             "reviews",
             &format!("review-{index}"),
-            json!({
-                "schema_version": 1, "kind": "review", "id": format!("review-{index}"),
-                "claim_id": format!("claim-{index}"), "evidence_ids": [], "decision": "limited",
-                "rationale": "Rationale", "reviewer": "Reviewer"
-            }),
+            signer.record(
+                &format!("review-{index}"),
+                &format!("claim-{index}"),
+                "limited",
+            ),
         );
     }
-    assert!(
-        run(
-            &root.0,
-            &[
-                "review",
-                "add",
-                "--id",
-                "review-capacity",
-                "--claim",
-                "claim-9999",
-                "--decision",
-                "limited",
-                "--rationale",
-                "Rationale",
-                "--reviewer",
-                "Reviewer",
-            ],
-            None,
-        )
-        .status
-        .success()
+    crate::review_test_signing::add_signed_review(
+        &root.0,
+        "review-capacity",
+        "claim-9999",
+        "limited",
+        "Rationale",
+        "Reviewer",
+    );
+    let overflow = crate::review_test_signing::prepare_signed_review(
+        &root.0,
+        "review-overflow",
+        "claim-0",
+        "limited",
+        "Rationale",
+        "Reviewer",
     );
     assert_capacity_error(run(
         &root.0,
         &[
             "review",
             "add",
-            "--id",
-            "review-overflow",
-            "--claim",
-            "claim-0",
-            "--decision",
-            "limited",
-            "--rationale",
-            "Rationale",
-            "--reviewer",
-            "Reviewer",
+            "--request",
+            &overflow.request.to_string_lossy(),
+            "--signature",
+            &overflow.signature.to_string_lossy(),
         ],
         None,
     ));

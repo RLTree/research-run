@@ -25,13 +25,13 @@
   "obligation_evidence": {
     "namespace-progressive-disclosure": ["scripts/check-standards", "fixtures/namespace"],
     "boundaries-validation-enforcement": ["scripts/check", "scripts/check-coverage", "scripts/check-standards"],
-    "execplans-worktrees-orchestration": ["docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md", "STANDARD.md"],
+    "execplans-worktrees-orchestration": ["docs/exec-plans/active/2026-07-20-v0.1-release-readiness.md", "STANDARD.md"],
     "security-reliability-product-cohesion": ["tests/product/workspace_defense.rs", "tests/product/researcher_journey.rs", "scripts/check"],
-    "review-completion": ["STANDARD.md", "policy.toml"],
+    "review-completion": ["STANDARD.md", "policy.toml", "docs/release/0.1.0.md", "scripts/prepare-release-authorization", "scripts/verify-release-authorization", "scripts/release-authorization-inputs", "fixtures/release-authorization"],
     "standards-gardening": ["scripts/check-standards", "agent-standards/obligations.json"],
     "cli-authority-proof-surfaces": ["AGENTS.md", "STANDARD.md", "policy.toml"],
     "observability-repair-loop": ["STANDARD.md"],
-    "product-success-quality-in-use": ["agent-standards/product-fitness-disposition.json", "scripts/check-standards"],
+    "product-success-quality-in-use": ["agent-standards/product-fitness-disposition.json", "agent-standards/product-fitness-first-use.jq", "agent-standards/product-fitness-session-window.jq", "agent-standards/product-fitness-disposition.jq", "agent-standards/product-fitness-disposition.template.json", "docs/release/product-fitness-protocol.md", "scripts/check-product-fitness-receipt", "scripts/check-product-fitness-disposition", "fixtures/product-fitness", "scripts/check-standards"],
     "plugin-activation-distribution": ["STANDARD.md", "policy.toml"],
     "research-improvement-quality-gates": ["docs/research/2026-07-17-v0.1-evidence-and-decisions.md", "scripts/check"],
     "tool-risk-runtime-substrates": ["Cargo.toml", "Cargo.lock", "deny.toml", "rust-toolchain.toml"]

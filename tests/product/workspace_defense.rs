@@ -48,9 +48,10 @@ fn succeeds(cwd: &Path, args: &[&str]) -> Output {
 
 fn workspace(label: &str) -> TempDir {
     let temporary = TempDir::new(label);
-    succeeds(
+    crate::review_test_signing::initialize_with_test_authority(
         &temporary.0,
-        &["init", ".", "--name", "Adversarial fixture"],
+        &temporary.0,
+        "Adversarial fixture",
     );
     temporary
 }

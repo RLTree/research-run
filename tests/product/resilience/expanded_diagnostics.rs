@@ -16,6 +16,7 @@ fn installed_inventory_reader_rejects_semantically_invalid_plan() {
             "inventory-one",
             "--observed-at",
             "2026-07-18T20:00:00Z",
+            "--without-review-authority",
         ],
         None,
     );
@@ -53,6 +54,7 @@ fn installed_retrofit_scan_propagates_both_file_symlink_rechecks() {
                 "inventory-one",
                 "--observed-at",
                 "2026-07-18T20:00:00Z",
+                "--without-review-authority",
             ],
             Some(fault),
         );

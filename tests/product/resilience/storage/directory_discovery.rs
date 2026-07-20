@@ -11,6 +11,7 @@ fn installed_process_exercises_directory_race_and_current_directory_faults() {
             nested.to_str().expect("UTF-8 fixture"),
             "--name",
             "Directory race",
+            "--without-review-authority",
         ],
         Some("directory already exists"),
     );
@@ -51,6 +52,7 @@ fn installed_process_exercises_directory_race_and_current_directory_faults() {
                 target.to_str().expect("UTF-8 fixture"),
                 "--name",
                 "Fault",
+                "--without-review-authority",
             ],
             Some(fault),
         );
@@ -60,7 +62,13 @@ fn installed_process_exercises_directory_race_and_current_directory_faults() {
     let root = TempDir::new("storage-current-directory");
     let output = run(
         &root.0,
-        &["init", "relative", "--name", "Fault"],
+        &[
+            "init",
+            "relative",
+            "--name",
+            "Fault",
+            "--without-review-authority",
+        ],
         Some("read current directory"),
     );
     assert!(!output.status.success());
@@ -155,7 +163,7 @@ fn experiment_review_and_read_commands() -> Vec<Vec<&'static str>> {
         ],
         vec![
             "review",
-            "add",
+            "prepare",
             "--id",
             "review-one",
             "--claim",
@@ -206,6 +214,7 @@ fn installed_process_rejects_symlink_ancestors_and_non_utf8_entries() {
             link.join("missing").to_str().expect("UTF-8 fixture"),
             "--name",
             "Unsafe",
+            "--without-review-authority",
         ],
         None,
     );

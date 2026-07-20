@@ -7,7 +7,11 @@ use crate::{Error, Result};
 use super::validation::{
     required_text, validate_header, validate_hex_digest, validate_id, validate_timestamp,
 };
-use super::{CanonicalRecord, MAX_INVENTORY_ENTRIES};
+use super::{CanonicalRecord, MAX_INVENTORY_ENTRIES, ReviewAuthority};
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "kebab-case")]
@@ -82,8 +86,14 @@ pub struct InventoryPlan {
     pub id: String,
     pub project_name: String,
     pub project_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub workspace_id: String,
     pub observed_at: String,
     pub previous_snapshot_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review_authority: Option<ReviewAuthority>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub without_review_authority: bool,
     pub entries: Vec<MaterialEntry>,
     pub changes: Vec<ReconciliationChange>,
 }
@@ -91,6 +101,21 @@ pub struct InventoryPlan {
 impl InventoryPlan {
     pub fn validate(&self) -> Result<()> {
         validate_header(self.schema_version, &self.kind, "inventory-plan")?;
+        if self.review_authority.is_some() && self.without_review_authority {
+            return Err(Error::invalid(
+                "inventory plan review authority",
+                "authority and unanchored opt-out are mutually exclusive",
+            ));
+        }
+        if let Some(authority) = &self.review_authority {
+            authority.validate()?;
+        }
+        if self.review_authority.is_some()
+            || self.without_review_authority
+            || !self.workspace_id.is_empty()
+        {
+            validate_hex_digest(&self.workspace_id, "inventory plan workspace_id")?;
+        }
         validate_common(self)
     }
 }

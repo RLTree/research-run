@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-authority.schema.json",
+  "title": "Research Run ReviewAuthority v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "public_key", "fingerprint"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "review-authority" },
+    "id": { "$ref": "types.schema.json#/$defs/id" },
+    "public_key": { "$ref": "types.schema.json#/$defs/text" },
+    "fingerprint": { "$ref": "types.schema.json#/$defs/text" }
+  }
+}

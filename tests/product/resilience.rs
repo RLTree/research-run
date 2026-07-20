@@ -41,11 +41,7 @@ fn run(cwd: &Path, args: &[&str], fault: Option<&str>) -> Output {
 
 fn initialize(label: &str) -> TempDir {
     let root = TempDir::new(label);
-    assert!(
-        run(&root.0, &["init", ".", "--name", "Coverage"], None)
-            .status
-            .success()
-    );
+    crate::review_test_signing::initialize_with_test_authority(&root.0, &root.0, "Coverage");
     root
 }
 

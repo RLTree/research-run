@@ -18,7 +18,17 @@
     "subject_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "decision": { "enum": ["unsupported", "limited", "supported", "contradicted"] },
     "rationale": { "$ref": "types.schema.json#/$defs/text" },
-    "reviewer": { "$ref": "types.schema.json#/$defs/text" }
+    "reviewer": { "$ref": "types.schema.json#/$defs/text" },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_id", "signer_fingerprint", "signature"],
+      "properties": {
+        "authority_id": { "$ref": "types.schema.json#/$defs/id" },
+        "signer_fingerprint": { "type": "string", "pattern": "^SHA256:[A-Za-z0-9+/]{43}$" },
+        "signature": { "$ref": "types.schema.json#/$defs/text" }
+      }
+    }
   },
   "allOf": [
     {

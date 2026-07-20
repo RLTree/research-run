@@ -1,0 +1,247 @@
+use super::{
+    AuthorshipArg, ClaimCommand, Cli, Command, ContextArgs, EvidenceArgs, EvidenceCommand,
+    ExperimentCommand, HandoffCommand, LimitArgs, ListArgs, OutcomeArg, OutputArgs, ProvenanceArg,
+    RelatedArgs, ReviewArg, ReviewCommand, SearchArgs, ShowArgs, SourceCommand, StanceArg,
+    discover_current, execute, inject_current_directory, inject_current_directory_failure,
+    parse_artifact, render_human_status, terminal_text,
+};
+use crate::domain::{
+    ArtifactLocatorType, Assessment, Authorship, Outcome, SourceProvenance, Stance,
+};
+
+#[path = "tests/review.rs"]
+mod review_tests;
+use crate::workspace::{ProjectStatus, ReviewAuthorityStatus, Status};
+
+#[test]
+fn external_artifact_locator_may_contain_colons() {
+    let pointer = parse_artifact("external:https://example.invalid/a:Public summary")
+        .expect("artifact pointer");
+    assert_eq!(pointer.locator_type, ArtifactLocatorType::External);
+    assert_eq!(pointer.locator, "https://example.invalid/a");
+}
+
+fn assert_discovery_failure(command: Command) {
+    inject_current_directory_failure();
+    assert!(execute(Cli { command }).is_err());
+}
+
+#[test]
+fn every_current_workspace_command_propagates_discovery_failure() {
+    assert_discovery_failure(Command::Source {
+        command: SourceCommand::Add {
+            id: "source-one".to_owned(),
+            citation: "Citation".to_owned(),
+            locator: "local:source".to_owned(),
+            provenance: ProvenanceArg::Human,
+            notes: String::new(),
+        },
+    });
+    assert_discovery_failure(Command::Claim {
+        command: ClaimCommand::Add {
+            id: "claim-one".to_owned(),
+            text: "Claim".to_owned(),
+            scope: "Scope".to_owned(),
+            owner: "Owner".to_owned(),
+            authorship: AuthorshipArg::Human,
+        },
+    });
+    assert_discovery_failure(Command::Evidence {
+        command: EvidenceCommand::Add(EvidenceArgs {
+            id: "evidence-one".to_owned(),
+            claim: "claim-one".to_owned(),
+            source: Some("source-one".to_owned()),
+            experiment: None,
+            artifact: None,
+            stance: StanceArg::Supports,
+            specific_evidence: "Specific".to_owned(),
+            authorship: AuthorshipArg::Human,
+        }),
+    });
+    assert_discovery_failure(Command::Experiment {
+        command: ExperimentCommand::Add {
+            id: "experiment-one".to_owned(),
+            question: "Question?".to_owned(),
+            method_ref: "method".to_owned(),
+            observation: vec!["Observed".to_owned()],
+            interpretation: "Interpretation".to_owned(),
+            limitation: vec!["Limited".to_owned()],
+            outcome: OutcomeArg::Positive,
+            next_move: "Repeat".to_owned(),
+            artifact: Vec::new(),
+        },
+    });
+    assert_discovery_failure(Command::Review {
+        command: ReviewCommand::Add {
+            request: "request.json".to_owned(),
+            signature: "request.json.sig".to_owned(),
+        },
+    });
+    assert_discovery_failure(Command::Validate(OutputArgs { json: true }));
+    assert_discovery_failure(Command::Status(OutputArgs { json: true }));
+    assert_retrieval_discovery_failures();
+}
+
+fn assert_retrieval_discovery_failures() {
+    assert_discovery_failure(Command::List(ListArgs {
+        kind: None,
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Show(ShowArgs {
+        kind: "knowledge".to_owned(),
+        id: "knowledge-one".to_owned(),
+        human: false,
+    }));
+    assert_discovery_failure(Command::Search(SearchArgs {
+        query: "query".to_owned(),
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Recent(limit_args()));
+    assert_discovery_failure(Command::Timeline(limit_args()));
+    assert_discovery_failure(Command::Unresolved(limit_args()));
+    assert_discovery_failure(Command::Blockers(limit_args()));
+    assert_discovery_failure(Command::Next(limit_args()));
+    assert_discovery_failure(Command::Related(RelatedArgs {
+        kind: "knowledge".to_owned(),
+        id: "knowledge-one".to_owned(),
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Context(ContextArgs {
+        query: None,
+        output: limit_args(),
+    }));
+    assert_discovery_failure(Command::Handoff {
+        command: HandoffCommand::Create {
+            id: "handoff-one".to_owned(),
+            generated_at: "2026-07-18T20:00:00Z".to_owned(),
+            query: None,
+            limit: 10,
+            human: false,
+        },
+    });
+}
+
+fn limit_args() -> LimitArgs {
+    LimitArgs {
+        limit: 10,
+        human: false,
+    }
+}
+
+#[test]
+fn artifact_parser_and_value_arguments_cover_every_semantic_variant() {
+    let workspace =
+        parse_artifact("workspace:artifacts/result.txt:Result").expect("workspace pointer");
+    assert_eq!(workspace.locator_type, ArtifactLocatorType::Workspace);
+    for invalid in [
+        "missing-separators",
+        "workspace:missing-description",
+        "unknown:value:description",
+        "workspace::description",
+        "workspace:path:",
+    ] {
+        assert!(parse_artifact(invalid).is_err(), "accepted {invalid}");
+    }
+
+    assert_eq!(
+        SourceProvenance::from(ProvenanceArg::Human),
+        SourceProvenance::Human
+    );
+    assert_eq!(
+        SourceProvenance::from(ProvenanceArg::Imported),
+        SourceProvenance::Imported
+    );
+    assert_eq!(
+        SourceProvenance::from(ProvenanceArg::Ai),
+        SourceProvenance::Ai
+    );
+    assert_eq!(Authorship::from(AuthorshipArg::Human), Authorship::Human);
+    assert_eq!(Authorship::from(AuthorshipArg::Ai), Authorship::Ai);
+    for (argument, expected) in [
+        (StanceArg::Supports, Stance::Supports),
+        (StanceArg::Limits, Stance::Limits),
+        (StanceArg::Contradicts, Stance::Contradicts),
+        (StanceArg::Context, Stance::Context),
+    ] {
+        assert_eq!(Stance::from(argument), expected);
+    }
+    for (argument, expected) in [
+        (OutcomeArg::Positive, Outcome::Positive),
+        (OutcomeArg::Negative, Outcome::Negative),
+        (OutcomeArg::Ambiguous, Outcome::Ambiguous),
+        (OutcomeArg::Inconclusive, Outcome::Inconclusive),
+    ] {
+        assert_eq!(Outcome::from(argument), expected);
+    }
+    for (argument, expected) in [
+        (ReviewArg::Unsupported, Assessment::Unsupported),
+        (ReviewArg::Limited, Assessment::Limited),
+        (ReviewArg::Supported, Assessment::Supported),
+        (ReviewArg::Contradicted, Assessment::Contradicted),
+    ] {
+        assert_eq!(Assessment::from(argument), expected);
+    }
+    assert_eq!(terminal_text("line\n\u{1b}"), "line\\n\\u{1b}");
+}
+
+#[test]
+fn empty_human_projection_and_current_directory_failure_are_explicit() {
+    let output = render_human_status(&Status {
+        format_version: 1,
+        project: ProjectStatus {
+            id: "empty-project".to_owned(),
+            name: "Empty project".to_owned(),
+        },
+        review_authority: ReviewAuthorityStatus {
+            mode: "anchored",
+            id: Some("test-human".to_owned()),
+            fingerprint: Some("SHA256:test".to_owned()),
+            promotion_capable: true,
+            repairable: false,
+            blocker: None,
+            next_action: "Prepare a review.",
+        },
+        claim_ceiling: "Test ceiling",
+        counts: std::collections::BTreeMap::new(),
+        claims: Vec::new(),
+        experiments: Vec::new(),
+        unreviewed_ai_drafts: Vec::new(),
+        blockers: Vec::new(),
+        next_actions: Vec::new(),
+    });
+    assert!(output.contains("Research Run: Empty project (empty-project)"));
+    assert!(output.contains("Claims\n- None. Next action: add a claim."));
+    assert!(output.contains("Unreviewed AI drafts\n- None."));
+    assert!(output.contains("Experiments\n- None."));
+    assert!(matches!(
+        discover_current(),
+        Ok(_) | Err(crate::Error::NotFound(_))
+    ));
+    inject_current_directory_failure();
+    assert!(matches!(
+        discover_current(),
+        Err(crate::Error::Io {
+            action: "read current directory",
+            ..
+        })
+    ));
+    let root = empty_directory();
+    inject_current_directory(&root);
+    assert!(matches!(discover_current(), Err(crate::Error::NotFound(_))));
+    std::fs::remove_dir(root).expect("remove empty directory");
+}
+
+fn empty_directory() -> std::path::PathBuf {
+    for attempt in 0..128 {
+        let root = std::env::temp_dir().join(format!(
+            "research-run-cli-empty-{}-{attempt}",
+            std::process::id()
+        ));
+        match std::fs::create_dir(&root) {
+            Ok(()) => return root,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => panic!("empty directory: {error}"),
+        }
+    }
+    panic!("unable to allocate empty directory")
+}

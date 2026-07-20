@@ -130,11 +130,23 @@ pub(super) fn current_review_bindings<'a>(
 ) -> Result<BTreeMap<&'a str, &'a ReviewDecision>> {
     let mut bindings = BTreeMap::new();
     for review in &snapshot.reviews {
+        // Unsigned reviews cannot be canonical bindings, so they cannot be current or ambiguous.
+        if review.authorization.is_none() {
+            continue;
+        }
+        workspace.verify_review_authorization(snapshot, review)?;
         if review.evidence_ids == claim_evidence_ids(snapshot, &review.claim_id)
             && let Some(expected) = &review.subject_sha256
             && workspace.review_subject_sha256(snapshot, &review.claim_id)? == *expected
+            && let Some(existing) = bindings.insert(review.claim_id.as_str(), review)
         {
-            bindings.insert(review.claim_id.as_str(), review);
+            return Err(crate::Error::invalid(
+                "review authority",
+                format!(
+                    "reviews/{} and reviews/{} have an ambiguous current binding",
+                    existing.id, review.id
+                ),
+            ));
         }
     }
     Ok(bindings)

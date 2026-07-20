@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::domain::EvidenceLink;
+use crate::domain::{ArtifactLocatorType, EvidenceLink};
 use crate::{Error, Result};
 
 use super::inventory_scan::hash_file;
@@ -22,6 +22,10 @@ impl Workspace {
     pub(super) fn review_binding_errors(&self, snapshot: &Snapshot) -> Vec<String> {
         let mut errors = Vec::new();
         for review in &snapshot.reviews {
+            // Unsigned reviews cannot be canonical bindings, so staleness does not apply to them.
+            if review.authorization.is_none() {
+                continue;
+            }
             if review.evidence_ids != claim_evidence_ids(snapshot, &review.claim_id) {
                 continue;
             }
@@ -91,17 +95,34 @@ impl Workspace {
                     Error::invalid("experiment reference", "experiment does not exist")
                 })?;
             hash_serialized(hasher, "experiment", experiment_id, experiment);
+            for artifact in experiment
+                .artifacts
+                .iter()
+                .filter(|artifact| artifact.locator_type == ArtifactLocatorType::Workspace)
+            {
+                self.hash_workspace_artifact(hasher, "experiment-artifact", &artifact.locator)?;
+            }
         }
         if let Some(locator) = &evidence.artifact {
-            let (bytes, digest) = hash_file(&self.validate_workspace_path(locator)?)?;
-            hash_frame(
-                hasher,
-                "artifact",
-                Path::new(locator).as_os_str().as_encoded_bytes(),
-            );
-            hasher.update(bytes.to_be_bytes());
-            hasher.update(digest.as_bytes());
+            self.hash_workspace_artifact(hasher, "artifact", locator)?;
         }
+        Ok(())
+    }
+
+    fn hash_workspace_artifact(
+        &self,
+        hasher: &mut Sha256,
+        kind: &str,
+        locator: &str,
+    ) -> Result<()> {
+        let (bytes, digest) = hash_file(&self.validate_workspace_path(locator)?)?;
+        hash_frame(
+            hasher,
+            kind,
+            Path::new(locator).as_os_str().as_encoded_bytes(),
+        );
+        hasher.update(bytes.to_be_bytes());
+        hasher.update(digest.as_bytes());
         Ok(())
     }
 }

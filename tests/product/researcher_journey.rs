@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::Value;
 
+use crate::review_test_signing::{add_signed_review, initialize_with_test_authority};
+
 #[path = "researcher_journey/value_variants.rs"]
 mod value_variants;
 
@@ -15,7 +17,9 @@ pub(super) struct TempDir(pub(super) PathBuf);
 impl TempDir {
     pub(super) fn new(label: &str) -> Self {
         let sequence = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
+        let test_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("target/test-workspaces");
+        fs::create_dir_all(&test_root).expect("create worktree-local test root");
+        let path = test_root.join(format!(
             "research-run-{label}-{}-{sequence}",
             std::process::id()
         ));
@@ -53,11 +57,7 @@ pub(super) fn succeeds(cwd: &Path, args: &[&str]) -> Output {
 fn clean_clone_journey_preserves_negative_results_and_claim_ceiling() {
     let temporary = TempDir::new("journey");
     let project = temporary.0.join("project");
-    let project_text = project.to_string_lossy();
-    succeeds(
-        &temporary.0,
-        &["init", &project_text, "--name", "Synthetic assay"],
-    );
+    initialize_with_test_authority(&temporary.0, &project, "Synthetic assay");
     add_source_and_claim(&project);
     add_supporting_evidence(&project);
     add_negative_repeat(&project);
@@ -105,6 +105,12 @@ fn add_supporting_evidence(project: &Path) {
 }
 
 fn add_negative_repeat(project: &Path) {
+    fs::create_dir_all(project.join("artifacts")).expect("create artifact directory");
+    fs::write(
+        project.join("artifacts/summary.txt"),
+        b"Deidentified negative-control summary.\n",
+    )
+    .expect("write experiment artifact");
     succeeds(
         project,
         &[
@@ -183,22 +189,13 @@ fn assert_claim_ceiling_before_review(project: &Path) {
 }
 
 fn add_limited_review(project: &Path) {
-    succeeds(
+    add_signed_review(
         project,
-        &[
-            "review",
-            "add",
-            "--id",
-            "review-binding",
-            "--claim",
-            "claim-binding",
-            "--decision",
-            "limited",
-            "--rationale",
-            "The source supports the claim, but the negative repeat limits it.",
-            "--reviewer",
-            "Example Researcher",
-        ],
+        "review-binding",
+        "claim-binding",
+        "limited",
+        "The source supports the claim, but the negative repeat limits it.",
+        "Example Researcher",
     );
 }
 

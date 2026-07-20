@@ -4,6 +4,18 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
+export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
+export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
+
+case "$repo_root/" in
+  /tmp/* | /private/tmp/*)
+    echo "worktree custody failure: durable repository work may not run from a temporary filesystem" >&2
+    echo "move the checkout or linked worktree under a durable project root" >&2
+    exit 1
+    ;;
+esac
+
 ledger="agent-standards/obligations.json"
 expected="agent-standards/expected-classifications.json"
 
@@ -24,10 +36,14 @@ jq -e '
   (.package_delta.artifact == "harness-ultragoal-governance-complete.zip") and
   (.package_delta.sha256 == "089382f27b64c6eb219b3a032296917dc8984129a52e56e63cb77ba66ba72377") and
   (.package_delta.inventory == {"laws":160,"classified_items":172,"validator_issues":0}) and
-  (.namespace.boundary_exceptions | length == 2) and
+  (.namespace.boundary_exceptions | length == 3) and
   (.namespace.boundary_exceptions | any(
     .path == "src/lib.rs" and .class == "product_source" and
     .allowed_name == "lib" and (.forcing_contract | startswith("Cargo library crate root")))) and
+  (.namespace.boundary_exceptions | any(
+    .path == "fixtures/namespace/green/source-layout/src/lib.rs" and
+    .class == "validator_fixture" and .allowed_name == "lib" and
+    (.forcing_contract | startswith("Green semantic source-layout fixture")))) and
   (.namespace.boundary_exceptions | any(
     .path == "fixtures/namespace/red/phase4_rebind.rs" and
     .class == "validator_fixture" and .allowed_name == "phase4_rebind" and
@@ -102,12 +118,73 @@ jq -e '
   .claim_id == "research-run-v0.1-real-use-fitness" and
   .status == "withheld" and
   .owner == "human product-fitness reviewer" and
+  .candidate_binding.status == "tracked-declaration-not-evidence" and
+  .candidate_binding.current_candidate == "resolved by the external receipt validator" and
+  (.candidate_binding.resolver | contains("clean Git HEAD")) and
+  (.candidate_binding.resolver | contains("never a receipt")) and
+  (.candidate_binding.required_identity | contains("clean Git HEAD")) and
+  (.candidate_binding.required_identity | contains("platform-qualified normalized")) and
+  .candidate_binding.installed_binary.platform == "aarch64-apple-darwin" and
+  .candidate_binding.installed_binary.raw_bytes == 2271536 and
+  .candidate_binding.installed_binary.signature_profile == {
+    verification:"codesign --verify --strict",
+    format:"Mach-O thin (arm64)",
+    signature:"adhoc",
+    code_directory_flags:"0x20002(adhoc,linker-signed)",
+    hash_type:"sha256",
+    team_identifier:"not set",
+    info_plist:"not bound",
+    sealed_resources:"none",
+    internal_requirements:"none",
+    executable_segment_flags:"0x1",
+    authorities:[],
+    entitlements:"empty"
+  } and
+  .candidate_binding.installed_binary.signature_profile_sha256 == "a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd" and
+  .candidate_binding.installed_binary.normalization == "removed ad-hoc code signature and zeroed Mach-O LC_UUID" and
+  .candidate_binding.installed_binary.normalized_sha256 == "fcf4b74b6a60e179a5e85c68e1e9c06d308c6e3d4b45c8b3413c454ca929351c" and
+  .candidate_binding.installed_binary.normalized_bytes == 2253760 and
+  (.candidate_binding.installed_binary.receipt | startswith("scripts/check-product-artifacts")) and
+  (.candidate_binding.reason | contains("is not evidence until")) and
+  .audience == [
+    "researcher",
+    "repository owner and review-key signer",
+    "agent operating the CLI"
+  ] and
+  (.job | contains("Initialize or retrofit")) and
+  (.context | contains("installed Rust CLI")) and
+  (.desired_outcome | contains("review-governed research state")) and
+  .accessibility_evidence.status == "missing" and
+  .cognitive_load_evidence.status == "missing" and
+  .recovery_burden.status == "unmeasured" and
+  .continuance_evidence.status == "missing" and
+  .real_use_evidence == {
+    "status": "none",
+    "synthetic_journeys_are_non_substitutes": true
+  } and
+  .observation_protocol == {
+    "status": "ready-unobserved",
+    "path": "docs/release/product-fitness-protocol.md",
+    "receipt_template": "agent-standards/product-fitness-observation.template.json",
+    "first_use_contract": "agent-standards/product-fitness-first-use.jq",
+    "session_window_contract": "agent-standards/product-fitness-session-window.jq",
+    "receipt_validator": "scripts/check-product-fitness-receipt",
+    "disposition_template": "agent-standards/product-fitness-disposition.template.json",
+    "disposition_contract": "agent-standards/product-fitness-disposition.jq",
+    "disposition_validator": "scripts/check-product-fitness-disposition",
+    "receipt_storage": "external deidentified evidence; no human-subject receipt is tracked by default"
+  } and
+  (.dispositions | map(.claim_id) == [
+    "research-run-v0.1-complete-unfamiliar-project-workflow",
+    "research-run-v0.1-real-use-fitness"
+  ]) and
+  all(.dispositions[]; .status == "withheld" and (.reason | length > 40)) and
   (.reason | length > 40) and
   (.affected_claims | type == "array" and length == 4) and
   (.required_follow_up | contains("actor-disjoint Product Fitness review")) and
   (.accepted_non_substitutes == [
-    "source tests", "installed journey", "package proof", "benchmark",
-    "generic reviewer approval"
+    "source tests", "coverage or mutation proof", "installed journey",
+    "synthetic signing", "package proof", "benchmark", "generic reviewer approval"
   ]) and
   (.claim_ceiling | contains("real-use fitness, continuance, and research impact remain withheld"))
 ' agent-standards/product-fitness-disposition.json >/dev/null || {
@@ -116,8 +193,12 @@ jq -e '
   exit 1
 }
 
-tampered_ledger="$(mktemp "${TMPDIR:-/tmp}/research-run-standards.XXXXXX")"
-trap 'rm -f "$tampered_ledger"' EXIT
+git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+scratch_dir="$git_common_dir/check-scratch"
+mkdir -p "$scratch_dir"
+tampered_ledger="$(mktemp "$scratch_dir/standards.XXXXXX")"
+tampered_disposition=""
+trap 'rm -f "$tampered_ledger" "$tampered_disposition"' EXIT
 for red_transform in fixtures/standards/red/*.jq; do
   jq -f "$red_transform" "$ledger" > "$tampered_ledger"
   if validate_classifications "$tampered_ledger"; then
@@ -127,16 +208,98 @@ for red_transform in fixtures/standards/red/*.jq; do
   fi
 done
 
+disposition_args=(
+  --arg candidate aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  --arg platform test-platform
+  --arg normalized_sha256 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  --argjson normalized_bytes 42
+  --arg receipt_sha256 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+)
+if ! jq -e "${disposition_args[@]}" \
+  -f agent-standards/product-fitness-disposition.jq \
+  fixtures/product-fitness/green/disposition.json >/dev/null; then
+  echo "product fitness fixture failure: a bounded actor-disjoint disposition was rejected" >&2
+  exit 1
+fi
+tampered_disposition="$(mktemp "$scratch_dir/fitness-disposition.XXXXXX")"
+jq -f fixtures/product-fitness/red/overbroad-disposition.jq \
+  fixtures/product-fitness/green/disposition.json >"$tampered_disposition"
+if jq -e "${disposition_args[@]}" \
+  -f agent-standards/product-fitness-disposition.jq \
+  "$tampered_disposition" >/dev/null; then
+  echo "product fitness fixture failure: one first-use receipt promoted general Product Fitness" >&2
+  exit 1
+fi
+
+if ! jq -e -f agent-standards/product-fitness-first-use.jq \
+  fixtures/product-fitness/green/first-use.json >/dev/null; then
+  echo "product fitness fixture failure: a bounded first-use receipt was rejected" >&2
+  exit 1
+fi
+if jq -e -f agent-standards/product-fitness-first-use.jq \
+  fixtures/product-fitness/red/false-continuance.json >/dev/null; then
+  echo "product fitness fixture failure: first-use evidence raised continuance" >&2
+  exit 1
+fi
+if ! jq -e -f agent-standards/product-fitness-session-window.jq \
+  fixtures/product-fitness/green/session-window.json >/dev/null; then
+  echo "product fitness fixture failure: a valid session window was rejected" >&2
+  exit 1
+fi
+for invalid_window in \
+  fixtures/product-fitness/red/impossible-session-date.json \
+  fixtures/product-fitness/red/reversed-session-window.json \
+  fixtures/product-fitness/red/inconsistent-recovery.json; do
+  if jq -e -f agent-standards/product-fitness-session-window.jq \
+    "$invalid_window" >/dev/null; then
+    echo "product fitness fixture failure: $invalid_window was accepted" >&2
+    exit 1
+  fi
+done
+scripts/validate-canonical-json.py fixtures/release-authorization/green/canonical.json
+for invalid_json in fixtures/release-authorization/red/*.json; do
+  if scripts/validate-canonical-json.py "$invalid_json" >/dev/null 2>&1; then
+    echo "release authorization fixture failure: $invalid_json was accepted" >&2
+    exit 1
+  fi
+done
+for invalid_jobs in "" 2; do
+  if RESEARCH_RUN_MUTATION_JOBS="$invalid_jobs" scripts/check-mutations >/dev/null 2>&1; then
+    echo "mutation custody fixture failure: worker override '$invalid_jobs' was accepted" >&2
+    exit 1
+  fi
+done
+
+# shellcheck source=scripts/release-authorization-inputs
+source "$repo_root/scripts/release-authorization-inputs"
+validate_release_authority_id "repository-owner"
+if validate_release_authority_id "repository owner" >/dev/null 2>&1; then
+  echo "release authorization fixture failure: a non-slug authority ID was accepted" >&2
+  exit 1
+fi
+canonical_release_public_key \
+  fixtures/release-authorization/green/owner.pub >/dev/null
+for invalid_key in fixtures/release-authorization/red/*.pub; do
+  if canonical_release_public_key "$invalid_key" >/dev/null 2>&1; then
+    echo "release authorization fixture failure: $invalid_key was accepted" >&2
+    exit 1
+  fi
+done
+
 shopt -s nullglob
 active_plans=(docs/exec-plans/active/*.md)
-if [[ "${#active_plans[@]}" -ne 1 || "${active_plans[0]}" != "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md" ]]; then
+if [[ "${#active_plans[@]}" -ne 1 || "${active_plans[0]}" != "docs/exec-plans/active/2026-07-20-v0.1-release-readiness.md" ]]; then
   echo "standards obligation failure: exactly one named current ExecPlan must exist" >&2
   echo "withheld: execution_authority and material_completion" >&2
   exit 1
 fi
 
 for gate in scripts/check scripts/check-coverage scripts/check-standards \
-  scripts/check-dependencies scripts/check-mutations scripts/check-product-artifacts; do
+  scripts/check-dependencies scripts/check-mutations scripts/check-product-artifacts \
+  scripts/check-product-fitness-receipt scripts/check-product-fitness-disposition \
+  scripts/check-release-candidate scripts/read-release-policy.py \
+  scripts/snapshot-release-inputs.py scripts/validate-canonical-json.py \
+  scripts/prepare-release-authorization scripts/verify-release-authorization; do
   if [[ ! -x "$gate" ]]; then
     echo "standards obligation failure: claimed executable evidence $gate is missing or not executable" >&2
     echo "withheld: agent_standard_closure and package_delta_closure" >&2
@@ -203,12 +366,34 @@ classify_path() {
     scripts/*|.github/*) echo check_authority ;;
     schemas/*|examples/*) echo data_contract ;;
     Cargo.toml|Cargo.lock|rust-toolchain.toml|deny.toml) echo cargo_substrate ;;
-    .gitignore|LICENSE|README.md) echo repository_metadata ;;
+    .gitignore|LICENSE|README.md|CHANGELOG.md|SECURITY.md) echo repository_metadata ;;
     fixtures/*) echo validator_fixture ;;
-    target|target/*|mutants.out*|mutants.out*/*|*.crate) echo generated_ephemeral ;;
+    target|target/*|mutants.out*|*.crate) echo generated_ephemeral ;;
     *) return 1 ;;
   esac
 }
+
+source_layout_violations() {
+  local source_root="$1/src"
+  find "$source_root" -maxdepth 1 -type f -name '*.rs' \
+    ! -name 'lib.rs' ! -name 'main.rs' -print
+}
+
+top_level_sources="$(source_layout_violations "$repo_root")"
+if [[ -n "$top_level_sources" ]]; then
+  echo "semantic source layout failure: only Cargo crate roots may be top-level Rust files under src/" >&2
+  printf '%s\n' "$top_level_sources" >&2
+  echo "move each file under the product behavior it owns; withheld: namespace_law and material_completion" >&2
+  exit 1
+fi
+if [[ -n "$(source_layout_violations fixtures/namespace/green/source-layout)" ]]; then
+  echo "namespace fixture failure: the governed semantic source layout was rejected" >&2
+  exit 1
+fi
+if [[ -z "$(source_layout_violations fixtures/namespace/red/source-layout)" ]]; then
+  echo "namespace fixture failure: a misplaced top-level Rust source was accepted" >&2
+  exit 1
+fi
 
 while IFS= read -r path; do
   class="$(classify_path "$path")" || {
@@ -262,4 +447,4 @@ fi
 
 cargo test --locked --test standards_syntax --quiet
 
-echo "standards classifications: 12 source modules and 160 package laws validated; product-fitness withholding, paths, namespace, and semantic-tree fixtures passed"
+echo "standards classifications: 12 source modules and 160 package laws validated; product-fitness withholding, semantic source layout, paths, namespace, and semantic-tree fixtures passed"

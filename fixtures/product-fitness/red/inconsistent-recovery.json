@@ -1,0 +1,8 @@
+{
+  "session": {
+    "started_at": "2026-07-20T00:00:00Z",
+    "completed_at": "2026-07-20T00:02:00Z",
+    "errors": [{"recovery_seconds": 30}],
+    "recovery_seconds": 45
+  }
+}

@@ -60,7 +60,7 @@
         "status": "not_applicable",
         "evidence": ["Cargo.toml", "policy.toml"],
         "claim_impact": "fuzz, compile_fail, async, daemon, telemetry, official_release, overlay_enforcement claims unavailable",
-        "reason": "The bounded CLI has no macros or type-state API, shared ownership graph, async tasks, daemon, telemetry backend, official release, or downstream policy-enforcement role; deterministic parser matrices cover its finite inputs without new fuzz dependencies."
+        "reason": "The bounded CLI has no macros or type-state API, shared ownership graph, async tasks, daemon, telemetry backend, published official release, or downstream policy-enforcement role; its separately governed technical-preview candidate boundary does not trigger the remaining specialist laws, and deterministic parser matrices cover its finite inputs without new fuzz dependencies."
       },
       {
         "id": "gold-stack-untriggered-services-and-release",
@@ -69,7 +69,7 @@
         "status": "not_applicable",
         "evidence": ["Cargo.toml", "policy.toml"],
         "claim_impact": "generated_client, service, database, telemetry, infrastructure, production_slo, release claims unavailable",
-        "reason": "No generated client lane, Python, database, cache, queue, service, telemetry backend, cloud infrastructure, production SLO, signing, or release boundary exists in v0.1."
+        "reason": "No generated client lane, Python, database, cache, queue, service, telemetry backend, cloud infrastructure, production SLO, or published official release exists in v0.1; the local technical-preview candidate and owner-signature boundary is separately governed without triggering service or infrastructure law."
       },
       {
         "id": "typescript-ui-overlay",
@@ -90,7 +90,7 @@
       {"id": "check_authority", "pattern": "scripts/**|.github/**"},
       {"id": "data_contract", "pattern": "schemas/**|examples/**"},
       {"id": "cargo_substrate", "pattern": "Cargo.toml|Cargo.lock|rust-toolchain.toml|deny.toml"},
-      {"id": "repository_metadata", "pattern": ".gitignore|LICENSE|README.md"},
+      {"id": "repository_metadata", "pattern": ".gitignore|LICENSE|README.md|CHANGELOG.md|SECURITY.md"},
       {"id": "validator_fixture", "pattern": "fixtures/**"},
       {"id": "generated_ephemeral", "pattern": "target/**|mutants.out*/**|*.crate"}
     ],
@@ -100,6 +100,12 @@
         "class": "product_source",
         "allowed_name": "lib",
         "forcing_contract": "Cargo library crate root and published Rust crate API boundary"
+      },
+      {
+        "path": "fixtures/namespace/green/source-layout/src/lib.rs",
+        "class": "validator_fixture",
+        "allowed_name": "lib",
+        "forcing_contract": "Green semantic source-layout fixture models Cargo's required library crate root"
       },
       {
         "path": "fixtures/namespace/red/phase4_rebind.rs",
@@ -136,7 +142,7 @@
       "module": "03",
       "status": "mechanized",
       "evidence": [
-        "docs/exec-plans/active/2026-07-18-complete-agent-operated-research-run.md",
+        "docs/exec-plans/active/2026-07-20-v0.1-release-readiness.md",
         "STANDARD.md"
       ],
       "reason": "One living ExecPlan and single-root execution are current authority."
@@ -158,7 +164,12 @@
       "status": "mechanized",
       "evidence": [
         "STANDARD.md",
-        "policy.toml"
+        "policy.toml",
+        "docs/release/0.1.0.md",
+        "scripts/prepare-release-authorization",
+        "scripts/verify-release-authorization",
+        "scripts/release-authorization-inputs",
+        "fixtures/release-authorization"
       ],
       "reason": "Bounded decision-boundary review cadence and claim ceilings are explicit; this classification does not assert that a human completion review has occurred."
     },
@@ -198,9 +209,17 @@
       "status": "mechanized",
       "evidence": [
         "agent-standards/product-fitness-disposition.json",
+        "agent-standards/product-fitness-first-use.jq",
+        "agent-standards/product-fitness-session-window.jq",
+        "agent-standards/product-fitness-disposition.jq",
+        "agent-standards/product-fitness-disposition.template.json",
+        "docs/release/product-fitness-protocol.md",
+        "scripts/check-product-fitness-receipt",
+        "scripts/check-product-fitness-disposition",
+        "fixtures/product-fitness",
         "scripts/check-standards"
       ],
-      "reason": "A typed disposition withholds real-use and continuance claims until audience-bound human evidence exists; install and journey tests cannot substitute."
+      "reason": "A consent-first external receipt makes audience-bound first-use evidence executable while the typed disposition withholds Product Fitness and continuance until their separate review boundaries close."
     },
     {
       "id": "plugin-activation-distribution",

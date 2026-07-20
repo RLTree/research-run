@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::domain::{
     CanonicalRecord, EntityKind, EntityRef, KnowledgeRecord, RelationshipKind, RelationshipRecord,
@@ -57,7 +57,46 @@ pub(super) fn relationship_reference_errors(snapshot: &Snapshot) -> Vec<String> 
             errors.push(format!("relationships/{}: unknown to reference", record.id));
         }
     }
+    if history_graph_has_cycle(snapshot) {
+        errors.push(
+            "relationships: supersession, revision, and invalidation must remain acyclic"
+                .to_owned(),
+        );
+    }
     errors
+}
+
+fn history_graph_has_cycle(snapshot: &Snapshot) -> bool {
+    let mut edges = BTreeMap::<&str, Vec<&str>>::new();
+    let mut incoming = BTreeMap::<&str, usize>::new();
+    for record in snapshot
+        .relationships
+        .iter()
+        .filter(|record| is_history(record.relationship))
+    {
+        edges
+            .entry(record.from.id.as_str())
+            .or_default()
+            .push(record.to.id.as_str());
+        incoming.entry(record.from.id.as_str()).or_default();
+        *incoming.entry(record.to.id.as_str()).or_default() += 1;
+    }
+    let mut ready = incoming
+        .iter()
+        .filter_map(|(id, count)| (*count == 0).then_some(*id))
+        .collect::<VecDeque<_>>();
+    let mut visited = 0;
+    while let Some(id) = ready.pop_front() {
+        visited += 1;
+        for next in edges.get(id).into_iter().flatten() {
+            let count = incoming.get_mut(next).expect("history endpoint is indexed");
+            *count -= 1;
+            if *count == 0 {
+                ready.push_back(next);
+            }
+        }
+    }
+    visited != incoming.len()
 }
 
 fn entity_exists(snapshot: &Snapshot, reference: &EntityRef) -> bool {

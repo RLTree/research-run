@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "kind": "review-authority",
+  "id": "example-researcher",
+  "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGqNGVOiQVyevMNkyQjVnsutXzLd1cnernrPi1g9rmyQ",
+  "fingerprint": "SHA256:uNV0CMAknvTD038ZYtLhCs/nh9ZKVy8N7J8hYFBZLWk"
+}
