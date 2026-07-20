@@ -157,7 +157,12 @@ fn identical_inventory_read_failure_propagates_from_apply() {
             .contains("inventory bootstrap for inventory-one")
     );
     inject_storage_failure("record identity#4");
-    assert!(Workspace::apply_inventory_plan(&root, plan).is_err());
+    let error = Workspace::apply_inventory_plan(&root, plan).expect_err("inventory read fault");
+    assert!(
+        !error
+            .to_string()
+            .contains("inventory bootstrap for inventory-one")
+    );
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
