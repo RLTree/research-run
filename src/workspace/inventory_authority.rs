@@ -68,9 +68,7 @@ pub(super) fn inventory_apply_workspace(
 ) -> Result<(Workspace, bool)> {
     let state = root.join(STATE_DIRECTORY);
     reject_symlink_chain(&state)?;
-    if !state.join("manifest.json").is_file() {
-        validate_new_inventory_bootstrap(plan)?;
-    }
+    validate_inventory_apply_target(root, &state, plan)?;
     let creation = if super::injected_storage_failure("create inventory bootstrap state") {
         Err(io::Error::other("injected storage failure"))
     } else {
@@ -117,6 +115,40 @@ pub(super) fn inventory_apply_workspace(
     initialize_inventory_bootstrap(root, plan)
         .map(|workspace| (workspace, true))
         .map_err(|error| inventory_bootstrap_error(plan, error))
+}
+
+fn validate_inventory_apply_target(root: &Path, state: &Path, plan: &InventoryPlan) -> Result<()> {
+    let manifest = state.join("manifest.json");
+    let metadata = if super::injected_storage_failure("inspect inventory workspace manifest") {
+        Err(io::Error::other("injected storage failure"))
+    } else {
+        fs::symlink_metadata(&manifest)
+    };
+    match metadata {
+        Ok(_) => {
+            reject_symlink_chain(&manifest)?;
+            let workspace = if super::injected_storage_failure(
+                "inventory manifest disappeared during validation",
+            ) {
+                None
+            } else {
+                Workspace::at_exact_root(root)?
+            };
+            let Some(workspace) = workspace else {
+                return Err(Error::invalid(
+                    "inventory workspace",
+                    "manifest disappeared during validation",
+                ));
+            };
+            workspace.load_mutable_snapshot().map(|_| ())
+        }
+        Err(error) if error.kind() == ErrorKind::NotFound => validate_new_inventory_bootstrap(plan),
+        Err(error) => Err(Error::io(
+            "inspect inventory workspace manifest",
+            &manifest,
+            error,
+        )),
+    }
 }
 
 pub(super) fn verify_inventory_target(

@@ -172,6 +172,7 @@ fn inventory_planning_propagates_manifest_and_prior_inventory_failures() {
 fn inventory_application_propagates_each_post_scan_authority_failure() {
     for point in [
         "inspect record#2",
+        "load snapshot#2",
         "create project directory",
         "open workspace write lock",
         "publish canonical record",
@@ -209,7 +210,7 @@ fn inventory_application_propagates_exact_root_record_and_latest_failures() {
             }
             "identical record" => {
                 Workspace::apply_inventory_plan(&root, plan.clone()).expect("seed");
-                inject_storage_failure("inspect record#3");
+                inject_storage_failure("inspect record#7");
             }
             _ => fs::write(workspace.state.join("inventories/bad.json"), b"{}")
                 .expect("bad inventory"),

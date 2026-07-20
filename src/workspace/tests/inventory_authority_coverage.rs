@@ -73,6 +73,15 @@ fn inventory_authority_helpers_reject_invalid_and_unreachable_shapes() {
     duplicate.review_authorities.push(authority.clone());
     assert!(inventory_plan_review_authority(Some(&duplicate), None).is_err());
     assert!(inventory_plan_review_authority(None, None).is_err());
+    let plan = Workspace::plan_retrofit(
+        &root,
+        "Project",
+        "inventory-one",
+        "2026-07-18T20:00:00Z",
+        None,
+    )
+    .expect("plan");
+    assert!(verify_inventory_target(&workspace, &duplicate, &plan).is_err());
 
     fs::remove_file(workspace.state.join("review-authorities/test-human.json"))
         .expect("remove authority");
