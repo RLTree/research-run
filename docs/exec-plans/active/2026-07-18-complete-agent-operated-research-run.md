@@ -332,11 +332,16 @@ pass.
   no-effect race fixtures pass. Exact production coverage is 8,477/8,477
   regions, 4,328/4,328 lines, and 542/542 functions.
 - 2026-07-20: Product Fitness candidate binding resolves `git:HEAD` only from a
-  clean proof-gate worktree and binds the installed binary digest
-  `6467cef964a376b1c919f3f36553ead1af85a35ff85d927e72f90b30fe6a1ef6`
-  (2,221,520 bytes). `scripts/check-product-artifacts` must reproduce and
-  verify both values from a clean exact `HEAD` while completing the installed
-  journey. This proves installed mechanics only. Accessibility,
+  clean proof-gate worktree and binds the `aarch64-apple-darwin` installed
+  binary content digest
+  `e308c4524f7552c021958d607c670f01528f478a9ad184df3989b5bda6f484e8`
+  after removing the ad-hoc code-signature blob and zeroing the nondeterministic
+  Mach-O `LC_UUID` (2,204,128 normalized bytes; 2,221,520 raw bytes).
+  `scripts/check-product-artifacts` must reproduce and verify these values from
+  a clean exact `HEAD` while completing the installed journey. The raw
+  per-build hash remains observable in the receipt but is not misrepresented as
+  stable; the normalized digest is platform-qualified, not a cross-platform
+  reproducibility claim. This proves installed mechanics only. Accessibility,
   cognitive load, recovery burden, continuance, audience-bound real use,
   research impact, and actual owner-approved signing remain withheld.
 

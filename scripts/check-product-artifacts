@@ -4,6 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
+artifact_platform="$(rustc -vV | sed -n 's/^host: //p')"
+
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "artifact proof requires a clean commit candidate" >&2
   echo "withheld: package, install, journey, performance_baseline, and compactness_baseline" >&2
@@ -23,18 +25,54 @@ cargo install --path "$observation_root/research-run-0.1.0" --locked \
   --root "$observation_root/install"
 binary="$observation_root/install/bin/research-run"
 if command -v sha256sum >/dev/null 2>&1; then
-  binary_sha256="$(sha256sum "$binary" | awk '{print $1}')"
+  binary_raw_sha256="$(sha256sum "$binary" | awk '{print $1}')"
 else
-  binary_sha256="$(shasum -a 256 "$binary" | awk '{print $1}')"
+  binary_raw_sha256="$(shasum -a 256 "$binary" | awk '{print $1}')"
 fi
 binary_bytes="$(wc -c < "$binary" | tr -d ' ')"
+normalized_binary="$observation_root/research-run-normalized"
+cp "$binary" "$normalized_binary"
+if [[ "$artifact_platform" == *-apple-darwin ]]; then
+  codesign --remove-signature "$normalized_binary"
+  uuid_offset="$(otool -l "$normalized_binary" | awk '
+    BEGIN { offset = 32 }
+    /^[[:space:]]*cmd / {
+      if ($2 == "LC_UUID") {
+        print offset + 8
+        exit
+      }
+    }
+    /^[[:space:]]*cmdsize / { offset += $2 }
+  ')"
+  if [[ -z "$uuid_offset" ]]; then
+    echo "artifact proof could not locate the Mach-O LC_UUID command" >&2
+    exit 1
+  fi
+  dd if=/dev/zero of="$normalized_binary" bs=1 seek="$uuid_offset" \
+    count=16 conv=notrunc 2>/dev/null
+  normalization="removed ad-hoc code signature and zeroed Mach-O LC_UUID"
+else
+  normalization="raw executable bytes"
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  normalized_sha256="$(sha256sum "$normalized_binary" | awk '{print $1}')"
+else
+  normalized_sha256="$(shasum -a 256 "$normalized_binary" | awk '{print $1}')"
+fi
+normalized_bytes="$(wc -c < "$normalized_binary" | tr -d ' ')"
 jq -e \
-  --arg sha256 "$binary_sha256" \
-  --argjson bytes "$binary_bytes" '
+  --arg platform "$artifact_platform" \
+  --arg normalization "$normalization" \
+  --arg normalized_sha256 "$normalized_sha256" \
+  --argjson bytes "$binary_bytes" \
+  --argjson normalized_bytes "$normalized_bytes" '
     .candidate_binding.status == "bound" and
     .candidate_binding.current_candidate == "git:HEAD" and
-    .candidate_binding.installed_binary.sha256 == $sha256 and
-    .candidate_binding.installed_binary.bytes == $bytes
+    .candidate_binding.installed_binary.platform == $platform and
+    .candidate_binding.installed_binary.raw_bytes == $bytes and
+    .candidate_binding.installed_binary.normalization == $normalization and
+    .candidate_binding.installed_binary.normalized_sha256 == $normalized_sha256 and
+    .candidate_binding.installed_binary.normalized_bytes == $normalized_bytes
   ' agent-standards/product-fitness-disposition.json >/dev/null
 
 workspace="$observation_root/journey"
@@ -125,9 +163,13 @@ coverage_target_kib="$(du -sk target/llvm-cov-target 2>/dev/null | awk '{print $
 jq -n \
   --arg candidate "$(git rev-parse HEAD)" \
   --arg cache_state "warm Cargo cache; clean source candidate" \
-  --arg installed_binary_sha256 "$binary_sha256" \
+  --arg installed_binary_platform "$artifact_platform" \
+  --arg installed_binary_raw_sha256 "$binary_raw_sha256" \
+  --arg installed_binary_normalization "$normalization" \
+  --arg installed_binary_normalized_sha256 "$normalized_sha256" \
   --argjson archive_bytes "$archive_bytes" \
   --argjson binary_bytes "$binary_bytes" \
+  --argjson normalized_binary_bytes "$normalized_bytes" \
   --argjson stripped_binary_bytes "$stripped_binary_bytes" \
   --argjson install_kib "$install_kib" \
   --argjson target_before_kib "$target_before_kib" \
@@ -139,4 +181,4 @@ jq -n \
   --argjson status_warm_seconds "$status_warm_seconds" \
   --argjson recovery_cold_seconds "$recovery_cold_seconds" \
   --argjson recovery_warm_seconds "$recovery_warm_seconds" \
-  '{candidate:$candidate, cache_state:$cache_state, installed_binary_sha256:$installed_binary_sha256, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine reproducible observation only; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'
+  '{candidate:$candidate, cache_state:$cache_state, installed_binary_platform:$installed_binary_platform, installed_binary_raw_sha256:$installed_binary_raw_sha256, installed_binary_normalization:$installed_binary_normalization, installed_binary_normalized_sha256:$installed_binary_normalized_sha256, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,normalized_binary:$normalized_binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine, platform-qualified reproducible observation only; the ephemeral raw Mach-O hash is reported but binding removes only the ad-hoc code signature and zeroes LC_UUID; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'
