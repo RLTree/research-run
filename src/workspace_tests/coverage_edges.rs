@@ -139,6 +139,7 @@ fn unanchored_initialization_retry_rejects_a_rogue_authority() {
     workspace
         .publish_record("review-authorities", &rogue)
         .expect("publish rogue fixture");
+    assert!(workspace.verify_initialized_authority(None).is_err());
     assert!(Workspace::initialize(&root, "Unanchored retry").is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
@@ -161,11 +162,13 @@ fn ordinary_mutation_rejects_a_missing_review_trust_anchor() {
 }
 
 #[test]
-fn initialization_propagates_final_authority_snapshot_failure() {
+fn initialization_propagates_pre_manifest_authority_snapshot_failure() {
     let root = temporary();
     inject_storage_failure("read record directory");
     assert!(Workspace::initialize(&root, "Snapshot failure").is_err());
-    assert!(root.join(".research-run/manifest.json").is_file());
+    assert!(!root.join(".research-run/manifest.json").exists());
+    assert!(Workspace::discover(&root).is_err());
+    Workspace::initialize(&root, "Snapshot failure").expect("retry after snapshot failure");
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

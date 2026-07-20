@@ -7,6 +7,7 @@ use crate::{Error, Result};
 
 use super::path_safety::{absolute_path, create_directory_chain, reject_symlink_chain};
 use super::sshsig::parse_authority_key;
+use super::storage::ReadBudget;
 use super::write_lock::WorkspaceWriteLock;
 use super::{STATE_DIRECTORY, Workspace, injected_storage_failure};
 
@@ -97,18 +98,33 @@ impl Workspace {
             create_directory_chain(&path)?;
         }
         if manifest_path.is_file() {
-            if let Some(authority) = authority {
-                workspace.publish_record("review-authorities", authority)?;
-            }
+            workspace.stage_initialized_authority(authority)?;
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
-        if let Some(authority) = authority {
-            workspace.publish_record("review-authorities", authority)?;
-        }
+        workspace.stage_initialized_authority(authority)?;
         workspace.publish_value(&manifest_path, &manifest)?;
         workspace.verify_initialized_authority(authority)?;
         Ok(workspace)
+    }
+
+    fn stage_initialized_authority(&self, expected: Option<&ReviewAuthority>) -> Result<()> {
+        let mut budget = ReadBudget::default();
+        let existing: Vec<ReviewAuthority> =
+            self.load_optional_records("review-authorities", false, &mut budget)?;
+        match (expected, existing.as_slice()) {
+            (Some(_), []) | (None, []) => {}
+            (Some(expected), [actual]) if actual == expected => {}
+            (Some(_), _) => return Err(initialized_authority_conflict(true)),
+            (None, _) => return Err(initialized_authority_conflict(false)),
+        }
+        if let Some(expected) = expected {
+            self.publish_record("review-authorities", expected)?;
+        }
+        let mut budget = ReadBudget::default();
+        let staged: Vec<ReviewAuthority> =
+            self.load_optional_records("review-authorities", false, &mut budget)?;
+        verify_initialized_authority_records(expected, &staged)
     }
 
     pub(super) fn verify_initialized_authority(
@@ -116,17 +132,7 @@ impl Workspace {
         expected: Option<&ReviewAuthority>,
     ) -> Result<()> {
         let snapshot = self.load_snapshot()?;
-        match (expected, snapshot.review_authorities.as_slice()) {
-            (Some(expected), [actual]) if actual == expected => Ok(()),
-            (None, []) => Ok(()),
-            (Some(_), _) => Err(Error::Conflict(
-                "initialized workspace does not contain exactly the anchored review authority"
-                    .to_owned(),
-            )),
-            (None, _) => Err(Error::Conflict(
-                "unanchored workspace contains an unexpected review authority".to_owned(),
-            )),
-        }
+        verify_initialized_authority_records(expected, &snapshot.review_authorities)
     }
 
     pub fn discover(start: &Path) -> Result<Self> {
@@ -176,5 +182,28 @@ impl Workspace {
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+}
+
+fn verify_initialized_authority_records(
+    expected: Option<&ReviewAuthority>,
+    actual: &[ReviewAuthority],
+) -> Result<()> {
+    match (expected, actual) {
+        (Some(expected), [actual]) if actual == expected => Ok(()),
+        (None, []) => Ok(()),
+        (Some(_), _) => Err(initialized_authority_conflict(true)),
+        (None, _) => Err(initialized_authority_conflict(false)),
+    }
+}
+
+fn initialized_authority_conflict(anchored: bool) -> Error {
+    if anchored {
+        Error::Conflict(
+            "initialized workspace does not contain exactly the anchored review authority"
+                .to_owned(),
+        )
+    } else {
+        Error::Conflict("unanchored workspace contains an unexpected review authority".to_owned())
     }
 }
