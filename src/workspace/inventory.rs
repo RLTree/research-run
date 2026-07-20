@@ -7,10 +7,10 @@ use crate::domain::{
 use crate::{Error, Result};
 
 use super::inventory_authority::{
-    finish_inventory_bootstrap, inventory_apply_workspace, inventory_bootstrap_error,
-    inventory_plan_review_authority, latest_inventory_from_snapshot,
+    inventory_apply_workspace, inventory_plan_review_authority, latest_inventory_from_snapshot,
     verified_inventory_plan_snapshot, verify_inventory_target,
 };
+use super::inventory_bootstrap::{finish_inventory_bootstrap, inventory_bootstrap_error};
 use super::inventory_reconcile::reconcile;
 use super::inventory_scan::scan_materials;
 use super::path_safety::{create_directory_chain, reject_symlink_chain};

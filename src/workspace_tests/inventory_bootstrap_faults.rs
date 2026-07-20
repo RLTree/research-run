@@ -1,0 +1,133 @@
+use super::*;
+use crate::workspace::inventory_authority::inventory_apply_workspace;
+use crate::workspace::inventory_bootstrap::finish_inventory_bootstrap;
+
+#[test]
+fn bootstrap_scaffold_faults_preserve_a_retryable_boundary() {
+    for fault in [
+        "read inventory bootstrap state",
+        "read inventory bootstrap state entry",
+        "inspect inventory bootstrap state entry",
+        "read inventory bootstrap state#2",
+        "inventory bootstrap state conflict#2",
+        "inventory bootstrap state changed under lock",
+    ] {
+        let root = temporary();
+        fs::write(root.join("note.md"), b"note").expect("note");
+        let plan = retrofit_plan(&root);
+        inject_storage_failure("lock identity");
+        assert!(Workspace::apply_inventory_plan(&root, plan.clone()).is_err());
+
+        inject_storage_failure(fault);
+        Workspace::apply_inventory_plan(&root, plan.clone()).expect_err("fault");
+        Workspace::apply_inventory_plan(&root, plan).expect("exact retry");
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+}
+
+#[test]
+fn bootstrap_creation_and_cleanup_faults_are_explicit() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    inject_storage_failure("create inventory bootstrap state");
+    assert!(inventory_apply_workspace(&root, &plan).is_err());
+    assert!(!root.join(".research-run").exists());
+    fs::remove_dir_all(root).expect("remove fixture");
+
+    for fault in [
+        "remove inventory bootstrap marker",
+        "sync inventory bootstrap directory",
+    ] {
+        let root = temporary();
+        fs::write(root.join("note.md"), b"note").expect("note");
+        let plan = retrofit_plan(&root);
+        inject_storage_failure(fault);
+        assert!(Workspace::apply_inventory_plan(&root, plan.clone()).is_err());
+        Workspace::apply_inventory_plan(&root, plan).expect("cleanup retry");
+        let workspace = Workspace::at_exact_root(&root)
+            .expect("inspect")
+            .expect("workspace");
+        finish_inventory_bootstrap(&workspace).expect("absent marker");
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+}
+
+#[test]
+fn partial_bootstrap_scaffolds_reject_unexpected_shapes() {
+    for lock_is_directory in [false, true] {
+        let root = temporary();
+        fs::write(root.join("note.md"), b"note").expect("note");
+        let plan = retrofit_plan(&root);
+        let state = root.join(".research-run");
+        fs::create_dir(&state).expect("state");
+        if lock_is_directory {
+            fs::create_dir(state.join("write.lock")).expect("directory lock");
+        } else {
+            fs::write(state.join("unexpected"), b"unexpected").expect("unexpected entry");
+        }
+        assert!(inventory_apply_workspace(&root, &plan).is_err());
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn bootstrap_scaffold_rejects_symlinked_state_entries() {
+    use std::os::unix::fs::symlink;
+
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    let state = root.join(".research-run");
+    fs::create_dir(&state).expect("state");
+    symlink(root.join("note.md"), state.join("write.lock")).expect("symlink lock");
+    assert!(inventory_apply_workspace(&root, &plan).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[cfg(unix)]
+#[test]
+fn bootstrap_rejects_a_symlinked_state_boundary() {
+    use std::os::unix::fs::symlink;
+
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    symlink(root.join("note.md"), root.join(".research-run")).expect("symlink state");
+    assert!(inventory_apply_workspace(&root, &plan).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn bootstrap_missing_workspace_and_corrupt_marker_fail_closed() {
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    let state = root.join(".research-run");
+    fs::create_dir(&state).expect("state");
+    fs::write(state.join("unexpected"), b"unexpected").expect("unexpected");
+    inject_storage_failure("inventory workspace disappeared after inspection");
+    assert!(inventory_apply_workspace(&root, &plan).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+
+    let root = temporary();
+    fs::write(root.join("note.md"), b"note").expect("note");
+    let plan = retrofit_plan(&root);
+    inject_storage_failure("materials changed under lock");
+    assert!(Workspace::apply_inventory_plan(&root, plan.clone()).is_err());
+    fs::write(root.join(".research-run/inventory-bootstrap.json"), b"{").expect("corrupt marker");
+    assert!(Workspace::apply_inventory_plan(&root, plan).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+fn retrofit_plan(root: &std::path::Path) -> crate::domain::InventoryPlan {
+    Workspace::plan_retrofit(
+        root,
+        "Project",
+        "inventory-one",
+        "2026-07-18T20:00:00Z",
+        explicit_unanchored_retrofit(),
+    )
+    .expect("plan")
+}

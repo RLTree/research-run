@@ -147,3 +147,30 @@ fn identical_inventory_read_failure_propagates_from_apply() {
     assert!(Workspace::apply_inventory_plan(&root, plan).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
+
+#[test]
+fn empty_bootstrap_scaffold_is_retryable_after_pre_marker_failures() {
+    for fault in ["lock identity", "create pending record"] {
+        let root = temporary();
+        fs::write(root.join("note.md"), b"note").expect("note");
+        let plan = Workspace::plan_retrofit(
+            &root,
+            "Project",
+            "inventory-one",
+            "2026-07-18T20:00:00Z",
+            explicit_unanchored_retrofit(),
+        )
+        .expect("plan");
+
+        inject_storage_failure(fault);
+        assert!(Workspace::apply_inventory_plan(&root, plan.clone()).is_err());
+        assert!(!root.join(".research-run/inventory-bootstrap.json").exists());
+        Workspace::apply_inventory_plan(&root, plan).expect("exact retry");
+        assert!(
+            root.join(".research-run/inventories/inventory-one.json")
+                .is_file()
+        );
+        assert!(!root.join(".research-run/inventory-bootstrap.json").exists());
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+}

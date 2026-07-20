@@ -67,6 +67,36 @@ fn installed_retrofit_covers_scan_ordering_and_optional_legacy_state() {
     assert!(run(&project.0, &["status"], None).status.success());
 }
 
+#[test]
+fn installed_retrofit_rechecks_the_empty_bootstrap_scaffold_under_lock() {
+    let project = TempDir::new("inventory-bootstrap-recheck");
+    fs::write(project.0.join("note.md"), b"one").expect("material");
+    let planned = run(
+        &project.0,
+        &retrofit_plan("inventory-one", "2026-07-18T20:00:00Z"),
+        None,
+    );
+    assert!(planned.status.success());
+    let input = project.0.with_extension("bootstrap-plan.json");
+    fs::write(&input, planned.stdout).expect("plan file");
+    let args = [
+        "retrofit",
+        "apply",
+        ".",
+        "--input",
+        input.to_str().expect("plan path"),
+    ];
+    assert!(
+        !run(&project.0, &args, Some("lock identity"))
+            .status
+            .success()
+    );
+    let recheck = run(&project.0, &args, Some("read inventory bootstrap state#2"));
+    assert!(!recheck.status.success());
+    assert!(run(&project.0, &args, None).status.success());
+    fs::remove_file(input).expect("remove plan");
+}
+
 fn add(root: &TempDir, kind: &str, input: &std::path::Path) -> std::process::Output {
     run(
         &root.0,

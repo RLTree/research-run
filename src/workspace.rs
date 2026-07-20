@@ -12,6 +12,7 @@ use crate::domain::{
 
 mod inventory;
 mod inventory_authority;
+mod inventory_bootstrap;
 mod inventory_reconcile;
 mod inventory_scan;
 mod knowledge;

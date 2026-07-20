@@ -26,6 +26,8 @@ mod coverage_edges;
 mod inventory_authority_coverage;
 #[path = "workspace_tests/inventory_bootstrap_coverage.rs"]
 mod inventory_bootstrap_coverage;
+#[path = "workspace_tests/inventory_bootstrap_faults.rs"]
+mod inventory_bootstrap_faults;
 #[path = "workspace_tests/recovery_coverage_edges.rs"]
 mod recovery_coverage_edges;
 #[path = "workspace_tests/recovery_semantic_coverage.rs"]
