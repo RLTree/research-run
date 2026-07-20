@@ -30,7 +30,13 @@ fn bootstrap_creation_and_cleanup_faults_are_explicit() {
     fs::write(root.join("note.md"), b"note").expect("note");
     let plan = retrofit_plan(&root);
     inject_storage_failure("create inventory bootstrap state");
-    assert!(inventory_apply_workspace(&root, &plan).is_err());
+    let error = inventory_apply_workspace(&root, &plan).expect_err("create state fault");
+    assert!(
+        error
+            .to_string()
+            .contains("create inventory bootstrap state"),
+        "unexpected error: {error}"
+    );
     assert!(!root.join(".research-run").exists());
     fs::remove_dir_all(root).expect("remove fixture");
 
@@ -48,6 +54,49 @@ fn bootstrap_creation_and_cleanup_faults_are_explicit() {
             .expect("inspect")
             .expect("workspace");
         finish_inventory_bootstrap(&workspace).expect("absent marker");
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+}
+
+#[test]
+fn bootstrap_marker_identity_requires_every_canonical_field() {
+    use serde::Serialize;
+    use sha2::{Digest, Sha256};
+
+    #[derive(Serialize)]
+    struct Marker<'a> {
+        schema_version: u32,
+        kind: &'a str,
+        plan_sha256: String,
+    }
+
+    for (schema_version, kind) in [(2, "inventory-bootstrap"), (1, "other-bootstrap")] {
+        let root = temporary();
+        fs::write(root.join("note.md"), b"note").expect("note");
+        let plan = retrofit_plan(&root);
+        let state = root.join(".research-run");
+        fs::create_dir(&state).expect("state");
+        let plan_sha256 = format!(
+            "{:x}",
+            Sha256::digest(crate::workspace::publication::canonical_json_bytes(&plan))
+        );
+        fs::write(
+            state.join("inventory-bootstrap.json"),
+            crate::workspace::publication::canonical_json_bytes(&Marker {
+                schema_version,
+                kind,
+                plan_sha256,
+            }),
+        )
+        .expect("marker");
+
+        let error = inventory_apply_workspace(&root, &plan).expect_err("marker conflict");
+        assert!(
+            error
+                .to_string()
+                .contains("inventory bootstrap marker belongs to a different plan"),
+            "unexpected error: {error}"
+        );
         fs::remove_dir_all(root).expect("remove fixture");
     }
 }
