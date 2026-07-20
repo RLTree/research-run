@@ -4,6 +4,8 @@ use super::*;
 mod conflict_cleanup;
 #[path = "recovery/security_semantics.rs"]
 mod security_semantics;
+#[path = "recovery/size_budget.rs"]
+mod size_budget;
 
 #[test]
 fn malformed_input_is_rejected_without_echoing_record_content() {

@@ -107,6 +107,12 @@ fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Res
 pub(super) fn hash_file(path: &Path) -> Result<(u64, String)> {
     reject_material_path(path, "material pre-hash path")?;
     let before = map_io(fs::metadata(path), "inspect material", path)?;
+    if !before.is_file() {
+        return Err(Error::invalid(
+            "material path",
+            format!("must be a regular file: {}", path.display()),
+        ));
+    }
     if before.len() > MAX_INDEXED_FILE_BYTES {
         return Err(Error::Budget(format!(
             "{} exceeds the {MAX_INDEXED_FILE_BYTES} byte material budget",

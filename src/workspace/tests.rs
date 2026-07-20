@@ -36,6 +36,8 @@ mod lifecycle_publication;
 mod recovery_coverage_edges;
 #[path = "tests/recovery_semantic_coverage.rs"]
 mod recovery_semantic_coverage;
+#[path = "tests/security_findings.rs"]
+mod security_findings;
 
 fn temporary() -> std::path::PathBuf {
     let path = std::env::temp_dir().join(format!(

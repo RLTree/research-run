@@ -9,7 +9,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
+version="$(scripts/read-cargo-package-version.py Cargo.toml)"
 [[ "$version" == "0.1.0" ]]
 [[ -f LICENSE && -f CHANGELOG.md && -f SECURITY.md ]]
 rg -q '^## 0\.1\.0 — Unreleased$' CHANGELOG.md
@@ -29,7 +29,8 @@ jq -e '
 ' <<<"$release_policy" >/dev/null
 rg -q 'Product Fitness' docs/release/0.1.0.md
 rg -q 'remains explicitly withheld' docs/release/0.1.0.md
-rg -q 'does not authorize a merge, tag, package publication' docs/release/0.1.0.md
+rg -U -q 'does not authorize a merge, tag, package publication, or GitHub[[:space:]]+release\.' \
+  docs/release/0.1.0.md
 [[ -x scripts/check-product-fitness-receipt ]]
 [[ -x scripts/check-product-fitness-disposition ]]
 [[ -x scripts/prepare-release-authorization ]]

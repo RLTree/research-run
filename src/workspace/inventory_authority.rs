@@ -11,6 +11,7 @@ use super::inventory_bootstrap::{
     INVENTORY_BOOTSTRAP_MARKER, clear_exact_pending_bootstrap, clear_linked_bootstrap_pending,
     ensure_inventory_bootstrap_marker, initialize_inventory_bootstrap,
     inspect_inventory_bootstrap_scaffold, inventory_bootstrap_error,
+    validate_new_inventory_bootstrap,
 };
 use super::path_safety::reject_symlink_chain;
 use super::status_authority::review_authority_status;
@@ -67,6 +68,19 @@ pub(super) fn inventory_apply_workspace(
 ) -> Result<(Workspace, bool)> {
     let state = root.join(STATE_DIRECTORY);
     reject_symlink_chain(&state)?;
+    match fs::symlink_metadata(&state) {
+        Ok(_) => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            validate_new_inventory_bootstrap(plan)?;
+        }
+        Err(error) => {
+            return Err(Error::io(
+                "inspect inventory bootstrap state",
+                &state,
+                error,
+            ));
+        }
+    }
     let creation = if super::injected_storage_failure("create inventory bootstrap state") {
         Err(io::Error::other("injected storage failure"))
     } else {
