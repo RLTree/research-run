@@ -14,7 +14,7 @@ fn review_graph_validation_uses_one_canonical_binding() {
     let mut cross_claim = review("review-cross", "claim-two");
     cross_claim.evidence_ids = vec!["evidence-one".to_owned()];
     let incomplete = review("review-incomplete", "claim-one");
-    let snapshot = Snapshot {
+    let mut snapshot = Snapshot {
         manifest: ProjectManifest::new("Review binding matrix").expect("manifest"),
         sources: Vec::new(),
         claims: vec![claim("claim-one"), claim("claim-two")],
@@ -43,6 +43,12 @@ fn review_graph_validation_uses_one_canonical_binding() {
             .unwrap()
             .is_empty()
     );
+    snapshot.reviews[0].authorization = Some(crate::domain::ReviewAuthorization {
+        authority_id: "missing-authority".to_owned(),
+        signer_fingerprint: "SHA256:test".to_owned(),
+        signature: "invalid-signature".to_owned(),
+    });
+    assert!(current_review_bindings(&workspace, &snapshot).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
