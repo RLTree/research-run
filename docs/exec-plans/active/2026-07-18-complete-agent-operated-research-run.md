@@ -334,7 +334,7 @@ pass.
 - 2026-07-20: The pending Product Fitness candidate declaration resolves
   `git:HEAD` only from a clean proof-gate worktree and expects the
   `aarch64-apple-darwin` installed binary content digest
-  `ca525494dd3d835f402d4bece1263279a92feb0aacfe390758d1b58f2932090b`
+  `ab5745af96a9aa588f8a4db34223c59d8db5431c3f4b38d5b66144a45398be7c`
   after first verifying and binding the exact empty-entitlement ad-hoc,
   linker-signed profile, then removing that code-signature blob and zeroing the
   nondeterministic Mach-O `LC_UUID` (2,253,600 normalized bytes; 2,271,376 raw
@@ -367,9 +367,17 @@ pass.
   strict unknown-field rejection for the durable marker and exact-plan recovery
   guidance for a post-bootstrap publication-lock failure. Those repairs retain
   ordinary existing-workspace errors as a distinct class. Exact production
-  coverage is 8,828/8,828 regions, 4,503/4,503 lines, and 561/561 functions.
+  coverage is 8,842/8,842 regions, 4,506/4,506 lines, and 561/561 functions.
   The final named bootstrap mutation boundary exercised 49 mutants: 41 caught,
   eight compiler-unviable, zero missed, and zero timed out.
+- 2026-07-20: Current-head Codex review found two pre-effect authority gaps.
+  Inventory apply now parses and fingerprint-checks an embedded authority before
+  scanning or creating bootstrap state, and review preparation validates both
+  the enrolled key and immutable manifest anchor before producing a signable
+  request. Red fixtures cover malformed plan keys with no `.research-run`
+  effect and tampered preparation keys and anchors. The focused call-site
+  mutation boundary exercised five mutants: three caught, two
+  compiler-unviable, zero missed, and zero timed out.
 
 ## Current claim ceiling
 
