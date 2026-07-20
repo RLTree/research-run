@@ -386,7 +386,8 @@ pass.
   remain undiscoverable and retry safely. Conflicting anchored and unanchored
   retries now validate the complete staged authority set before any new effect.
   The exact production totals are 8,887/8,887 regions, 4,527/4,527 lines, and
-  564/564 functions. The named lifecycle mutation boundary at `ee5e819`
+  564/564 functions. The named lifecycle mutation boundary at
+  `ee5e819e12beaf10c3252fa7d5fe61358240082c`
   exercised fifteen mutants: thirteen caught, two compiler-unviable, zero
   missed, and zero timed out.
 
