@@ -38,7 +38,7 @@ key_description="$(ssh-keygen -lf "$public_key" -E sha256)"
 fingerprint="$(awk '{print $2}' <<<"$key_description")"
 candidate="$(git rev-parse HEAD)"
 tree="$(git rev-parse 'HEAD^{tree}')"
-version="$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)"
+version="$(scripts/read-cargo-package-version.py Cargo.toml)"
 lockfile_sha256="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
 
 jq -e \

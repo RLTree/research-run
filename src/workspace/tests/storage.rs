@@ -70,6 +70,21 @@ fn bounded_storage_and_directory_shapes_fail_closed() {
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
+#[cfg(unix)]
+#[test]
+fn bounded_record_read_rejects_fifo_swap_without_blocking() {
+    let root = temporary();
+    let record = root.join("record.json");
+    fs::write(&record, b"{}").expect("record fixture");
+
+    inject_storage_failure("record open fifo race");
+    let error = read_bounded(&record).expect_err("FIFO swap must fail closed");
+    assert!(error.to_string().contains("regular file"));
+
+    fs::remove_file(&record).expect("remove FIFO fixture");
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
 #[test]
 fn pending_cleanup_reports_removal_and_directory_sync_failures() {
     let root = temporary();
@@ -230,5 +245,6 @@ fn symlinked_paths_are_rejected_at_each_storage_boundary() {
 #[cfg(target_os = "macos")]
 #[test]
 fn standard_macos_temporary_alias_is_allowed_only_at_its_known_target() {
+    assert!(reject_symlink_chain(std::path::Path::new("/var")).is_ok());
     assert!(reject_symlink_chain(std::path::Path::new("/tmp")).is_ok());
 }

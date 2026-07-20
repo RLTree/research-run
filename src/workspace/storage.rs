@@ -1,4 +1,4 @@
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read};
 use std::path::Path;
 
@@ -84,8 +84,23 @@ pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
             path.display()
         )));
     }
-    let file = map_io(File::open(path), "open record", path)?;
+    inject_record_open_race(path);
+    let file = map_io(open_record(path), "open record", path)?;
     let opened_metadata = map_io(file.metadata(), "inspect opened record", path)?;
+    if !opened_metadata.is_file() {
+        return Err(Error::invalid(
+            "record path",
+            format!("must open as a regular file: {}", path.display()),
+        ));
+    }
+    if !same_file_identity(&metadata, &opened_metadata)
+        || injected_storage_failure("record opened identity")
+    {
+        return Err(Error::AmbiguousEffect(format!(
+            "record identity changed while opening {}",
+            path.display()
+        )));
+    }
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     map_io(
         file.take(MAX_RECORD_BYTES + 1).read_to_end(&mut bytes),
@@ -111,6 +126,37 @@ pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
     }
     Ok(bytes)
 }
+
+fn open_record(path: &Path) -> io::Result<File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+
+        OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW)
+            .open(path)
+    }
+    #[cfg(not(unix))]
+    OpenOptions::new().read(true).open(path)
+}
+
+#[cfg(all(any(test, coverage), unix))]
+fn inject_record_open_race(path: &Path) {
+    if take_storage_failure("record open fifo race") {
+        fs::remove_file(path).expect("remove record for injected FIFO race");
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(path)
+                .status()
+                .expect("create injected record FIFO")
+                .success()
+        );
+    }
+}
+
+#[cfg(not(all(any(test, coverage), unix)))]
+fn inject_record_open_race(_path: &Path) {}
 
 #[cfg(all(any(test, coverage), unix))]
 fn inject_record_symlink_after_read(path: &Path, bytes: &[u8]) {

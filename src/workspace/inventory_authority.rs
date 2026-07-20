@@ -11,6 +11,7 @@ use super::inventory_bootstrap::{
     INVENTORY_BOOTSTRAP_MARKER, clear_exact_pending_bootstrap, clear_linked_bootstrap_pending,
     ensure_inventory_bootstrap_marker, initialize_inventory_bootstrap,
     inspect_inventory_bootstrap_scaffold, inventory_bootstrap_error,
+    validate_new_inventory_bootstrap,
 };
 use super::path_safety::reject_symlink_chain;
 use super::status_authority::review_authority_status;
@@ -67,6 +68,7 @@ pub(super) fn inventory_apply_workspace(
 ) -> Result<(Workspace, bool)> {
     let state = root.join(STATE_DIRECTORY);
     reject_symlink_chain(&state)?;
+    validate_inventory_apply_target(root, &state, plan)?;
     let creation = if super::injected_storage_failure("create inventory bootstrap state") {
         Err(io::Error::other("injected storage failure"))
     } else {
@@ -113,6 +115,40 @@ pub(super) fn inventory_apply_workspace(
     initialize_inventory_bootstrap(root, plan)
         .map(|workspace| (workspace, true))
         .map_err(|error| inventory_bootstrap_error(plan, error))
+}
+
+fn validate_inventory_apply_target(root: &Path, state: &Path, plan: &InventoryPlan) -> Result<()> {
+    let manifest = state.join("manifest.json");
+    let metadata = if super::injected_storage_failure("inspect inventory workspace manifest") {
+        Err(io::Error::other("injected storage failure"))
+    } else {
+        fs::symlink_metadata(&manifest)
+    };
+    match metadata {
+        Ok(_) => {
+            reject_symlink_chain(&manifest)?;
+            let workspace = if super::injected_storage_failure(
+                "inventory manifest disappeared during validation",
+            ) {
+                None
+            } else {
+                Workspace::at_exact_root(root)?
+            };
+            let Some(workspace) = workspace else {
+                return Err(Error::invalid(
+                    "inventory workspace",
+                    "manifest disappeared during validation",
+                ));
+            };
+            workspace.load_mutable_snapshot().map(|_| ())
+        }
+        Err(error) if error.kind() == ErrorKind::NotFound => validate_new_inventory_bootstrap(plan),
+        Err(error) => Err(Error::io(
+            "inspect inventory workspace manifest",
+            &manifest,
+            error,
+        )),
+    }
 }
 
 pub(super) fn verify_inventory_target(

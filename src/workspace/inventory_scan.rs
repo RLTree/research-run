@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
@@ -11,6 +11,8 @@ use crate::{Error, Result};
 use super::injected_storage_failure;
 use super::path_safety::{absolute_path, reject_symlink_chain};
 use super::storage::{map_io, same_file_identity};
+#[cfg(all(any(test, coverage), unix))]
+use super::take_storage_failure;
 
 const MAX_INDEXED_FILE_BYTES: u64 = 64 * 1_048_576;
 const MAX_INVENTORY_BYTES: u64 = 512 * 1_048_576;
@@ -107,14 +109,27 @@ fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Res
 pub(super) fn hash_file(path: &Path) -> Result<(u64, String)> {
     reject_material_path(path, "material pre-hash path")?;
     let before = map_io(fs::metadata(path), "inspect material", path)?;
+    if !before.is_file() {
+        return Err(Error::invalid(
+            "material path",
+            format!("must be a regular file: {}", path.display()),
+        ));
+    }
     if before.len() > MAX_INDEXED_FILE_BYTES {
         return Err(Error::Budget(format!(
             "{} exceeds the {MAX_INDEXED_FILE_BYTES} byte material budget",
             path.display()
         )));
     }
-    let mut file = map_io(File::open(path), "open material", path)?;
+    inject_material_open_race(path);
+    let mut file = map_io(open_material(path), "open material", path)?;
     let opened = map_io(file.metadata(), "inspect opened material", path)?;
+    if !opened.is_file() {
+        return Err(Error::invalid(
+            "material path",
+            format!("must open as a regular file: {}", path.display()),
+        ));
+    }
     if !same_file_identity(&before, &opened) || injected_storage_failure("material opened identity")
     {
         return Err(Error::AmbiguousEffect(format!(
@@ -152,6 +167,37 @@ pub(super) fn hash_file(path: &Path) -> Result<(u64, String)> {
     }
     Ok((copied, format!("{:x}", hasher.finalize())))
 }
+
+fn open_material(path: &Path) -> io::Result<File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+
+        OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW)
+            .open(path)
+    }
+    #[cfg(not(unix))]
+    OpenOptions::new().read(true).open(path)
+}
+
+#[cfg(all(any(test, coverage), unix))]
+fn inject_material_open_race(path: &Path) {
+    if take_storage_failure("material open fifo race") {
+        fs::remove_file(path).expect("remove material for injected FIFO race");
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(path)
+                .status()
+                .expect("create injected FIFO")
+                .success()
+        );
+    }
+}
+
+#[cfg(not(all(any(test, coverage), unix)))]
+fn inject_material_open_race(_path: &Path) {}
 
 fn reject_material_path(path: &Path, fault: &str) -> Result<()> {
     if injected_storage_failure(fault) {

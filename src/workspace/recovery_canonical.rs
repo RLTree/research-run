@@ -8,10 +8,10 @@ use serde::de::DeserializeOwned;
 use crate::domain::{CanonicalRecord, ProjectManifest};
 use crate::{Error, Result};
 
-use super::Workspace;
 use super::publication::canonical_json_bytes;
 use super::recovery_plan::PendingRecord;
 use super::storage::{ReadBudget, parse_json, read_bounded, read_json_with_budget};
+use super::{MAX_RECORD_BYTES, Workspace};
 
 pub(super) fn canonical_manifest(
     workspace: &Workspace,
@@ -65,7 +65,7 @@ where
                 "filename does not match record id",
             ));
         }
-        record.bytes = canonical_json_bytes(&candidate);
+        record.bytes = bounded_canonical_json(&candidate)?;
         candidates.entry(record.target.clone()).or_insert(candidate);
     }
     let mut records = workspace.load_records(directory, true, budget)?;
@@ -81,6 +81,16 @@ where
         );
     }
     Ok(records)
+}
+
+fn bounded_canonical_json(value: &impl Serialize) -> Result<Vec<u8>> {
+    let bytes = canonical_json_bytes(value);
+    if bytes.len() as u64 > MAX_RECORD_BYTES {
+        return Err(Error::Budget(format!(
+            "canonical recovery record exceeds the {MAX_RECORD_BYTES} byte budget"
+        )));
+    }
+    Ok(bytes)
 }
 
 fn unique_pending(pending: &[PendingRecord]) -> Result<Vec<&PendingRecord>> {

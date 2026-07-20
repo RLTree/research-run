@@ -323,6 +323,7 @@ dependencies = [
  "clap",
  "ed25519-dalek",
  "getrandom",
+ "libc",
  "proc-macro2",
  "serde",
  "serde_json",

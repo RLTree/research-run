@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
@@ -90,6 +91,7 @@ fn repository_check_entrypoints_are_executable() {
         "scripts/check-product-fitness-receipt",
         "scripts/check-product-artifacts",
         "scripts/check-release-candidate",
+        "scripts/read-cargo-package-version.py",
         "scripts/prepare-release-authorization",
         "scripts/check-standards",
         "scripts/verify-release-authorization",
@@ -100,4 +102,25 @@ fn repository_check_entrypoints_are_executable() {
             .mode();
         assert_ne!(mode & 0o111, 0, "{path} must be executable");
     }
+}
+
+#[test]
+fn release_version_reader_uses_the_package_table() {
+    let fixture = std::env::temp_dir().join(format!(
+        "research-run-version-fixture-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_file(&fixture);
+    fs::write(
+        &fixture,
+        "version = \"9.9.9\" # decoy\n[package]\nname = \"fixture\"\nversion = \"0.1.0\"\n",
+    )
+    .expect("write version fixture");
+    let output = Command::new(root().join("scripts/read-cargo-package-version.py"))
+        .arg(&fixture)
+        .output()
+        .expect("read package version");
+    fs::remove_file(fixture).expect("remove version fixture");
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "0.1.0");
 }
