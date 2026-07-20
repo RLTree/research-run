@@ -9,7 +9,7 @@ use crate::domain::{
     ArtifactLocatorType, Assessment, Authorship, Outcome, SourceProvenance, Stance,
 };
 
-#[path = "cli_review_tests.rs"]
+#[path = "tests/review.rs"]
 mod review_tests;
 use crate::workspace::{ProjectStatus, ReviewAuthorityStatus, Status};
 

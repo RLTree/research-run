@@ -17,24 +17,24 @@ use super::{
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-#[path = "workspace_tests/review_signing.rs"]
+#[path = "tests/review_signing.rs"]
 mod review_signing;
 use review_signing::*;
-#[path = "workspace_tests/coverage_edges.rs"]
+#[path = "tests/coverage_edges.rs"]
 mod coverage_edges;
-#[path = "workspace_tests/inventory_authority_coverage.rs"]
+#[path = "tests/inventory_authority_coverage.rs"]
 mod inventory_authority_coverage;
-#[path = "workspace_tests/inventory_bootstrap_coverage.rs"]
+#[path = "tests/inventory_bootstrap_coverage.rs"]
 mod inventory_bootstrap_coverage;
-#[path = "workspace_tests/inventory_bootstrap_faults.rs"]
+#[path = "tests/inventory_bootstrap_faults.rs"]
 mod inventory_bootstrap_faults;
-#[path = "workspace_tests/inventory_bootstrap_pending_faults.rs"]
+#[path = "tests/inventory_bootstrap_pending_faults.rs"]
 mod inventory_bootstrap_pending_faults;
-#[path = "workspace_tests/lifecycle_publication.rs"]
+#[path = "tests/lifecycle_publication.rs"]
 mod lifecycle_publication;
-#[path = "workspace_tests/recovery_coverage_edges.rs"]
+#[path = "tests/recovery_coverage_edges.rs"]
 mod recovery_coverage_edges;
-#[path = "workspace_tests/recovery_semantic_coverage.rs"]
+#[path = "tests/recovery_semantic_coverage.rs"]
 mod recovery_semantic_coverage;
 
 fn temporary() -> std::path::PathBuf {
@@ -185,39 +185,39 @@ fn non_history_relationship_may_close_a_history_path() {
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
-#[path = "workspace_tests/handoff_expanded.rs"]
+#[path = "tests/handoff_expanded.rs"]
 mod handoff_expanded;
-#[path = "workspace_tests/handoff_validation.rs"]
+#[path = "tests/handoff_validation.rs"]
 mod handoff_validation;
-#[path = "workspace_tests/inventory_expanded.rs"]
+#[path = "tests/inventory_expanded.rs"]
 mod inventory_expanded;
-#[path = "workspace_tests/inventory_failure_expanded.rs"]
+#[path = "tests/inventory_failure_expanded.rs"]
 mod inventory_failure_expanded;
-#[path = "workspace_tests/inventory_tamper.rs"]
+#[path = "tests/inventory_tamper.rs"]
 mod inventory_tamper;
-#[path = "workspace_tests/knowledge_expanded.rs"]
+#[path = "tests/knowledge_expanded.rs"]
 mod knowledge_expanded;
-#[path = "workspace_tests/migration_expanded.rs"]
+#[path = "tests/migration_expanded.rs"]
 mod migration_expanded;
-#[path = "workspace_tests/migration_failure_expanded.rs"]
+#[path = "tests/migration_failure_expanded.rs"]
 mod migration_failure_expanded;
-#[path = "workspace_tests/records.rs"]
+#[path = "tests/records.rs"]
 mod records;
-#[path = "workspace_tests/recovery.rs"]
+#[path = "tests/recovery.rs"]
 mod recovery;
-#[path = "workspace_tests/retrieval_boundaries.rs"]
+#[path = "tests/retrieval_boundaries.rs"]
 mod retrieval_boundaries;
-#[path = "workspace_tests/retrieval_expanded.rs"]
+#[path = "tests/retrieval_expanded.rs"]
 mod retrieval_expanded;
-#[path = "workspace_tests/retrieval_failure_expanded.rs"]
+#[path = "tests/retrieval_failure_expanded.rs"]
 mod retrieval_failure_expanded;
-#[path = "workspace_tests/review_authority_coverage.rs"]
+#[path = "tests/review_authority_coverage.rs"]
 mod review_authority_coverage;
-#[path = "workspace_tests/review_binding_expanded.rs"]
+#[path = "tests/review_binding_expanded.rs"]
 mod review_binding_expanded;
-#[path = "workspace_tests/snapshot_expanded.rs"]
+#[path = "tests/snapshot_expanded.rs"]
 mod snapshot_expanded;
-#[path = "workspace_tests/sshsig.rs"]
+#[path = "tests/sshsig.rs"]
 mod sshsig;
-#[path = "workspace_tests/storage.rs"]
+#[path = "tests/storage.rs"]
 mod storage;

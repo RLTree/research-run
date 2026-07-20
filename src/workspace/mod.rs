@@ -244,7 +244,7 @@ impl Snapshot {
 }
 
 #[cfg(test)]
-#[path = "workspace_tests.rs"]
+#[path = "tests.rs"]
 mod tests;
 
 #[cfg(test)]

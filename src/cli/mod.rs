@@ -48,14 +48,14 @@ use retrieval_arguments::{ContextArgs, LimitArgs, ListArgs, RelatedArgs, SearchA
 use value_arguments::*;
 
 #[cfg(test)]
-#[path = "cli_bootstrap_tests.rs"]
+#[path = "tests/bootstrap.rs"]
 mod bootstrap_tests;
 #[cfg(test)]
-#[path = "expanded_cli_lifecycle_tests.rs"]
+#[path = "tests/lifecycle.rs"]
 mod expanded_lifecycle_tests;
 #[cfg(test)]
-#[path = "expanded_cli_tests.rs"]
+#[path = "tests/expanded.rs"]
 mod expanded_tests;
 #[cfg(test)]
-#[path = "cli_tests.rs"]
+#[path = "tests.rs"]
 mod tests;

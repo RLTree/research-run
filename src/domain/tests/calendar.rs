@@ -1,4 +1,4 @@
-use super::domain::validate_timestamp;
+use super::validate_timestamp;
 
 #[test]
 fn timestamps_obey_gregorian_calendar_dates() {
