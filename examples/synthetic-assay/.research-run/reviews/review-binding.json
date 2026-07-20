@@ -1,16 +1,19 @@
 {
-  "claim_id": "claim-binding",
-  "decision": "limited",
-  "evidence_ids": ["evidence-paper", "evidence-repeat"],
-  "subject_sha256": "39ab34184f14760f7d057bca74f7f734ea264fb1198d956792d93f89ef2d2e55",
-  "id": "review-binding",
+  "schema_version": 1,
   "kind": "review",
+  "id": "review-binding",
+  "claim_id": "claim-binding",
+  "evidence_ids": [
+    "evidence-paper",
+    "evidence-repeat"
+  ],
+  "subject_sha256": "13b4e32cd1798c7ab14f4dca2732453746100c4c63c54f7066161fed760e29cf",
+  "decision": "limited",
   "rationale": "The source supports the claim, but the negative repeat limits it.",
   "reviewer": "Example Researcher",
   "authorization": {
     "authority_id": "example-researcher",
     "signer_fingerprint": "SHA256:uNV0CMAknvTD038ZYtLhCs/nh9ZKVy8N7J8hYFBZLWk",
-    "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgao0ZU6JBXJ68w2TJCNWey61fMt\n3Vyd6ues+LWD2ubJAAAAAWcmVzZWFyY2gtcnVuLXJldmlldy12MQAAAAAAAAAGc2hhNTEy\nAAAAUwAAAAtzc2gtZWQyNTUxOQAAAEAkmI6Kg1GkTezy5tUvTB2yebLji0pA7SLL26zRfx\nux3wQMv7oRbfn8o1L6EyuAAIX5BP092MbYKXP8AD7eHpMI\n-----END SSH SIGNATURE-----\n"
-  },
-  "schema_version": 1
+    "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgao0ZU6JBXJ68w2TJCNWey61fMt\n3Vyd6ues+LWD2ubJAAAAAWcmVzZWFyY2gtcnVuLXJldmlldy12MQAAAAAAAAAGc2hhNTEy\nAAAAUwAAAAtzc2gtZWQyNTUxOQAAAEDaZp9ReDh9a+f9YpA8rUX8n03dBs4gw68uiUjoQI\nmWNExHDnY3DRo6+GBNqqcuxezu9rKnwZ2iXY30qZKvUdkO\n-----END SSH SIGNATURE-----\n"
+  }
 }
