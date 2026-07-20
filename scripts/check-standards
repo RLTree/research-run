@@ -266,7 +266,7 @@ classify_path() {
     Cargo.toml|Cargo.lock|rust-toolchain.toml|deny.toml) echo cargo_substrate ;;
     .gitignore|LICENSE|README.md|CHANGELOG.md|SECURITY.md) echo repository_metadata ;;
     fixtures/*) echo validator_fixture ;;
-    target|target/*|mutants.out*|mutants.out*/*|*.crate) echo generated_ephemeral ;;
+    target|target/*|mutants.out*|*.crate) echo generated_ephemeral ;;
     *) return 1 ;;
   esac
 }
