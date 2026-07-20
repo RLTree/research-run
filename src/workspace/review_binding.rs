@@ -94,10 +94,12 @@ impl Workspace {
                     Error::invalid("experiment reference", "experiment does not exist")
                 })?;
             hash_serialized(hasher, "experiment", experiment_id, experiment);
-            for artifact in &experiment.artifacts {
-                if artifact.locator_type == ArtifactLocatorType::Workspace {
-                    self.hash_workspace_artifact(hasher, "experiment-artifact", &artifact.locator)?;
-                }
+            for artifact in experiment
+                .artifacts
+                .iter()
+                .filter(|artifact| artifact.locator_type == ArtifactLocatorType::Workspace)
+            {
+                self.hash_workspace_artifact(hasher, "experiment-artifact", &artifact.locator)?;
             }
         }
         if let Some(locator) = &evidence.artifact {
