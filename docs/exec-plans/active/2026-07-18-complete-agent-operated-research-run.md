@@ -334,7 +334,7 @@ pass.
 - 2026-07-20: The pending Product Fitness candidate declaration resolves
   `git:HEAD` only from a clean proof-gate worktree and expects the
   `aarch64-apple-darwin` installed binary content digest
-  `ab5745af96a9aa588f8a4db34223c59d8db5431c3f4b38d5b66144a45398be7c`
+  `a2e3a75dc5b409a086834b2337ab6afeb87a015a63421b522abbfe3e30eeaa89`
   after first verifying and binding the exact empty-entitlement ad-hoc,
   linker-signed profile, then removing that code-signature blob and zeroing the
   nondeterministic Mach-O `LC_UUID` (2,253,600 normalized bytes; 2,271,376 raw
