@@ -21,9 +21,19 @@ max_snapshot_bytes = 67108864
 max_text_bytes = 65536
 max_list_items = 256
 max_artifact_pointers = 128
-max_inventory_entries = 2048
-max_indexed_material_bytes = 67108864
-max_inventory_scan_bytes = 536870912
+
+[inventory_policy]
+schema_version = 1
+max_canonical_record_bytes = 33554432
+default_max_entries = 20000
+default_max_file_bytes = 2147483648
+default_max_total_bytes = 8589934592
+legacy_max_entries = 2048
+legacy_max_file_bytes = 67108864
+legacy_max_total_bytes = 536870912
+explicit_u64_totals_may_exceed_64_gib = true
+reference_only_content_status = "not_inspected"
+child_workspace_content_status = "not_inspected"
 
 [effects]
 parse_before_write = true

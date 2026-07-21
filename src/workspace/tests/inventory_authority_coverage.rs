@@ -9,7 +9,7 @@ fn inventory_planning_propagates_each_authority_stage() {
     fs::write(root.join("note.md"), b"note").expect("note");
     let workspace = Workspace::initialize(&root, "Project").expect("initialize");
 
-    inject_storage_failure("load snapshot#2");
+    inject_storage_failure("load snapshot");
     assert!(
         Workspace::plan_retrofit(
             &root,

@@ -21,7 +21,8 @@ fn inventory_plan() -> InventoryPlan {
         previous_snapshot_id: None,
         review_authority: None,
         without_review_authority: true,
-        entries: vec![entry("notes/result.md")],
+        policy: None,
+        entries: vec![entry("notes/result.md").into()],
         changes: Vec::new(),
     }
 }
@@ -65,10 +66,10 @@ fn assert_invalid_plan_fields(plan: &InventoryPlan) {
     invalid.observed_at = "bad".to_owned();
     assert!(invalid.validate().is_err());
     invalid = plan.clone();
-    invalid.entries[0].path = "../escape".to_owned();
+    indexed_mut(&mut invalid.entries[0]).path = "../escape".to_owned();
     assert!(invalid.validate().is_err());
     invalid = plan.clone();
-    invalid.entries[0].sha256 = "A".repeat(64);
+    indexed_mut(&mut invalid.entries[0]).sha256 = "A".repeat(64);
     assert!(invalid.validate().is_err());
     invalid = plan.clone();
     invalid.previous_snapshot_id = Some(invalid.id.clone());
@@ -80,7 +81,7 @@ fn assert_invalid_plan_fields(plan: &InventoryPlan) {
     invalid.entries.push(invalid.entries[0].clone());
     assert!(invalid.validate().is_err());
     invalid = plan.clone();
-    invalid.entries = vec![entry("note"); MAX_INVENTORY_ENTRIES + 1];
+    invalid.entries = vec![InventoryEntry::from(entry("note")); 2_049];
     assert!(invalid.validate().is_err());
     assert_invalid_authority_fields(plan);
 }
@@ -133,7 +134,44 @@ fn assert_invalid_changes(plan: &InventoryPlan) {
             after: Some("note".to_owned()),
             detail: "detail".to_owned(),
         };
-        MAX_INVENTORY_ENTRIES * 2 + 1
+        4_097
     ];
     assert!(invalid.validate().is_err());
+}
+
+fn indexed_mut(entry: &mut InventoryEntry) -> &mut MaterialEntry {
+    match entry {
+        InventoryEntry::Indexed(entry) => entry,
+        InventoryEntry::Boundary(_) => panic!("fixture must be indexed"),
+    }
+}
+
+#[test]
+fn inventory_policy_is_versioned_typed_and_fail_closed() {
+    let default = InventoryPolicy::default();
+    assert!(default.validate().is_ok());
+    let mut invalid = default.clone();
+    invalid.schema_version = 2;
+    assert!(invalid.validate().is_err());
+    invalid = default.clone();
+    invalid.limits.max_entries = 0;
+    assert!(invalid.validate().is_err());
+    invalid = default.clone();
+    invalid.limits.max_file_bytes = invalid.limits.max_total_bytes + 1;
+    assert!(invalid.validate().is_err());
+
+    assert!(
+        serde_json::from_str::<InventoryPolicy>(
+            r#"{"schema_version":1,"kind":"inventory-policy","limits":{"max_entries":1,"max_file_bytes":1,"max_total_bytes":1},"boundaries":[],"unknown":true}"#
+        )
+        .is_err()
+    );
+    let escaping = InventoryPolicy {
+        boundaries: vec![InventoryBoundary::ChildWorkspace {
+            path: "../child".to_owned(),
+            rationale: "Child".to_owned(),
+        }],
+        ..default
+    };
+    assert!(escaping.canonicalized().is_err());
 }

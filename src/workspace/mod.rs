@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicU64;
 
 use serde::Serialize;
@@ -49,10 +49,27 @@ pub use inventory::ReviewBootstrap;
 
 pub(super) const STATE_DIRECTORY: &str = ".research-run";
 pub(super) const MAX_RECORD_BYTES: u64 = 1_048_576;
+pub(super) const MAX_INVENTORY_RECORD_BYTES: u64 = 32 * 1_048_576;
 pub(super) const MAX_RECORDS_PER_KIND: usize = 10_000;
 pub(super) const MAX_SNAPSHOT_BYTES: u64 = 64 * 1_048_576;
 pub const CLAIM_CEILING: &str = "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.";
 pub(super) static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+pub(super) fn record_byte_limit(directory: &str) -> u64 {
+    if directory == "inventories" {
+        MAX_INVENTORY_RECORD_BYTES
+    } else {
+        MAX_RECORD_BYTES
+    }
+}
+
+pub(super) fn record_byte_limit_for_path(path: &Path) -> u64 {
+    path.parent()
+        .and_then(Path::file_name)
+        .and_then(std::ffi::OsStr::to_str)
+        .map(record_byte_limit)
+        .unwrap_or(MAX_RECORD_BYTES)
+}
 #[cfg(all(coverage, not(test)))]
 static COVERAGE_FAULT_OCCURRENCE: AtomicU64 = AtomicU64::new(0);
 

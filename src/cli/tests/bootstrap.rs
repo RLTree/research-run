@@ -62,6 +62,7 @@ fn lifecycle_and_inventory_bootstrap_reject_unreachable_cli_shapes() {
             name: "Project".to_owned(),
             id: "inventory-one".to_owned(),
             observed_at: "2026-07-18T20:00:00Z".to_owned(),
+            policy: None,
             review_authority_id,
             review_authority_public_key,
             without_review_authority,

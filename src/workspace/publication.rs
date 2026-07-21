@@ -11,10 +11,12 @@ use crate::{Error, Result};
 
 use super::path_safety::{ensure_no_pending_effect, reject_symlink_chain};
 use super::pending_cleanup::PendingCleanup;
-use super::storage::{map_io, read_bounded, sync_directory};
+use super::storage::{map_io, read_bounded_with_limit, sync_directory};
 #[cfg(any(test, coverage))]
 use super::take_storage_failure;
-use super::{MAX_RECORD_BYTES, TEMP_SEQUENCE, Workspace, injected_storage_failure};
+use super::{
+    MAX_RECORD_BYTES, TEMP_SEQUENCE, Workspace, injected_storage_failure, record_byte_limit,
+};
 
 impl Workspace {
     pub(super) fn publish_record<T: CanonicalRecord>(
@@ -26,7 +28,7 @@ impl Workspace {
             .state
             .join(directory)
             .join(format!("{}.json", record.id()));
-        self.publish_value(&target, record)
+        self.publish_value_with_limit(&target, record, record_byte_limit(directory))
     }
 
     pub(super) fn publish_value(&self, target: &Path, value: &impl Serialize) -> Result<bool> {
@@ -34,8 +36,27 @@ impl Workspace {
         self.publish_bytes(target, &content)
     }
 
+    fn publish_value_with_limit(
+        &self,
+        target: &Path,
+        value: &impl Serialize,
+        maximum: u64,
+    ) -> Result<bool> {
+        let content = canonical_json_bytes(value);
+        self.publish_bytes_with_limit(target, &content, maximum)
+    }
+
     pub(super) fn publish_bytes(&self, target: &Path, content: &[u8]) -> Result<bool> {
-        if !publication_needed(target, content)? {
+        self.publish_bytes_with_limit(target, content, MAX_RECORD_BYTES)
+    }
+
+    fn publish_bytes_with_limit(
+        &self,
+        target: &Path,
+        content: &[u8],
+        maximum: u64,
+    ) -> Result<bool> {
+        if !publication_needed(target, content, maximum)? {
             return Ok(false);
         }
         let temporary = pending_path(target);
@@ -43,7 +64,7 @@ impl Workspace {
         if let Err(error) = write_pending(&temporary, content) {
             return Err(cleanup.after_failure(error));
         }
-        let created = match link_canonical(&temporary, target, content) {
+        let created = match link_canonical(&temporary, target, content, maximum) {
             Ok(created) => created,
             Err(error) => return Err(cleanup.after_failure(error)),
         };
@@ -64,19 +85,19 @@ pub(super) fn canonical_json_bytes(value: &impl Serialize) -> Vec<u8> {
     content
 }
 
-fn publication_needed(target: &Path, content: &[u8]) -> Result<bool> {
+fn publication_needed(target: &Path, content: &[u8], maximum: u64) -> Result<bool> {
     inject_inspection_race(target, content);
     reject_symlink_chain(target)?;
-    if content.len() as u64 > MAX_RECORD_BYTES {
+    if content.len() as u64 > maximum {
         return Err(Error::Budget(format!(
-            "record exceeds the {MAX_RECORD_BYTES} byte budget"
+            "record exceeds the {maximum} byte budget"
         )));
     }
     if !target.exists() {
         ensure_no_pending_effect(target)?;
         return Ok(true);
     }
-    if read_bounded(target)? == content {
+    if read_bounded_with_limit(target, maximum)? == content {
         return Ok(false);
     }
     Err(Error::Conflict(format!(
@@ -152,7 +173,7 @@ pub(super) fn write_pending(path: &Path, content: &[u8]) -> Result<()> {
     map_io(file.sync_all(), "sync pending record", path)
 }
 
-fn link_canonical(temporary: &Path, target: &Path, content: &[u8]) -> Result<bool> {
+fn link_canonical(temporary: &Path, target: &Path, content: &[u8], maximum: u64) -> Result<bool> {
     inject_pending_cleanup_shape(temporary);
     inject_publication_race(target, content);
     if injected_storage_failure("publish canonical record") {
@@ -170,7 +191,7 @@ fn link_canonical(temporary: &Path, target: &Path, content: &[u8]) -> Result<boo
     match publication {
         Ok(()) => Ok(true),
         Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-            if read_bounded(target)? == content {
+            if read_bounded_with_limit(target, maximum)? == content {
                 Ok(false)
             } else {
                 Err(Error::Conflict(format!(

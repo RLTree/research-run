@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::domain::{ArtifactLocatorType, EvidenceLink};
+use crate::domain::{ArtifactLocatorType, EvidenceLink, InventoryLimits};
 use crate::{Error, Result};
 
 use super::inventory_scan::hash_file;
@@ -115,7 +115,10 @@ impl Workspace {
         kind: &str,
         locator: &str,
     ) -> Result<()> {
-        let (bytes, digest) = hash_file(&self.validate_workspace_path(locator)?)?;
+        let (bytes, digest) = hash_file(
+            &self.validate_workspace_path(locator)?,
+            InventoryLimits::legacy().max_file_bytes,
+        )?;
         hash_frame(
             hasher,
             kind,
