@@ -149,6 +149,8 @@ target so writing the plan itself cannot change the candidate it describes. Use
 a durable sibling plan directory rather than a system temporary path:
 
 ```console
+PLAN_DIR="$PWD/research-run-plans"
+mkdir -p "$PLAN_DIR"
 research-run retrofit plan existing-project \
   --name "Existing project" \
   --id inventory-initial \

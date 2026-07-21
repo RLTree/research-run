@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::domain::{InventoryEntry, MaterialEntry, ReconciliationChange, ReconciliationKind};
+use crate::domain::{InventoryEntry, ReconciliationChange, ReconciliationKind};
 
 pub(super) fn reconcile(
     previous: &[InventoryEntry],
@@ -65,34 +65,28 @@ fn pair_moves(
 ) {
     let mut consumed_old = BTreeSet::new();
     let mut consumed_new = BTreeSet::new();
-    for &before in missing.iter() {
-        let Some(before_material) = before.indexed() else {
+    let missing_by_material = material_groups(missing);
+    let added_by_material = material_groups(added);
+    for (identity, befores) in missing_by_material {
+        let Some(afters) = added_by_material.get(&identity) else {
             continue;
         };
-        let candidates = added
-            .iter()
-            .copied()
-            .filter(|after| same_material(before_material, after.indexed()))
-            .collect::<Vec<_>>();
-        if candidates.len() == 1 {
-            let after = candidates[0];
-            let after_material = after
-                .indexed()
-                .expect("material candidate retains indexed identity");
-            let reverse = missing
-                .iter()
-                .filter(|other| same_material(after_material, other.indexed()))
-                .count();
-            if reverse == 1 {
-                changes.push(change(
-                    ReconciliationKind::Moved,
-                    Some(before.path()),
-                    Some(after.path()),
-                    "exact size and SHA-256 identity",
-                ));
-                consumed_old.insert(before.path());
-                consumed_new.insert(after.path());
-            } else {
+        if afters.len() != 1 {
+            continue;
+        }
+        let after = afters[0];
+        if befores.len() == 1 {
+            let before = befores[0];
+            changes.push(change(
+                ReconciliationKind::Moved,
+                Some(before.path()),
+                Some(after.path()),
+                "exact size and SHA-256 identity",
+            ));
+            consumed_old.insert(before.path());
+            consumed_new.insert(after.path());
+        } else {
+            for before in befores {
                 changes.push(change(
                     ReconciliationKind::Conflict,
                     Some(before.path()),
@@ -104,6 +98,21 @@ fn pair_moves(
     }
     missing.retain(|entry| !consumed_old.contains(entry.path()));
     added.retain(|entry| !consumed_new.contains(entry.path()));
+}
+
+fn material_groups<'a>(
+    entries: &[&'a InventoryEntry],
+) -> BTreeMap<(&'a str, u64), Vec<&'a InventoryEntry>> {
+    let mut groups = BTreeMap::new();
+    for &entry in entries {
+        if let Some(material) = entry.indexed() {
+            groups
+                .entry((material.sha256.as_str(), material.bytes))
+                .or_insert_with(Vec::new)
+                .push(entry);
+        }
+    }
+    groups
 }
 
 fn duplicate_changes(changes: &mut Vec<ReconciliationChange>, current: &[InventoryEntry]) {
@@ -125,10 +134,6 @@ fn duplicate_changes(changes: &mut Vec<ReconciliationChange>, current: &[Invento
             ));
         }
     }
-}
-
-fn same_material(expected: &MaterialEntry, actual: Option<&MaterialEntry>) -> bool {
-    actual.is_some_and(|actual| actual.sha256 == expected.sha256 && actual.bytes == expected.bytes)
 }
 
 fn reconciliation_detail(before: &InventoryEntry, after: &InventoryEntry) -> &'static str {

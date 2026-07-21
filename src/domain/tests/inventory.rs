@@ -174,4 +174,26 @@ fn inventory_policy_is_versioned_typed_and_fail_closed() {
         ..default
     };
     assert!(escaping.canonicalized().is_err());
+    let non_adjacent_overlap = InventoryPolicy {
+        boundaries: vec![
+            InventoryBoundary::ReferenceOnly {
+                path: "a".to_owned(),
+                class: MaterialClass::Artifact,
+                rationale: "root".to_owned(),
+                reference: None,
+            },
+            InventoryBoundary::ReferenceOnly {
+                path: "a.txt".to_owned(),
+                class: MaterialClass::Artifact,
+                rationale: "sibling".to_owned(),
+                reference: None,
+            },
+            InventoryBoundary::ChildWorkspace {
+                path: "a/b".to_owned(),
+                rationale: "descendant".to_owned(),
+            },
+        ],
+        ..InventoryPolicy::default()
+    };
+    assert!(non_adjacent_overlap.canonicalized().is_err());
 }

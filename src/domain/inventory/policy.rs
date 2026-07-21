@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
@@ -107,12 +108,16 @@ impl InventoryPolicy {
                     "must be unique and sorted by canonical path",
                 ));
             }
-            if path_contains(pair[0].path(), pair[1].path()) {
+        }
+        let mut declared = BTreeSet::new();
+        for boundary in &self.boundaries {
+            if proper_prefixes(boundary.path()).any(|prefix| declared.contains(prefix)) {
                 return Err(Error::invalid(
                     "inventory boundaries",
                     "declarations cannot overlap by ancestry",
                 ));
             }
+            declared.insert(boundary.path());
         }
         Ok(())
     }
@@ -214,8 +219,6 @@ fn boundary_order(left: &InventoryBoundary, right: &InventoryBoundary) -> Orderi
     left.path().cmp(right.path())
 }
 
-fn path_contains(parent: &str, child: &str) -> bool {
-    child
-        .strip_prefix(parent)
-        .is_some_and(|suffix| suffix.starts_with('/'))
+fn proper_prefixes(path: &str) -> impl Iterator<Item = &str> {
+    path.match_indices('/').map(|(index, _)| &path[..index])
 }

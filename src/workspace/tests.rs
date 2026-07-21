@@ -17,6 +17,8 @@ use super::{
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
+#[path = "tests/review_binding_policy.rs"]
+mod review_binding_policy;
 #[path = "tests/review_signing.rs"]
 mod review_signing;
 use review_signing::*;
