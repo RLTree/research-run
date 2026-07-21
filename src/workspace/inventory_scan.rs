@@ -1,84 +1,127 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read};
+use std::fs;
 use std::path::{Path, PathBuf};
 
-use sha2::{Digest, Sha256};
-
-use crate::domain::{MAX_INVENTORY_ENTRIES, MaterialClass, MaterialEntry};
+use crate::domain::{
+    BoundaryEntry, InventoryBoundary, InventoryEntry, InventoryLimits, InventoryPolicy,
+    MaterialEntry, ProjectManifest,
+};
 use crate::{Error, Result};
 
-use super::injected_storage_failure;
 use super::path_safety::{absolute_path, reject_symlink_chain};
-use super::storage::{map_io, same_file_identity};
-#[cfg(all(any(test, coverage), unix))]
-use super::take_storage_failure;
+use super::storage::map_io;
+use super::{MAX_INVENTORY_RECORD_BYTES, injected_storage_failure};
 
-const MAX_INDEXED_FILE_BYTES: u64 = 64 * 1_048_576;
-const MAX_INVENTORY_BYTES: u64 = 512 * 1_048_576;
+mod boundary;
+mod material;
 
-pub(super) fn scan_materials(root: &Path) -> Result<(PathBuf, Vec<MaterialEntry>)> {
+pub(super) use material::{classify_material, hash_file};
+
+#[cfg(test)]
+pub(super) fn scan_materials(root: &Path) -> Result<(PathBuf, Vec<InventoryEntry>)> {
+    let parent = ProjectManifest {
+        schema_version: 1,
+        kind: "project-manifest".to_owned(),
+        project_id: "scan-parent".to_owned(),
+        workspace_id: "a".repeat(64),
+        name: "Scan parent".to_owned(),
+        declared_roots: vec![".".to_owned()],
+        review_authority_id: None,
+        review_authority_fingerprint: None,
+    };
+    scan_materials_with_policy(root, None, &parent)
+}
+
+pub(super) fn scan_materials_with_policy(
+    root: &Path,
+    policy: Option<&InventoryPolicy>,
+    parent: &ProjectManifest,
+) -> Result<(PathBuf, Vec<InventoryEntry>)> {
     let root = absolute_path(root)?;
     reject_symlink_chain(&root)?;
     if !root.is_dir() {
         return Err(Error::invalid("retrofit target", "must be a directory"));
     }
-    let mut paths = Vec::new();
-    collect_paths(&root, &root, &mut paths)?;
-    paths.sort();
-    let mut total = 0_u64;
-    let mut entries = Vec::with_capacity(paths.len());
-    for path in paths {
-        let (bytes, sha256) = hash_file(&path)?;
-        total = add_inventory_bytes(total, bytes)?;
-        let relative = path.strip_prefix(&root).expect("collected path is rooted");
-        let relative = (!injected_storage_failure("material path UTF-8"))
-            .then(|| relative.to_str())
-            .flatten()
-            .ok_or_else(|| Error::invalid("material path", "must be UTF-8"))?
-            .replace(std::path::MAIN_SEPARATOR, "/");
-        entries.push(MaterialEntry {
-            class: classify_material(&relative),
-            path: relative,
-            bytes,
-            sha256,
-        });
+    if let Some(policy) = policy {
+        policy.validate()?;
     }
+    let limits = policy.map_or_else(InventoryLimits::legacy, |value| value.limits);
+    let boundaries = policy
+        .map(|value| {
+            value
+                .boundaries
+                .iter()
+                .map(|boundary| (boundary.path().to_owned(), boundary.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut scanner = Scanner {
+        root: &root,
+        parent,
+        limits,
+        boundaries,
+        seen_boundaries: BTreeSet::new(),
+        entries: Vec::new(),
+        indexed_bytes: 0,
+        metadata_bytes: 0,
+    };
+    scanner.collect(&root)?;
+    if scanner.seen_boundaries.len() != scanner.boundaries.len() {
+        let missing = scanner
+            .boundaries
+            .keys()
+            .find(|path| !scanner.seen_boundaries.contains(*path))
+            .expect("unequal boundary sets retain a missing path");
+        return Err(Error::NotFound(format!(
+            "declared inventory boundary is missing: {missing}"
+        )));
+    }
+    scanner
+        .entries
+        .sort_by(|left, right| left.path().cmp(right.path()));
+    validate_child_identities(&scanner.entries, parent)?;
+    let entries = std::mem::take(&mut scanner.entries);
+    drop(scanner);
     Ok((root, entries))
 }
 
-pub(super) fn enforce_file_count(count: usize) -> Result<()> {
-    if count > MAX_INVENTORY_ENTRIES {
-        return Err(Error::Budget(format!(
-            "material inventory exceeds the {MAX_INVENTORY_ENTRIES} file budget"
-        )));
-    }
-    Ok(())
+struct Scanner<'a> {
+    root: &'a Path,
+    parent: &'a ProjectManifest,
+    limits: InventoryLimits,
+    boundaries: BTreeMap<String, InventoryBoundary>,
+    seen_boundaries: BTreeSet<String>,
+    entries: Vec<InventoryEntry>,
+    indexed_bytes: u64,
+    metadata_bytes: u64,
 }
 
-pub(super) fn add_inventory_bytes(total: u64, bytes: u64) -> Result<u64> {
-    let total = total
-        .checked_add(bytes)
-        .ok_or_else(|| Error::Budget("material inventory byte total overflowed".to_owned()))?;
-    if total > MAX_INVENTORY_BYTES || injected_storage_failure("inventory byte budget") {
-        return Err(Error::Budget(format!(
-            "material inventory exceeds the {MAX_INVENTORY_BYTES} byte scan budget"
-        )));
+impl Scanner<'_> {
+    fn collect(&mut self, directory: &Path) -> Result<()> {
+        reject_symlink_chain(directory)?;
+        let mut entries = map_io(
+            fs::read_dir(directory),
+            "read retrofit directory",
+            directory,
+        )?
+        .map(|entry| map_io(entry, "read retrofit entry", directory))
+        .collect::<Result<Vec<_>>>()?;
+        entries.sort_by_key(std::fs::DirEntry::file_name);
+        for entry in entries {
+            self.collect_entry(&entry)?;
+        }
+        Ok(())
     }
-    Ok(total)
-}
 
-fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Result<()> {
-    reject_symlink_chain(directory)?;
-    let entries = map_io(
-        fs::read_dir(directory),
-        "read retrofit directory",
-        directory,
-    )?;
-    for entry in entries {
-        let entry = map_io(entry, "read retrofit entry", directory)?;
+    fn collect_entry(&mut self, entry: &fs::DirEntry) -> Result<()> {
         let path = entry.path();
-        let relative = path.strip_prefix(root).expect("entry is rooted");
+        let relative_path = path.strip_prefix(self.root).expect("entry is rooted");
+        let relative = relative_path
+            .to_str()
+            .filter(|_| !injected_storage_failure("material path UTF-8"))
+            .ok_or_else(|| Error::invalid("material path", "must be UTF-8"))?
+            .replace(std::path::MAIN_SEPARATOR, "/");
         let metadata = map_io(fs::symlink_metadata(&path), "inspect retrofit entry", &path)?;
         if metadata.file_type().is_symlink() {
             return Err(Error::invalid(
@@ -86,157 +129,126 @@ fn collect_paths(root: &Path, directory: &Path, paths: &mut Vec<PathBuf>) -> Res
                 format!("symlink is forbidden: {}", path.display()),
             ));
         }
-        if relative.components().count() == 1
+        if relative_path.components().count() == 1
             && matches!(entry.file_name().to_str(), Some(".git" | ".research-run"))
         {
-            continue;
+            return Ok(());
         }
-        if metadata.is_dir() {
-            collect_paths(root, &path, paths)?;
-        } else if metadata.is_file() {
-            paths.push(path);
-            enforce_file_count(paths.len())?;
-        } else {
+        if let Some(declaration) = self.boundaries.get(&relative).cloned() {
+            let observed = boundary::observe(
+                self.root,
+                &path,
+                &relative,
+                &metadata,
+                &declaration,
+                self.parent,
+            )?;
+            self.seen_boundaries.insert(relative);
+            return self.push(InventoryEntry::Boundary(observed));
+        }
+        if entry.file_name() == OsStr::new(".research-run") {
             return Err(Error::invalid(
-                "retrofit target",
-                format!("unsupported filesystem entry: {}", path.display()),
+                "nested workspace boundary",
+                format!("undeclared Research Run workspace at {}", path.display()),
             ));
         }
+        if metadata.is_dir() {
+            self.collect(&path)
+        } else if metadata.is_file() {
+            let (bytes, sha256) = hash_file(&path, self.limits.max_file_bytes)?;
+            self.indexed_bytes = add_inventory_bytes_with_limit(
+                self.indexed_bytes,
+                bytes,
+                self.limits.max_total_bytes,
+            )?;
+            self.push(
+                MaterialEntry {
+                    class: classify_material(&relative),
+                    path: relative,
+                    bytes,
+                    sha256,
+                }
+                .into(),
+            )
+        } else {
+            Err(Error::invalid(
+                "retrofit target",
+                format!("unsupported filesystem entry: {}", path.display()),
+            ))
+        }
+    }
+
+    fn push(&mut self, entry: InventoryEntry) -> Result<()> {
+        enforce_entry_count(self.entries.len() + 1, self.limits.max_entries)?;
+        let serialized = serde_json::to_vec(&entry)
+            .expect("inventory entries contain only JSON-representable data");
+        self.metadata_bytes = self
+            .metadata_bytes
+            .checked_add(serialized.len() as u64)
+            .ok_or_else(|| Error::Budget("inventory metadata budget overflowed".to_owned()))?;
+        if self.metadata_bytes > MAX_INVENTORY_RECORD_BYTES {
+            return Err(Error::Budget(format!(
+                "inventory metadata exceeds the {MAX_INVENTORY_RECORD_BYTES} byte record budget"
+            )));
+        }
+        self.entries.push(entry);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+pub(super) fn enforce_file_count(count: usize) -> Result<()> {
+    enforce_entry_count(count, InventoryLimits::legacy().max_entries)
+}
+
+pub(super) fn enforce_entry_count(count: usize, maximum: u64) -> Result<()> {
+    if u64::try_from(count).unwrap_or(u64::MAX) > maximum {
+        return Err(Error::Budget(format!(
+            "material inventory exceeds the {maximum} entry budget"
+        )));
     }
     Ok(())
 }
 
-pub(super) fn hash_file(path: &Path) -> Result<(u64, String)> {
-    reject_material_path(path, "material pre-hash path")?;
-    let before = map_io(fs::metadata(path), "inspect material", path)?;
-    if !before.is_file() {
-        return Err(Error::invalid(
-            "material path",
-            format!("must be a regular file: {}", path.display()),
-        ));
-    }
-    if before.len() > MAX_INDEXED_FILE_BYTES {
+#[cfg(test)]
+pub(super) fn add_inventory_bytes(total: u64, bytes: u64) -> Result<u64> {
+    add_inventory_bytes_with_limit(total, bytes, InventoryLimits::legacy().max_total_bytes)
+}
+
+pub(super) fn add_inventory_bytes_with_limit(total: u64, bytes: u64, maximum: u64) -> Result<u64> {
+    let total = total
+        .checked_add(bytes)
+        .ok_or_else(|| Error::Budget("material inventory byte total overflowed".to_owned()))?;
+    if total > maximum || injected_storage_failure("inventory byte budget") {
         return Err(Error::Budget(format!(
-            "{} exceeds the {MAX_INDEXED_FILE_BYTES} byte material budget",
-            path.display()
+            "material inventory exceeds the {maximum} byte scan budget"
         )));
     }
-    inject_material_open_race(path);
-    let mut file = map_io(open_material(path), "open material", path)?;
-    let opened = map_io(file.metadata(), "inspect opened material", path)?;
-    if !opened.is_file() {
-        return Err(Error::invalid(
-            "material path",
-            format!("must open as a regular file: {}", path.display()),
-        ));
-    }
-    if !same_file_identity(&before, &opened) || injected_storage_failure("material opened identity")
-    {
-        return Err(Error::AmbiguousEffect(format!(
-            "material identity changed while opening {}",
-            path.display()
-        )));
-    }
-    let mut hasher = Sha256::new();
-    let copied = map_io(
-        std::io::copy(
-            &mut file.by_ref().take(MAX_INDEXED_FILE_BYTES + 1),
-            &mut hasher,
-        ),
-        "hash material",
-        path,
-    )?;
-    if copied > MAX_INDEXED_FILE_BYTES || injected_storage_failure("material grew") {
-        return Err(Error::Budget(format!(
-            "{} grew beyond its budget",
-            path.display()
-        )));
-    }
-    reject_material_path(path, "material post-hash path")?;
-    let after = map_io(fs::metadata(path), "reinspect material", path)?;
-    if !same_file_identity(&opened, &after)
-        || before.len() != after.len()
-        || copied != opened.len()
-        || injected_storage_failure("material copied length")
-        || injected_storage_failure("material identity")
-    {
-        return Err(Error::AmbiguousEffect(format!(
-            "material identity changed while indexing {}",
-            path.display()
-        )));
-    }
-    Ok((copied, format!("{:x}", hasher.finalize())))
+    Ok(total)
 }
 
-fn open_material(path: &Path) -> io::Result<File> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-
-        OpenOptions::new()
-            .read(true)
-            .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW)
-            .open(path)
+fn validate_child_identities(entries: &[InventoryEntry], parent: &ProjectManifest) -> Result<()> {
+    let mut identities = BTreeSet::new();
+    for boundary in entries.iter().filter_map(|entry| match entry {
+        InventoryEntry::Boundary(BoundaryEntry::ChildWorkspace {
+            workspace_observation,
+            ..
+        }) => Some(workspace_observation),
+        _ => None,
+    }) {
+        if boundary.project_id == parent.project_id || boundary.workspace_id == parent.workspace_id
+        {
+            return Err(Error::invalid(
+                "child workspace identity",
+                "child and parent identities must be distinct",
+            ));
+        }
+        if !identities.insert(&boundary.workspace_id) {
+            return Err(Error::invalid(
+                "child workspace identity",
+                "multiple boundaries name the same workspace",
+            ));
+        }
     }
-    #[cfg(not(unix))]
-    OpenOptions::new().read(true).open(path)
-}
-
-#[cfg(all(any(test, coverage), unix))]
-fn inject_material_open_race(path: &Path) {
-    if take_storage_failure("material open fifo race") {
-        fs::remove_file(path).expect("remove material for injected FIFO race");
-        assert!(
-            std::process::Command::new("mkfifo")
-                .arg(path)
-                .status()
-                .expect("create injected FIFO")
-                .success()
-        );
-    }
-}
-
-#[cfg(not(all(any(test, coverage), unix)))]
-fn inject_material_open_race(_path: &Path) {}
-
-fn reject_material_path(path: &Path, fault: &str) -> Result<()> {
-    if injected_storage_failure(fault) {
-        return Err(Error::io(
-            "inspect material path",
-            path,
-            std::io::Error::other("injected material path failure"),
-        ));
-    }
-    reject_symlink_chain(path)
-}
-
-pub(super) fn classify_material(path: &str) -> MaterialClass {
-    let lower = path.to_ascii_lowercase();
-    let extension = Path::new(path).extension().and_then(OsStr::to_str);
-    if lower.contains("protocol") || lower.contains("method") {
-        MaterialClass::Protocol
-    } else if lower.contains("source")
-        || lower.contains("reference")
-        || lower.contains("literature")
-    {
-        MaterialClass::Source
-    } else if lower.contains("experiment") || lower.contains("run-") {
-        MaterialClass::Experiment
-    } else if lower.contains("observation") || lower.contains("result") {
-        MaterialClass::Observation
-    } else if lower.contains("analysis") {
-        MaterialClass::Analysis
-    } else if lower.contains("decision") {
-        MaterialClass::Decision
-    } else if lower.contains("plan") {
-        MaterialClass::Plan
-    } else if matches!(extension, Some("ppt" | "pptx" | "key")) || lower.contains("presentation") {
-        MaterialClass::Presentation
-    } else if matches!(extension, Some("md" | "txt" | "rst")) || lower.contains("note") {
-        MaterialClass::Note
-    } else if extension.is_some() {
-        MaterialClass::Artifact
-    } else {
-        MaterialClass::Unknown
-    }
+    Ok(())
 }

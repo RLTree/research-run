@@ -7,8 +7,8 @@ use crate::{Error, Result};
 use super::pending_cleanup::PendingCleanup;
 use super::publication::{pending_path, write_pending};
 use super::recovery_plan::PendingRecord;
-use super::storage::{map_io, read_bounded, sync_directory};
-use super::{RecoveryResult, injected_storage_failure};
+use super::storage::{map_io, read_bounded_with_limit, sync_directory};
+use super::{RecoveryResult, injected_storage_failure, record_byte_limit_for_path};
 
 pub(super) fn commit_recovery(
     directory: &Path,
@@ -26,7 +26,8 @@ pub(super) fn commit_recovery(
 }
 
 pub(super) fn discard_identical(record: PendingRecord, result: &mut RecoveryResult) -> Result<()> {
-    let target = read_bounded(&record.target)?;
+    let target =
+        read_bounded_with_limit(&record.target, record_byte_limit_for_path(&record.target))?;
     let target_matches = target.iter().eq(record.bytes.iter());
     if !target_matches || injected_storage_failure("recovery target conflict") {
         return Err(Error::AmbiguousEffect(format!(

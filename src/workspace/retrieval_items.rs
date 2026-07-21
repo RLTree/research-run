@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::domain::RelationshipKind;
+use crate::domain::{BoundaryEntry, InventoryEntry, RelationshipKind};
 
 use super::retrieval_canonical::add_canonical;
 use super::retrieval_types::ProjectionItem;
@@ -41,33 +41,73 @@ fn add_inventories(snapshot: &Snapshot, items: &mut Vec<ProjectionItem>) {
     for inventory in &snapshot.inventories {
         let stale = Some(inventory.id.as_str()) != latest;
         let authority = format!(".research-run/inventories/{}.json", inventory.id);
+        let indexed = inventory
+            .entries
+            .iter()
+            .filter(|entry| matches!(entry, InventoryEntry::Indexed(_)))
+            .count();
+        let boundaries = inventory.entries.len() - indexed;
         items.push(item(ItemSpec {
             kind: "inventory",
             id: &inventory.id,
             subtype: "inventory",
             title: &format!("Inventory {}", inventory.id),
-            summary: &format!("{} indexed materials", inventory.entries.len()),
+            summary: &format!("{indexed} indexed materials and {boundaries} explicit boundaries"),
             occurred_at: Some(&inventory.observed_at),
             state: None,
             authority_path: &authority,
             stale,
             invalidated: false,
         }));
-        for material in &inventory.entries {
-            items.push(item(ItemSpec {
-                kind: "material",
-                id: &material.path,
-                subtype: &enum_name(&material.class),
-                title: &material.path,
-                summary: &format!("{} bytes SHA-256 {}", material.bytes, material.sha256),
-                occurred_at: Some(&inventory.observed_at),
-                state: None,
-                authority_path: &authority,
-                stale,
-                invalidated: false,
-            }));
+        for entry in &inventory.entries {
+            add_inventory_entry(entry, inventory, &authority, stale, items);
         }
     }
+}
+
+fn add_inventory_entry(
+    entry: &InventoryEntry,
+    inventory: &crate::domain::InventorySnapshot,
+    authority: &str,
+    stale: bool,
+    items: &mut Vec<ProjectionItem>,
+) {
+    let (id, subtype, summary) = match entry {
+        InventoryEntry::Indexed(material) => (
+            material.path.as_str(),
+            enum_name(&material.class),
+            format!("{} bytes SHA-256 {}", material.bytes, material.sha256),
+        ),
+        InventoryEntry::Boundary(BoundaryEntry::ReferenceOnly { path, .. }) => (
+            path.as_str(),
+            "reference-only".to_owned(),
+            "reference-only root metadata; descendant content was not inspected, hashed, validated, or scientifically verified".to_owned(),
+        ),
+        InventoryEntry::Boundary(BoundaryEntry::ChildWorkspace {
+            path,
+            workspace_observation,
+            ..
+        }) => (
+            path.as_str(),
+            "child-workspace".to_owned(),
+            format!(
+                "child workspace {} identity observed; child material was not inspected, hashed, validated, or scientifically verified",
+                workspace_observation.workspace_id
+            ),
+        ),
+    };
+    items.push(item(ItemSpec {
+        kind: "material",
+        id,
+        subtype: &subtype,
+        title: id,
+        summary: &summary,
+        occurred_at: Some(&inventory.observed_at),
+        state: None,
+        authority_path: authority,
+        stale,
+        invalidated: false,
+    }));
 }
 
 fn history_flags(snapshot: &Snapshot) -> (BTreeSet<&str>, BTreeSet<&str>) {

@@ -17,6 +17,8 @@ use super::{
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
+#[path = "tests/review_binding_policy.rs"]
+mod review_binding_policy;
 #[path = "tests/review_signing.rs"]
 mod review_signing;
 use review_signing::*;
@@ -30,12 +32,22 @@ mod inventory_bootstrap_coverage;
 mod inventory_bootstrap_faults;
 #[path = "tests/inventory_bootstrap_pending_faults.rs"]
 mod inventory_bootstrap_pending_faults;
+#[path = "tests/inventory_budgets.rs"]
+mod inventory_budgets;
+#[path = "tests/inventory_policy_child_identity.rs"]
+mod inventory_policy_child_identity;
+#[path = "tests/inventory_policy_limits.rs"]
+mod inventory_policy_limits;
+#[path = "tests/knowledge_inventory.rs"]
+mod knowledge_inventory;
 #[path = "tests/lifecycle_publication.rs"]
 mod lifecycle_publication;
 #[path = "tests/recovery_coverage_edges.rs"]
 mod recovery_coverage_edges;
 #[path = "tests/recovery_semantic_coverage.rs"]
 mod recovery_semantic_coverage;
+#[path = "tests/retrieval_inventory.rs"]
+mod retrieval_inventory;
 #[path = "tests/security_findings.rs"]
 mod security_findings;
 
@@ -195,6 +207,10 @@ mod handoff_validation;
 mod inventory_expanded;
 #[path = "tests/inventory_failure_expanded.rs"]
 mod inventory_failure_expanded;
+#[path = "tests/inventory_policy.rs"]
+mod inventory_policy;
+#[path = "tests/inventory_policy_failures.rs"]
+mod inventory_policy_failures;
 #[path = "tests/inventory_tamper.rs"]
 mod inventory_tamper;
 #[path = "tests/knowledge_expanded.rs"]

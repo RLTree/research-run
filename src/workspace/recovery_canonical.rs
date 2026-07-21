@@ -10,8 +10,8 @@ use crate::{Error, Result};
 
 use super::publication::canonical_json_bytes;
 use super::recovery_plan::PendingRecord;
-use super::storage::{ReadBudget, parse_json, read_bounded, read_json_with_budget};
-use super::{MAX_RECORD_BYTES, Workspace};
+use super::storage::{ReadBudget, parse_json, read_bounded_with_limit, read_json_with_budget};
+use super::{Workspace, record_byte_limit, record_byte_limit_for_path};
 
 pub(super) fn canonical_manifest(
     workspace: &Workspace,
@@ -65,7 +65,7 @@ where
                 "filename does not match record id",
             ));
         }
-        record.bytes = bounded_canonical_json(&candidate)?;
+        record.bytes = bounded_canonical_json(&candidate, record_byte_limit(directory))?;
         candidates.entry(record.target.clone()).or_insert(candidate);
     }
     let mut records = workspace.load_records(directory, true, budget)?;
@@ -83,11 +83,11 @@ where
     Ok(records)
 }
 
-fn bounded_canonical_json(value: &impl Serialize) -> Result<Vec<u8>> {
+fn bounded_canonical_json(value: &impl Serialize, maximum: u64) -> Result<Vec<u8>> {
     let bytes = canonical_json_bytes(value);
-    if bytes.len() as u64 > MAX_RECORD_BYTES {
+    if bytes.len() as u64 > maximum {
         return Err(Error::Budget(format!(
-            "canonical recovery record exceeds the {MAX_RECORD_BYTES} byte budget"
+            "canonical recovery record exceeds the {maximum} byte budget"
         )));
     }
     Ok(bytes)
@@ -110,7 +110,9 @@ fn unique_pending(pending: &[PendingRecord]) -> Result<Vec<&PendingRecord>> {
 }
 
 fn ensure_identical_target(record: &PendingRecord) -> Result<()> {
-    if read_bounded(&record.target)? == record.bytes {
+    if read_bounded_with_limit(&record.target, record_byte_limit_for_path(&record.target))?
+        == record.bytes
+    {
         Ok(())
     } else {
         Err(Error::AmbiguousEffect(format!(

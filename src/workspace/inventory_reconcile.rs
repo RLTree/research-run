@@ -1,30 +1,30 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::domain::{MaterialEntry, ReconciliationChange, ReconciliationKind};
+use crate::domain::{InventoryEntry, ReconciliationChange, ReconciliationKind};
 
 pub(super) fn reconcile(
-    previous: &[MaterialEntry],
-    current: &[MaterialEntry],
+    previous: &[InventoryEntry],
+    current: &[InventoryEntry],
 ) -> Vec<ReconciliationChange> {
     let old = previous
         .iter()
-        .map(|entry| (&entry.path, entry))
+        .map(|entry| (entry.path(), entry))
         .collect::<BTreeMap<_, _>>();
     let new = current
         .iter()
-        .map(|entry| (&entry.path, entry))
+        .map(|entry| (entry.path(), entry))
         .collect::<BTreeMap<_, _>>();
     let mut changes = Vec::new();
     let mut missing = Vec::new();
     let mut added = Vec::new();
     for (path, before) in &old {
         match new.get(path) {
-            Some(after) if before.sha256 != after.sha256 || before.bytes != after.bytes => {
+            Some(after) if before != after => {
                 changes.push(change(
                     ReconciliationKind::Changed,
                     Some(path),
                     Some(path),
-                    "content fingerprint changed",
+                    reconciliation_detail(before, after),
                 ));
             }
             Some(_) => {}
@@ -40,7 +40,7 @@ pub(super) fn reconcile(
     for entry in missing {
         changes.push(change(
             ReconciliationKind::Missing,
-            Some(&entry.path),
+            Some(entry.path()),
             None,
             "previous material is absent; no deletion inferred",
         ));
@@ -49,7 +49,7 @@ pub(super) fn reconcile(
         changes.push(change(
             ReconciliationKind::Added,
             None,
-            Some(&entry.path),
+            Some(entry.path()),
             "new material path observed",
         ));
     }
@@ -60,49 +60,64 @@ pub(super) fn reconcile(
 
 fn pair_moves(
     changes: &mut Vec<ReconciliationChange>,
-    missing: &mut Vec<&MaterialEntry>,
-    added: &mut Vec<&MaterialEntry>,
+    missing: &mut Vec<&InventoryEntry>,
+    added: &mut Vec<&InventoryEntry>,
 ) {
     let mut consumed_old = BTreeSet::new();
     let mut consumed_new = BTreeSet::new();
-    for before in missing.iter().copied() {
-        let candidates = added
-            .iter()
-            .copied()
-            .filter(|after| after.sha256 == before.sha256 && after.bytes == before.bytes)
-            .collect::<Vec<_>>();
-        if candidates.len() == 1 {
-            let after = candidates[0];
-            let reverse = missing
-                .iter()
-                .filter(|other| other.sha256 == after.sha256 && other.bytes == after.bytes)
-                .count();
-            if reverse == 1 {
-                changes.push(change(
-                    ReconciliationKind::Moved,
-                    Some(&before.path),
-                    Some(&after.path),
-                    "exact size and SHA-256 identity",
-                ));
-                consumed_old.insert(before.path.as_str());
-                consumed_new.insert(after.path.as_str());
-            } else {
+    let missing_by_material = material_groups(missing);
+    let added_by_material = material_groups(added);
+    for (identity, befores) in missing_by_material {
+        let Some(afters) = added_by_material.get(&identity) else {
+            continue;
+        };
+        if afters.len() != 1 {
+            continue;
+        }
+        let after = afters[0];
+        if befores.len() == 1 {
+            let before = befores[0];
+            changes.push(change(
+                ReconciliationKind::Moved,
+                Some(before.path()),
+                Some(after.path()),
+                "exact size and SHA-256 identity",
+            ));
+            consumed_old.insert(before.path());
+            consumed_new.insert(after.path());
+        } else {
+            for before in befores {
                 changes.push(change(
                     ReconciliationKind::Conflict,
-                    Some(&before.path),
-                    Some(&after.path),
+                    Some(before.path()),
+                    Some(after.path()),
                     "move identity is ambiguous",
                 ));
             }
         }
     }
-    missing.retain(|entry| !consumed_old.contains(entry.path.as_str()));
-    added.retain(|entry| !consumed_new.contains(entry.path.as_str()));
+    missing.retain(|entry| !consumed_old.contains(entry.path()));
+    added.retain(|entry| !consumed_new.contains(entry.path()));
 }
 
-fn duplicate_changes(changes: &mut Vec<ReconciliationChange>, current: &[MaterialEntry]) {
+fn material_groups<'a>(
+    entries: &[&'a InventoryEntry],
+) -> BTreeMap<(&'a str, u64), Vec<&'a InventoryEntry>> {
+    let mut groups = BTreeMap::new();
+    for &entry in entries {
+        if let Some(material) = entry.indexed() {
+            groups
+                .entry((material.sha256.as_str(), material.bytes))
+                .or_insert_with(Vec::new)
+                .push(entry);
+        }
+    }
+    groups
+}
+
+fn duplicate_changes(changes: &mut Vec<ReconciliationChange>, current: &[InventoryEntry]) {
     let mut by_digest = BTreeMap::<(&str, u64), Vec<&str>>::new();
-    for entry in current {
+    for entry in current.iter().filter_map(InventoryEntry::indexed) {
         by_digest
             .entry((&entry.sha256, entry.bytes))
             .or_default()
@@ -118,6 +133,16 @@ fn duplicate_changes(changes: &mut Vec<ReconciliationChange>, current: &[Materia
                 "multiple current paths have exact size and SHA-256 identity",
             ));
         }
+    }
+}
+
+fn reconciliation_detail(before: &InventoryEntry, after: &InventoryEntry) -> &'static str {
+    match (before, after) {
+        (InventoryEntry::Indexed(_), InventoryEntry::Indexed(_)) => "content fingerprint changed",
+        (InventoryEntry::Boundary(_), InventoryEntry::Boundary(_)) => {
+            "boundary declaration or observed identity changed"
+        }
+        _ => "inventory path changed epistemic classification",
     }
 }
 

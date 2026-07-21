@@ -145,18 +145,21 @@ ambiguous authority, and `5` is budget exhaustion. Successful commands return
 ## Retrofit an existing project
 
 Planning is read-only and emits authoritative JSON. Keep the plan outside the
-target so writing the plan itself cannot change the candidate it describes:
+target so writing the plan itself cannot change the candidate it describes. Use
+a durable sibling plan directory rather than a system temporary path:
 
 ```console
+PLAN_DIR="$PWD/research-run-plans"
+mkdir -p "$PLAN_DIR"
 research-run retrofit plan existing-project \
   --name "Existing project" \
   --id inventory-initial \
   --observed-at 2026-07-18T20:00:00Z \
   --review-authority-id primary-researcher \
   --review-authority-public-key researcher-review.pub \
-  > /tmp/research-run-plan.json
+  > "$PLAN_DIR/research-run-plan.json"
 research-run retrofit apply existing-project \
-  --input /tmp/research-run-plan.json --json
+  --input "$PLAN_DIR/research-run-plan.json" --json
 ```
 
 Apply rescans every indexed byte and fails if the project changed after
@@ -171,6 +174,66 @@ Ambiguous identity conflicts cannot be applied.
 If initialization commits but inventory publication does not, apply reports an
 ambiguous effect and retains a plan-digest marker; reapply that exact accepted
 plan to finish the combined bootstrap transaction.
+
+### Large datasets and nested projects
+
+New inventories embed a versioned policy. Without `--policy`, a new workspace
+defaults to 20,000 indexed entries, 2 GiB per file, and 8 GiB total. A policy
+may explicitly set `u64` byte totals above 64 GiB; content still streams through
+SHA-256 rather than being buffered in memory. A legacy inventory without a
+policy keeps its prior 2,048-entry, 64 MiB-per-file, 512 MiB-total behavior
+until a `reconcile plan --policy` migration is accepted.
+
+Use exact boundaries instead of broad exclusions. This compact policy is both
+the CLI input and the policy copied into the accepted plan and inventory:
+
+```json
+{
+  "schema_version": 1,
+  "kind": "inventory-policy",
+  "limits": {
+    "max_entries": 20000,
+    "max_file_bytes": 2147483648,
+    "max_total_bytes": 68719476736
+  },
+  "boundaries": [
+    {
+      "boundary_kind": "reference-only",
+      "path": "data/raw",
+      "class": "artifact",
+      "rationale": "Instrument-managed raw data",
+      "reference": {
+        "reference_kind": "manifest",
+        "locator_type": "workspace",
+        "locator": "manifests/raw-data.json",
+        "description": "Operator-supplied dataset manifest"
+      }
+    },
+    {
+      "boundary_kind": "child-workspace",
+      "path": "projects/znf385a",
+      "rationale": "Independent project evidence authority"
+    }
+  ]
+}
+```
+
+Pass it only while planning:
+
+```console
+research-run reconcile plan thesis-workspace \
+  --name "Thesis synthesis" \
+  --id inventory-policy-migration \
+  --observed-at 2026-07-20T04:00:00Z \
+  --policy "$PLAN_DIR/inventory-policy.json" \
+  > "$PLAN_DIR/inventory-policy-plan.json"
+```
+
+Reference-only roots remain visible in canonical inventory state, but their
+contents are not inspected, hashed, validated, or scientifically verified.
+Child roots retain child identity and the available canonical snapshot identity,
+not a recursive copy of child material. Missing, overlapping, escaping, or
+symlinked declarations fail; `.gitignore` is never imported.
 
 ## Capture typed project knowledge
 

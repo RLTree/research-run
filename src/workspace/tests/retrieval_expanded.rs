@@ -1,7 +1,7 @@
 use super::*;
 use crate::domain::{
-    EntityKind, EntityRef, InventorySnapshot, KnowledgeKind, KnowledgeRecord, KnowledgeState,
-    MaterialClass, MaterialEntry, RelationshipKind, RelationshipRecord,
+    EntityKind, EntityRef, KnowledgeKind, KnowledgeRecord, KnowledgeState, RelationshipKind,
+    RelationshipRecord,
 };
 
 fn knowledge(id: &str, kind: KnowledgeKind, state: KnowledgeState) -> KnowledgeRecord {
@@ -29,7 +29,7 @@ fn setup_retrieval(root: &std::path::Path) -> Workspace {
     add_retrieval_evidence(&workspace);
     add_retrieval_knowledge(&workspace);
     add_invalidation(&workspace);
-    add_inventories(&workspace);
+    super::retrieval_inventory::add_inventories(&workspace);
     workspace
 }
 
@@ -134,37 +134,6 @@ fn add_invalidation(workspace: &Workspace) {
         authorship: Authorship::Human,
     };
     workspace.add_relationship(&record).expect("invalidation");
-}
-
-fn add_inventories(workspace: &Workspace) {
-    for (id, at, previous) in [
-        ("inventory-old", "2026-07-18T20:00:00Z", None),
-        (
-            "inventory-new",
-            "2026-07-18T20:01:00Z",
-            Some("inventory-old".to_owned()),
-        ),
-    ] {
-        let inventory = InventorySnapshot {
-            schema_version: 1,
-            kind: "inventory".to_owned(),
-            id: id.to_owned(),
-            project_name: "Retrieval unit".to_owned(),
-            project_id: "retrieval-unit".to_owned(),
-            observed_at: at.to_owned(),
-            previous_snapshot_id: previous,
-            entries: vec![MaterialEntry {
-                path: "note.md".to_owned(),
-                class: MaterialClass::Note,
-                bytes: 1,
-                sha256: "a".repeat(64),
-            }],
-            changes: Vec::new(),
-        };
-        workspace
-            .publish_record("inventories", &inventory)
-            .expect("inventory");
-    }
 }
 
 #[test]

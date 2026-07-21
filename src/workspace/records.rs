@@ -7,7 +7,6 @@ use crate::{Error, Result};
 
 use super::publication::canonical_json_bytes;
 use super::references::claim_evidence_ids;
-use super::storage::read_bounded;
 use super::write_lock::WorkspaceWriteLock;
 use super::{MAX_RECORDS_PER_KIND, ValidationResult, Workspace};
 
@@ -170,7 +169,10 @@ impl Workspace {
         if !target.exists() {
             return Ok(false);
         }
-        Ok(read_bounded(&target)? == canonical_json_bytes(record))
+        Ok(
+            super::storage::read_bounded_with_limit(&target, super::record_byte_limit(directory))?
+                == canonical_json_bytes(record),
+        )
     }
 }
 

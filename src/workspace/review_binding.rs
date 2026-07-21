@@ -3,9 +3,10 @@ use std::path::Path;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::domain::{ArtifactLocatorType, EvidenceLink};
+use crate::domain::{ArtifactLocatorType, EvidenceLink, InventoryLimits};
 use crate::{Error, Result};
 
+use super::inventory_authority::latest_inventory_from_snapshot;
 use super::inventory_scan::hash_file;
 use super::publication::canonical_json_bytes;
 use super::references::claim_evidence_ids;
@@ -58,6 +59,7 @@ impl Workspace {
             .find(|claim| claim.id == claim_id)
             .ok_or_else(|| Error::invalid("claim reference", "claim does not exist"))?;
         let mut hasher = Sha256::new();
+        let file_limit = active_inventory_file_limit(snapshot);
         hash_serialized(&mut hasher, "claim", claim_id, claim);
         let mut evidence = snapshot
             .evidence
@@ -67,7 +69,7 @@ impl Workspace {
         evidence.sort_by(|left, right| left.id.cmp(&right.id));
         for record in evidence {
             hash_serialized(&mut hasher, "evidence", &record.id, record);
-            self.hash_evidence_authority(&mut hasher, snapshot, record)?;
+            self.hash_evidence_authority(&mut hasher, snapshot, record, file_limit)?;
         }
         Ok(format!("{:x}", hasher.finalize()))
     }
@@ -77,6 +79,7 @@ impl Workspace {
         hasher: &mut Sha256,
         snapshot: &Snapshot,
         evidence: &EvidenceLink,
+        file_limit: u64,
     ) -> Result<()> {
         if let Some(source_id) = &evidence.source_id {
             let source = snapshot
@@ -100,11 +103,16 @@ impl Workspace {
                 .iter()
                 .filter(|artifact| artifact.locator_type == ArtifactLocatorType::Workspace)
             {
-                self.hash_workspace_artifact(hasher, "experiment-artifact", &artifact.locator)?;
+                self.hash_workspace_artifact(
+                    hasher,
+                    "experiment-artifact",
+                    &artifact.locator,
+                    file_limit,
+                )?;
             }
         }
         if let Some(locator) = &evidence.artifact {
-            self.hash_workspace_artifact(hasher, "artifact", locator)?;
+            self.hash_workspace_artifact(hasher, "artifact", locator, file_limit)?;
         }
         Ok(())
     }
@@ -114,8 +122,9 @@ impl Workspace {
         hasher: &mut Sha256,
         kind: &str,
         locator: &str,
+        file_limit: u64,
     ) -> Result<()> {
-        let (bytes, digest) = hash_file(&self.validate_workspace_path(locator)?)?;
+        let (bytes, digest) = hash_file(&self.validate_workspace_path(locator)?, file_limit)?;
         hash_frame(
             hasher,
             kind,
@@ -125,6 +134,14 @@ impl Workspace {
         hasher.update(digest.as_bytes());
         Ok(())
     }
+}
+
+fn active_inventory_file_limit(snapshot: &Snapshot) -> u64 {
+    latest_inventory_from_snapshot(snapshot)
+        .and_then(|inventory| inventory.policy)
+        .map_or(InventoryLimits::legacy().max_file_bytes, |policy| {
+            policy.limits.max_file_bytes
+        })
 }
 
 fn hash_serialized(hasher: &mut Sha256, kind: &str, id: &str, value: &impl Serialize) {

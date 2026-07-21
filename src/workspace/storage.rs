@@ -18,9 +18,10 @@ pub(super) struct ReadBudget {
 
 impl ReadBudget {
     pub(super) fn consume(&mut self, path: &Path, bytes: u64) -> Result<()> {
-        // Each input is bounded to MAX_RECORD_BYTES and the previous total is
-        // bounded to MAX_SNAPSHOT_BYTES, so this addition cannot overflow u64.
-        self.bytes += bytes;
+        self.bytes = self
+            .bytes
+            .checked_add(bytes)
+            .ok_or_else(|| Error::Budget("snapshot byte budget overflowed".to_owned()))?;
         if self.bytes > MAX_SNAPSHOT_BYTES || injected_storage_failure("snapshot byte budget") {
             return Err(Error::Budget(format!(
                 "{} would exceed the {MAX_SNAPSHOT_BYTES} byte snapshot budget",
@@ -36,6 +37,15 @@ pub(super) fn read_json_with_budget<T: DeserializeOwned>(
     budget: &mut ReadBudget,
 ) -> Result<T> {
     let bytes = read_bounded_with_budget(path, budget)?;
+    parse_json(&bytes, path)
+}
+
+pub(super) fn read_json_with_limit<T: DeserializeOwned>(
+    path: &Path,
+    budget: &mut ReadBudget,
+    maximum: u64,
+) -> Result<T> {
+    let bytes = read_bounded_with_budget_and_limit(path, budget, maximum)?;
     parse_json(&bytes, path)
 }
 
@@ -64,12 +74,24 @@ pub(super) fn map_io<T>(result: io::Result<T>, action: &'static str, path: &Path
 }
 
 pub(super) fn read_bounded_with_budget(path: &Path, budget: &mut ReadBudget) -> Result<Vec<u8>> {
-    let bytes = read_bounded(path)?;
+    read_bounded_with_budget_and_limit(path, budget, MAX_RECORD_BYTES)
+}
+
+pub(super) fn read_bounded_with_budget_and_limit(
+    path: &Path,
+    budget: &mut ReadBudget,
+    maximum: u64,
+) -> Result<Vec<u8>> {
+    let bytes = read_bounded_with_limit(path, maximum)?;
     budget.consume(path, bytes.len() as u64)?;
     Ok(bytes)
 }
 
 pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
+    read_bounded_with_limit(path, MAX_RECORD_BYTES)
+}
+
+pub(super) fn read_bounded_with_limit(path: &Path, maximum: u64) -> Result<Vec<u8>> {
     reject_symlink_chain(path)?;
     let metadata = map_io(fs::symlink_metadata(path), "inspect record", path)?;
     if !metadata.is_file() {
@@ -78,9 +100,9 @@ pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
             format!("{} is not a regular file", path.display()),
         ));
     }
-    if metadata.len() > MAX_RECORD_BYTES {
+    if metadata.len() > maximum {
         return Err(Error::Budget(format!(
-            "{} exceeds the {MAX_RECORD_BYTES} byte record budget",
+            "{} exceeds the {maximum} byte record budget",
             path.display()
         )));
     }
@@ -103,11 +125,11 @@ pub(super) fn read_bounded(path: &Path) -> Result<Vec<u8>> {
     }
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     map_io(
-        file.take(MAX_RECORD_BYTES + 1).read_to_end(&mut bytes),
+        file.take(maximum.saturating_add(1)).read_to_end(&mut bytes),
         "read record",
         path,
     )?;
-    if bytes.len() as u64 > MAX_RECORD_BYTES || injected_storage_failure("record grew") {
+    if bytes.len() as u64 > maximum || injected_storage_failure("record grew") {
         return Err(Error::Budget(format!(
             "{} grew beyond the record budget while reading",
             path.display()
