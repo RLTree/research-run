@@ -2,14 +2,16 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use crate::domain::{CanonicalRecord, ProjectManifest, ReviewAuthority};
+use crate::domain::{CanonicalRecord, ContributionProtocol, ProjectManifest, ReviewAuthority};
 use crate::{Error, Result};
 
 use super::path_safety::{absolute_path, create_directory_chain, reject_symlink_chain};
 use super::sshsig::parse_authority_key;
 use super::storage::ReadBudget;
 use super::write_lock::WorkspaceWriteLock;
-use super::{STATE_DIRECTORY, Workspace, injected_storage_failure};
+use super::{
+    CONTRIBUTION_PROTOCOL_DIRECTORY, STATE_DIRECTORY, Workspace, injected_storage_failure,
+};
 
 impl Workspace {
     pub fn initialize(root: &Path, name: &str) -> Result<Self> {
@@ -93,19 +95,29 @@ impl Workspace {
             "knowledge",
             "relationships",
             "migrations",
+            CONTRIBUTION_PROTOCOL_DIRECTORY,
         ] {
             let path = workspace.state.join(directory);
             create_directory_chain(&path)?;
         }
         if manifest_path.is_file() {
             workspace.stage_initialized_authority(authority)?;
+            workspace.install_contribution_protocol()?;
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
         workspace.stage_initialized_authority(authority)?;
         workspace.publish_value(&manifest_path, &manifest)?;
+        workspace.install_contribution_protocol()?;
         workspace.verify_initialized_authority(authority)?;
         Ok(workspace)
+    }
+
+    pub(super) fn install_contribution_protocol(&self) -> Result<bool> {
+        self.publish_record(
+            CONTRIBUTION_PROTOCOL_DIRECTORY,
+            &ContributionProtocol::agent_v1(),
+        )
     }
 
     fn stage_initialized_authority(&self, expected: Option<&ReviewAuthority>) -> Result<()> {

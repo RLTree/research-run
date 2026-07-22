@@ -11,6 +11,15 @@ mod malformed;
 #[test]
 fn openssh_key_parser_rejects_each_malformed_boundary() {
     assert!(parse_openssh_public_key(&format!("{}\n", public_key())).is_ok());
+    let empty = match parse_openssh_public_key("") {
+        Ok(_) => panic!("empty key accepted"),
+        Err(error) => error,
+    };
+    assert!(
+        empty
+            .to_string()
+            .contains("exactly one nonempty OpenSSH key record is required")
+    );
     assert!(parse_openssh_public_key("rsa AAAA").is_err());
     assert!(parse_openssh_public_key("ssh-ed25519").is_err());
     assert!(parse_openssh_public_key("ssh-ed25519 !").is_err());

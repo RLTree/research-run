@@ -8,7 +8,7 @@ fn handoff_validation_rejects_every_identity_boundary() {
         .handoff("handoff-one", "2026-07-18T20:10:00Z", None, 10)
         .expect("handoff");
     for mutate in [
-        |value: &mut crate::workspace::HandoffBundle| value.schema_version = 2,
+        |value: &mut crate::workspace::HandoffBundle| value.schema_version = 3,
         |value: &mut crate::workspace::HandoffBundle| value.kind = "unknown".to_owned(),
         |value: &mut crate::workspace::HandoffBundle| value.context.kind = "unknown".to_owned(),
         |value: &mut crate::workspace::HandoffBundle| value.id = "INVALID".to_owned(),
@@ -21,6 +21,17 @@ fn handoff_validation_rejects_every_identity_boundary() {
         mutate(&mut invalid);
         assert!(invalid.validate().is_err());
     }
+    let mut missing_protocol = bundle.clone();
+    missing_protocol.context.contribution_protocol = None;
+    assert!(missing_protocol.validate().is_err());
+    let mut modified_protocol = bundle.clone();
+    modified_protocol
+        .context
+        .contribution_protocol
+        .as_mut()
+        .expect("current handoff protocol")
+        .claim_promotion = "agent-may-promote".to_owned();
+    assert!(modified_protocol.validate().is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

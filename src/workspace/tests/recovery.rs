@@ -32,6 +32,7 @@ fn valid_pending_records_recover_in_dependency_order() {
     review.evidence_ids = vec![evidence.id.clone()];
     let prospective = Snapshot {
         manifest: workspace.read_manifest().expect("manifest"),
+        contribution_protocol: crate::domain::ContributionProtocol::agent_v1(),
         sources: vec![source.clone()],
         claims: vec![claim.clone()],
         experiments: vec![experiment.clone()],

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v1/contribution-protocol.schema.json",
+  "title": "Research Run ContributionProtocol v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "sequence", "triggers", "human_input_authorship", "agent_analysis_authorship", "no_new_material_effect", "identical_retry_effect", "claim_promotion"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "contribution-protocol" },
+    "id": { "const": "agent-contribution" },
+    "sequence": { "const": ["retrieve-bounded-context", "classify-new-material", "append-typed-records", "validate-workspace", "answer-or-handoff"] },
+    "triggers": { "const": ["human-observation", "human-correction", "human-decision", "negative-result", "ambiguous-result", "blocker", "next-action"] },
+    "human_input_authorship": { "const": "human" },
+    "agent_analysis_authorship": { "const": "ai" },
+    "no_new_material_effect": { "const": "no-write" },
+    "identical_retry_effect": { "const": "no-op" },
+    "claim_promotion": { "const": "signed-human-review-only" }
+  }
+}

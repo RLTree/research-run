@@ -195,6 +195,8 @@ mod handoff_validation;
 mod inventory_expanded;
 #[path = "tests/inventory_failure_expanded.rs"]
 mod inventory_failure_expanded;
+#[path = "tests/inventory_protocol_coverage.rs"]
+mod inventory_protocol_coverage;
 #[path = "tests/inventory_tamper.rs"]
 mod inventory_tamper;
 #[path = "tests/knowledge_expanded.rs"]

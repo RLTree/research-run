@@ -16,6 +16,7 @@ fn review_graph_validation_uses_one_canonical_binding() {
     let incomplete = review("review-incomplete", "claim-one");
     let mut snapshot = Snapshot {
         manifest: ProjectManifest::new("Review binding matrix").expect("manifest"),
+        contribution_protocol: crate::domain::ContributionProtocol::agent_v1(),
         sources: Vec::new(),
         claims: vec![claim("claim-one"), claim("claim-two")],
         evidence: vec![evidence("evidence-one", "claim-one", None)],
@@ -179,6 +180,7 @@ fn legacy_and_missing_experiment_bindings_are_stale() {
     }
     let snapshot = Snapshot {
         manifest: workspace.read_manifest().expect("manifest"),
+        contribution_protocol: crate::domain::ContributionProtocol::agent_v1(),
         sources: Vec::new(),
         claims: vec![claim("claim-one"), claim("claim-two"), claim("claim-three")],
         evidence: vec![

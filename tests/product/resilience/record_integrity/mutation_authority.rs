@@ -60,9 +60,9 @@ fn identical_record_reads_propagate_storage_failures_for_every_writer() {
     }
     for command in retry_commands() {
         let fault = if command.first() == Some(&"review") {
-            "inspect record#14"
+            "inspect record#15"
         } else {
-            "inspect record#8"
+            "inspect record#9"
         };
         assert!(
             !run(&root.0, &command, Some(fault)).status.success(),
@@ -88,11 +88,15 @@ fn identical_record_reads_propagate_storage_failures_for_every_writer() {
         &signature,
     ];
     assert!(run(&root.0, &args, None).status.success());
-    assert!(
-        !run(&root.0, &args, Some("inspect record#14"))
-            .status
-            .success()
-    );
+    let review_identity_failures = (14..=30)
+        .filter(|occurrence| {
+            let fault = format!("inspect record#{occurrence}");
+            let output = run(&root.0, &args, Some(&fault));
+            !output.status.success()
+                && String::from_utf8_lossy(&output.stderr).contains("reviews/review-one.json")
+        })
+        .count();
+    assert!(review_identity_failures >= 2);
 }
 
 fn retry_commands() -> Vec<Vec<&'static str>> {

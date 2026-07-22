@@ -27,6 +27,20 @@ fn authority_publication_failure_never_exposes_a_manifest() {
 }
 
 #[test]
+fn contribution_protocol_publication_failures_propagate_on_init_and_retry() {
+    let fresh = temporary();
+    inject_storage_failure("publish canonical record#2");
+    assert!(Workspace::initialize(&fresh, "Protocol publication").is_err());
+
+    let retry = temporary();
+    Workspace::initialize(&retry, "Protocol retry").expect("initialize retry fixture");
+    inject_storage_failure("inspect record#2");
+    assert!(Workspace::initialize(&retry, "Protocol retry").is_err());
+    fs::remove_dir_all(fresh).expect("remove fresh fixture");
+    fs::remove_dir_all(retry).expect("remove retry fixture");
+}
+
+#[test]
 fn conflicting_retry_cannot_expose_a_staged_authority() {
     let root = temporary();
     let authority =

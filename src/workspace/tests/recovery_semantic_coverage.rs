@@ -44,6 +44,28 @@ fn recovery_batch_propagates_optional_collection_failure() {
 }
 
 #[test]
+fn recovery_requires_one_valid_contribution_protocol() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Recovery activation").expect("initialize");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    fs::write(&protocol, b"{").expect("corrupt contribution protocol");
+    assert!(preflight_optional(&workspace, &mut ReadBudget::default()).is_err());
+
+    let canonical = crate::workspace::publication::canonical_json_bytes(
+        &crate::domain::ContributionProtocol::agent_v1(),
+    );
+    fs::write(&protocol, canonical).expect("restore contribution protocol");
+    inject_storage_failure("read recovery directory#5");
+    assert!(preflight_optional(&workspace, &mut ReadBudget::default()).is_err());
+
+    fs::remove_file(&protocol).expect("remove malformed contribution protocol");
+    assert!(workspace.preflight_recovery_batch().is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn recovered_semantics_propagate_scan_and_migration_authority_failures() {
     let root = temporary();
     fs::write(root.join("material.txt"), b"material").expect("material");

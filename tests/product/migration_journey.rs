@@ -43,6 +43,11 @@ fn accepted_v01_workspace_migrates_without_rewriting_authority() {
     for directory in ["inventories", "knowledge", "relationships", "migrations"] {
         assert!(project.join(".research-run").join(directory).is_dir());
     }
+    assert!(
+        project
+            .join(".research-run/contribution-protocols/agent-contribution.json")
+            .is_file()
+    );
     let repeated = succeeds(
         &temporary.0,
         &[
@@ -202,6 +207,8 @@ fn legacy_workspace(temporary: &TempDir) -> std::path::PathBuf {
     for directory in ["inventories", "knowledge", "relationships", "migrations"] {
         fs::remove_dir(project.join(".research-run").join(directory)).expect("legacy shape");
     }
+    fs::remove_dir_all(project.join(".research-run/contribution-protocols"))
+        .expect("legacy activation shape");
     project
 }
 

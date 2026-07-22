@@ -97,11 +97,47 @@ pub(super) fn render_context(bundle: &ContextBundle) -> String {
         terminal_text(&bundle.scope),
         terminal_text(&bundle.claim_ceiling)
     );
+    output.push_str(&render_contribution_protocol(bundle));
     output.push_str(&render_items("Matches", &bundle.matches));
     output.push_str(&render_items("Unresolved", &bundle.unresolved));
     output.push_str(&render_items("Blockers", &bundle.blockers));
     output.push_str(&render_items("Next actions", &bundle.next_actions));
     output.push_str(&render_relationships(&bundle.relationships));
+    output
+}
+
+fn render_contribution_protocol(bundle: &ContextBundle) -> String {
+    let Some(protocol) = &bundle.contribution_protocol else {
+        return "Contribution protocol\n- Not embedded in this legacy v1 handoff; migrate the workspace before contributing.\n".to_owned();
+    };
+    let mut output = String::from("Contribution protocol\n");
+    writeln!(
+        output,
+        "- sequence: {}",
+        terminal_text(&protocol.sequence.join(" -> "))
+    )
+    .expect("String rendering is infallible");
+    writeln!(
+        output,
+        "- capture triggers: {}",
+        terminal_text(&protocol.triggers.join(", "))
+    )
+    .expect("String rendering is infallible");
+    writeln!(
+        output,
+        "- human input authorship: {}; agent analysis authorship: {}",
+        terminal_text(&protocol.human_input_authorship),
+        terminal_text(&protocol.agent_analysis_authorship)
+    )
+    .expect("String rendering is infallible");
+    writeln!(
+        output,
+        "- no new material: {}; identical retry: {}; claim promotion: {}",
+        terminal_text(&protocol.no_new_material_effect),
+        terminal_text(&protocol.identical_retry_effect),
+        terminal_text(&protocol.claim_promotion)
+    )
+    .expect("String rendering is infallible");
     output
 }
 

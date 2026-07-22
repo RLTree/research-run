@@ -185,7 +185,7 @@ impl Workspace {
         limit: usize,
     ) -> Result<HandoffBundle> {
         let bundle = HandoffBundle {
-            schema_version: 1,
+            schema_version: 2,
             kind: "handoff".to_owned(),
             id: id.to_owned(),
             generated_at: generated_at.to_owned(),

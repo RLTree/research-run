@@ -34,6 +34,19 @@ and each signing approval stay outside Research Run and the agent process.
 `--without-review-authority` is an explicit irreversible opt-out that disables
 claim promotion for that workspace.
 
+Every initialized or retrofitted workspace contains the versioned canonical
+protocol at
+`.research-run/contribution-protocols/agent-contribution.json`. A fresh agent
+must retrieve bounded context before work. Before answering or handing off, it
+must classify new material and append supported typed records for new human
+observations, corrections, decisions, negative or ambiguous results, blockers,
+and next actions, then run `research-run validate`. Human input keeps `human`
+authorship; agent analysis uses `ai`. No new material means no write, an
+identical retry is a no-op, and only a signed human review may promote a claim.
+`context` and `handoff create` surface this protocol without writing.
+New handoffs use schema version 2 to carry the protocol; existing version 1
+handoffs remain inspectable without it.
+
 Add a source and a scoped claim:
 
 ```console
@@ -161,7 +174,8 @@ research-run retrofit apply existing-project \
 
 Apply rescans every indexed byte and fails if the project changed after
 planning. It creates only `.research-run/`, never modifies existing project
-files, and repeating the same accepted plan is a no-op. The accepted plan binds
+files, installs the same canonical contribution protocol as `init`, and repeating
+the same accepted plan is a no-op. The accepted plan binds
 the authority decision used if apply creates the workspace. Passing
 `--without-review-authority` to `retrofit plan` instead is the same explicit,
 irreversible non-promoting opt-out as `init`. After files change,
@@ -244,8 +258,11 @@ research-run migrate apply existing-project \
 
 The plan binds every canonical v0.1 JSON byte into a sorted aggregate SHA-256.
 Apply fails if authority changed, creates only missing extended record
-directories, and appends a migration record. Repeating the same accepted plan is
-a no-op.
+directories, installs the contribution protocol for a pre-activation workspace,
+and appends a migration record without rewriting existing canonical records.
+Repeating the same accepted plan is a no-op. Until migrated, validation and
+mutation fail closed with a workspace-activation diagnostic; migration planning
+remains available so the workspace can be upgraded losslessly.
 
 ## Development and proof surfaces
 

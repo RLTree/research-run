@@ -110,7 +110,19 @@ fn migration_manifest_fingerprint_and_identical_record_failures_propagate() {
     Workspace::initialize(&root, "Migration identical boundary").expect("initialize");
     let migration = plan(&root, "migration");
     Workspace::apply_migration(&root, migration.clone()).expect("seed");
-    inject_storage_failure("inspect record#4");
+    inject_storage_failure("inspect record#5");
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn migration_propagates_contribution_protocol_publication_failure() {
+    let root = temporary();
+    Workspace::initialize(&root, "Migration activation").expect("initialize");
+    let migration = plan(&root, "migration");
+    fs::remove_file(root.join(".research-run/contribution-protocols/agent-contribution.json"))
+        .expect("remove activation policy");
+    inject_storage_failure("publish canonical record");
     assert!(Workspace::apply_migration(&root, migration).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }

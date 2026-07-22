@@ -5,9 +5,9 @@ use std::sync::atomic::AtomicU64;
 use serde::Serialize;
 
 use crate::domain::{
-    Assessment, Authorship, ClaimRecord, EvidenceLink, ExperimentReceipt, InventorySnapshot,
-    KnowledgeRecord, MigrationRecord, ProjectManifest, RelationshipRecord, ReviewAuthority,
-    ReviewDecision, SourceRecord,
+    Assessment, Authorship, ClaimRecord, ContributionProtocol, EvidenceLink, ExperimentReceipt,
+    InventorySnapshot, KnowledgeRecord, MigrationRecord, ProjectManifest, RelationshipRecord,
+    ReviewAuthority, ReviewDecision, SourceRecord,
 };
 
 mod inventory;
@@ -48,6 +48,7 @@ mod write_lock;
 pub use inventory::ReviewBootstrap;
 
 pub(super) const STATE_DIRECTORY: &str = ".research-run";
+pub(super) const CONTRIBUTION_PROTOCOL_DIRECTORY: &str = "contribution-protocols";
 pub(super) const MAX_RECORD_BYTES: u64 = 1_048_576;
 pub(super) const MAX_RECORDS_PER_KIND: usize = 10_000;
 pub(super) const MAX_SNAPSHOT_BYTES: u64 = 64 * 1_048_576;
@@ -214,6 +215,7 @@ pub use retrieval_types::{
 
 pub(super) struct Snapshot {
     pub(super) manifest: ProjectManifest,
+    pub(super) contribution_protocol: ContributionProtocol,
     pub(super) sources: Vec<SourceRecord>,
     pub(super) claims: Vec<ClaimRecord>,
     pub(super) evidence: Vec<EvidenceLink>,
@@ -229,6 +231,7 @@ pub(super) struct Snapshot {
 impl Snapshot {
     pub(super) fn counts(&self) -> BTreeMap<&'static str, usize> {
         BTreeMap::from([
+            ("contribution-protocol", 1),
             ("source", self.sources.len()),
             ("claim", self.claims.len()),
             ("evidence", self.evidence.len()),

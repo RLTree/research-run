@@ -50,6 +50,7 @@ pub(super) fn context_from_snapshot(
         project_name: snapshot.manifest.name,
         claim_ceiling: super::CLAIM_CEILING.to_owned(),
         scope: query.unwrap_or("recent workspace state").to_owned(),
+        contribution_protocol: Some(snapshot.contribution_protocol),
         matches,
         unresolved,
         blockers,

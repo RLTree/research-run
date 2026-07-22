@@ -151,6 +151,8 @@ fn injected_storage_faults_prove_ambiguous_and_racing_effect_contracts() {
     assert!(read_bounded(&manifest).is_err());
     inject_storage_failure("record identity");
     assert!(read_bounded(&manifest).is_err());
+    inject_storage_failure("record opened identity");
+    assert!(read_bounded(&manifest).is_err());
 
     let concurrent_directory = workspace.root.join("concurrent/directory");
     inject_storage_failure("directory already exists");

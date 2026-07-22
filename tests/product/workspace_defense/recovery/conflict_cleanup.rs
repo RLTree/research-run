@@ -26,6 +26,17 @@ fn explicit_recovery_completes_init_interrupted_before_manifest_publication() {
     for directory in ["sources", "claims", "evidence", "experiments", "reviews"] {
         fs::create_dir_all(state.join(directory)).expect("create partial workspace");
     }
+    let protocols = state.join("contribution-protocols");
+    fs::create_dir(&protocols).expect("create contribution protocol directory");
+    let mut protocol =
+        serde_json::to_vec_pretty(&research_run::domain::ContributionProtocol::agent_v1())
+            .expect("protocol JSON");
+    protocol.push(b'\n');
+    fs::write(
+        protocols.join(".agent-contribution.json.999.0.tmp"),
+        protocol,
+    )
+    .expect("write pending contribution protocol");
     fs::write(
         state.join(".manifest.json.999.0.tmp"),
         r#"{

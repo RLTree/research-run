@@ -2,7 +2,7 @@ use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
 pub(super) enum HandoffCommand {
-    /// Generate a bounded deterministic handoff from the current workspace.
+    /// Generate bounded state plus the contribution protocol for the next agent.
     Create {
         #[arg(long)]
         id: String,

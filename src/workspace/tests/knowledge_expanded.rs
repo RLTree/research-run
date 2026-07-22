@@ -243,7 +243,7 @@ fn knowledge_and_relationship_identical_record_reads_propagate() {
     let workspace = Workspace::initialize(&root, "Knowledge identical").expect("initialize");
     let first = knowledge("knowledge-one");
     workspace.add_knowledge(&first).expect("first");
-    inject_storage_failure("inspect record#3");
+    inject_storage_failure("inspect record#4");
     assert!(workspace.add_knowledge(&first).is_err());
     let second = knowledge("knowledge-two");
     workspace.add_knowledge(&second).expect("second");
@@ -253,7 +253,7 @@ fn knowledge_and_relationship_identical_record_reads_propagate() {
         reference(EntityKind::Knowledge, "knowledge-two"),
     );
     workspace.add_relationship(&relation).expect("relation");
-    inject_storage_failure("inspect record#5");
+    inject_storage_failure("inspect record#6");
     assert!(workspace.add_relationship(&relation).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
 }

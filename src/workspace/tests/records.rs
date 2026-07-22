@@ -153,6 +153,7 @@ fn reference_validation_reports_every_invalid_relationship() {
     let known_claim = claim("claim-one");
     let snapshot = Snapshot {
         manifest: ProjectManifest::new("Reference matrix").expect("manifest"),
+        contribution_protocol: crate::domain::ContributionProtocol::agent_v1(),
         sources: Vec::new(),
         claims: vec![known_claim.clone()],
         evidence: vec![

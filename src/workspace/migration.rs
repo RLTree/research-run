@@ -79,9 +79,11 @@ impl Workspace {
             "relationships",
             "review-authorities",
             "migrations",
+            super::CONTRIBUTION_PROTOCOL_DIRECTORY,
         ] {
             create_directory_chain(&workspace.state.join(directory))?;
         }
+        workspace.install_contribution_protocol()?;
         if workspace.record_is_identical("migrations", &record)? {
             return Ok(false);
         }
@@ -153,7 +155,12 @@ pub(super) fn collect_authority(
                 format!("symlink is forbidden: {}", path.display()),
             ));
         }
-        if relative.components().count() == 1 && entry.file_name() == OsStr::new("migrations") {
+        if relative.components().count() == 1
+            && matches!(
+                entry.file_name().to_str(),
+                Some("migrations") | Some(super::CONTRIBUTION_PROTOCOL_DIRECTORY)
+            )
+        {
             continue;
         }
         if metadata.is_dir() {

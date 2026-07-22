@@ -4,12 +4,15 @@ use std::path::PathBuf;
 
 use serde::de::DeserializeOwned;
 
-use crate::domain::{CanonicalRecord, ProjectManifest};
+use crate::domain::{CanonicalRecord, ContributionProtocol, ProjectManifest};
 use crate::{Error, Result};
 
 use super::path_safety::{interrupted_target_name, reject_symlink_chain};
 use super::storage::{ReadBudget, map_io, read_json_with_budget};
-use super::{MAX_RECORDS_PER_KIND, Snapshot, Workspace, injected_storage_failure};
+use super::{
+    CONTRIBUTION_PROTOCOL_DIRECTORY, MAX_RECORDS_PER_KIND, Snapshot, Workspace,
+    injected_storage_failure,
+};
 
 impl Workspace {
     pub(super) fn read_manifest(&self) -> Result<ProjectManifest> {
@@ -58,8 +61,20 @@ impl Workspace {
         let migrations = self.load_optional_records("migrations", allow_pending, &mut budget)?;
         let review_authorities =
             self.load_optional_records("review-authorities", allow_pending, &mut budget)?;
+        let contribution_protocols: Vec<ContributionProtocol> = self.load_optional_records(
+            CONTRIBUTION_PROTOCOL_DIRECTORY,
+            allow_pending,
+            &mut budget,
+        )?;
+        let [contribution_protocol] = contribution_protocols.as_slice() else {
+            return Err(Error::invalid(
+                "workspace activation",
+                "exactly one canonical contribution protocol is required; migrate this workspace if it predates activation policy v1",
+            ));
+        };
         Ok(Snapshot {
             manifest,
+            contribution_protocol: contribution_protocol.clone(),
             sources: self.load_records("sources", allow_pending, &mut budget)?,
             claims: self.load_records("claims", allow_pending, &mut budget)?,
             evidence: self.load_records("evidence", allow_pending, &mut budget)?,
