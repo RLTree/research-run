@@ -125,7 +125,7 @@ jq -e '
   (.candidate_binding.required_identity | contains("clean Git HEAD")) and
   (.candidate_binding.required_identity | contains("platform-qualified normalized")) and
   .candidate_binding.installed_binary.platform == "aarch64-apple-darwin" and
-  .candidate_binding.installed_binary.raw_bytes == 2538512 and
+  .candidate_binding.installed_binary.raw_bytes == 2538544 and
   .candidate_binding.installed_binary.signature_profile == {
     verification:"codesign --verify --strict",
     format:"Mach-O thin (arm64)",
@@ -142,8 +142,8 @@ jq -e '
   } and
   .candidate_binding.installed_binary.signature_profile_sha256 == "a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd" and
   .candidate_binding.installed_binary.normalization == "removed ad-hoc code signature and zeroed Mach-O LC_UUID" and
-  .candidate_binding.installed_binary.normalized_sha256 == "39e788b09f8503c5a5c0197e7d25419357099cc631a1e72bbf31d71db0b7efcb" and
-  .candidate_binding.installed_binary.normalized_bytes == 2518688 and
+  .candidate_binding.installed_binary.normalized_sha256 == "ee680792cbdf14d5c89b6838f1408bc24e3535f4a6ced951b0b18780961a912e" and
+  .candidate_binding.installed_binary.normalized_bytes == 2518720 and
   (.candidate_binding.installed_binary.receipt | startswith("scripts/check-product-artifacts")) and
   (.candidate_binding.reason | contains("is not evidence until")) and
   .audience == [
