@@ -19,53 +19,141 @@
     "schema_version": { "const": 1 },
     "kind": { "const": "inventory" },
     "id": { "$ref": "types.schema.json#/$defs/id" },
-    "project_name": { "type": "string", "minLength": 1, "maxLength": 65536 },
+    "project_name": { "$ref": "types.schema.json#/$defs/text" },
     "project_id": { "$ref": "types.schema.json#/$defs/id" },
-    "observed_at": {
-      "type": "string",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
-    },
+    "observed_at": { "$ref": "types.schema.json#/$defs/timestamp" },
     "previous_snapshot_id": {
       "oneOf": [
         { "type": "null" },
         { "$ref": "types.schema.json#/$defs/id" }
       ]
     },
+    "policy": { "$ref": "inventory-policy.schema.json" },
     "entries": {
       "type": "array",
-      "maxItems": 2048,
-      "items": { "$ref": "#/$defs/material" }
+      "description": "Runtime validation enforces the embedded policy's dynamic entry budget.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/indexed" },
+          { "$ref": "#/$defs/referenceOnly" },
+          { "$ref": "#/$defs/childWorkspace" }
+        ]
+      }
     },
     "changes": {
       "type": "array",
-      "maxItems": 4096,
+      "description": "Runtime validation bounds changes to twice the resolved entry budget.",
       "items": { "$ref": "#/$defs/change" }
     }
   },
   "$defs": {
-    "material": {
+    "class": {
+      "enum": [
+        "note",
+        "protocol",
+        "source",
+        "experiment",
+        "observation",
+        "analysis",
+        "decision",
+        "artifact",
+        "plan",
+        "presentation",
+        "unknown"
+      ]
+    },
+    "indexed": {
       "type": "object",
       "additionalProperties": false,
       "required": ["path", "class", "bytes", "sha256"],
       "properties": {
-        "path": { "type": "string", "minLength": 1, "maxLength": 65536 },
-        "class": {
-          "enum": [
-            "note",
-            "protocol",
-            "source",
-            "experiment",
-            "observation",
-            "analysis",
-            "decision",
-            "artifact",
-            "plan",
-            "presentation",
-            "unknown"
-          ]
+        "path": { "$ref": "types.schema.json#/$defs/workspaceLocator" },
+        "class": { "$ref": "#/$defs/class" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "types.schema.json#/$defs/sha256" }
+      }
+    },
+    "referenceOnly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_kind",
+        "path",
+        "class",
+        "declared_rationale",
+        "root_observation",
+        "content_status"
+      ],
+      "properties": {
+        "entry_kind": { "const": "reference-only" },
+        "path": { "$ref": "types.schema.json#/$defs/workspaceLocator" },
+        "class": { "$ref": "#/$defs/class" },
+        "declared_rationale": { "$ref": "types.schema.json#/$defs/text" },
+        "declared_reference": {
+          "$ref": "inventory-policy.schema.json#/$defs/declaredReference"
         },
-        "bytes": { "type": "integer", "minimum": 0, "maximum": 67108864 },
-        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        "root_observation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["node_kind", "bytes"],
+          "properties": {
+            "node_kind": { "enum": ["file", "directory"] },
+            "bytes": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "content_status": { "const": "not-inspected" }
+      }
+    },
+    "childWorkspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_kind",
+        "path",
+        "declared_rationale",
+        "workspace_observation",
+        "child_material_status"
+      ],
+      "properties": {
+        "entry_kind": { "const": "child-workspace" },
+        "path": { "$ref": "types.schema.json#/$defs/workspaceLocator" },
+        "declared_rationale": { "$ref": "types.schema.json#/$defs/text" },
+        "workspace_observation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "manifest_path",
+            "project_name",
+            "project_id",
+            "workspace_id",
+            "manifest_sha256",
+            "latest_inventory"
+          ],
+          "properties": {
+            "manifest_path": { "$ref": "types.schema.json#/$defs/workspaceLocator" },
+            "project_name": { "$ref": "types.schema.json#/$defs/text" },
+            "project_id": { "$ref": "types.schema.json#/$defs/id" },
+            "workspace_id": { "$ref": "types.schema.json#/$defs/sha256" },
+            "manifest_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
+            "latest_inventory": {
+              "oneOf": [
+                { "type": "null" },
+                { "$ref": "#/$defs/childInventory" }
+              ]
+            }
+          }
+        },
+        "child_material_status": { "const": "not-inspected" }
+      }
+    },
+    "childInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "observed_at", "sha256"],
+      "properties": {
+        "id": { "$ref": "types.schema.json#/$defs/id" },
+        "observed_at": { "$ref": "types.schema.json#/$defs/timestamp" },
+        "sha256": { "$ref": "types.schema.json#/$defs/sha256" }
       }
     },
     "change": {
@@ -78,7 +166,7 @@
         },
         "before": { "type": ["string", "null"] },
         "after": { "type": ["string", "null"] },
-        "detail": { "type": "string", "minLength": 1, "maxLength": 65536 }
+        "detail": { "$ref": "types.schema.json#/$defs/text" }
       }
     }
   }

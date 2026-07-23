@@ -14,6 +14,9 @@ pub(super) enum InventoryCommand {
         id: String,
         #[arg(long)]
         observed_at: String,
+        /// Versioned inventory policy JSON; embedded into the accepted plan.
+        #[arg(long)]
+        policy: Option<PathBuf>,
         /// Stable identifier to anchor if retrofit creates the workspace.
         #[arg(long, requires = "review_authority_public_key")]
         review_authority_id: Option<String>,

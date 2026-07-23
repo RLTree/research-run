@@ -53,15 +53,29 @@ directory publication.
   no-op; conflicting identity fails closed. Startup/validation removes no
   ambiguous state automatically; explicit `recover` validates pending content
   before completing or reconciling an interrupted publication.
-- Each record is at most 1 MiB; canonical collections are bounded to 10,000
-  records per kind; one snapshot or recovery read is bounded to 64 MiB; user
-  text is bounded; status is derived with indexed relationships in deterministic
-  ID order. These are safety and memory/storage budgets, not scale claims.
-- Retrofit inventories are bounded to 2,048 files, 64 MiB per material, and
-  512 MiB per scan. `.git/` and Research Run's own `.research-run/` authority
-  are the only skipped roots. Every other entry is inspected; symlinks,
-  unsupported filesystem nodes, budget exhaustion, and identity races fail
-  closed.
+- Each record is at most 1 MiB except one inventory plan or canonical inventory
+  record, which is independently bounded to 32 MiB. Canonical collections are
+  bounded to 10,000 records per kind; one snapshot or recovery read is bounded
+  to 64 MiB; user text is bounded; status is derived with indexed relationships
+  in deterministic ID order. These are safety and memory/storage budgets, not
+  scale claims.
+- A versioned typed inventory policy controls indexed entry, per-file, and
+  aggregate byte budgets. New workspaces default to 20,000 entries, 2 GiB per
+  file, and 8 GiB total; explicit policies use `u64` byte budgets and may name
+  totals above 64 GiB. Legacy policyless inventories retain exactly 2,048
+  entries, 64 MiB per material, and 512 MiB total until an explicit reconcile
+  plan embeds a policy.
+- `.git/` and the root `.research-run/` authority are skipped. Every ordinary
+  regular file outside an explicit boundary is streamed into SHA-256. A
+  reference-only boundary records only its normalized root, classification,
+  declaration metadata, and root type/size; descendants are not walked,
+  hashed, validated, or scientifically verified. A child-workspace boundary
+  records parsed child manifest identity and available canonical inventory
+  identity without recursively inventorying child material. There is no
+  `.gitignore` import or generic ignore engine. Undeclared nested workspaces,
+  symlinks at declared roots or path components, path escape, malformed or
+  overlapping declarations, unsupported nodes, budget exhaustion, and identity
+  races fail closed.
 - Mutating CLI commands take an operating-system file lock under the canonical
   state root. The lock releases on process exit and serializes supported CLI
   writers; uncooperative concurrent filesystem mutation is not a supported

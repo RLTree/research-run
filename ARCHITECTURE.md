@@ -30,13 +30,18 @@ human custody remains an operational boundary. The review also stores the
 sorted evidence IDs reviewed by the human, and status applies it only while that
 binding exactly matches the current claim evidence graph.
 
-Retrofit and reconciliation use the same authority path. A read-only plan scans
-every project file outside `.git/` and `.research-run/`, classifies only from
-path and extension, and binds byte count plus SHA-256. Apply rescans and accepts
-only an exact unchanged plan, then publishes the complete inventory as one
-atomic record. Later reconciliation records added, changed, moved, missing,
-duplicate, or ambiguous material without editing project bytes or converting
-absence into deletion.
+Retrofit and reconciliation use the same authority path. A read-only plan embeds
+one versioned inventory policy, then scans each ordinary project file outside
+`.git/` and the root `.research-run/`, classifies only from path and extension,
+and binds byte count plus streamed SHA-256. The policy can declare exact
+reference-only artifact roots and exact child Research Run workspaces. A
+reference-only root retains only root metadata and declared provenance or
+manifest metadata; its descendants are deliberately not inspected. A child
+boundary retains the child manifest and available canonical inventory identity,
+not child material. Apply rescans with the accepted policy and publishes one
+complete inventory atomically. Later reconciliation records added, changed,
+moved, missing, duplicate, or ambiguous material without editing project bytes
+or converting absence into deletion.
 New-workspace apply retains a plan-digest bootstrap marker until that inventory
 commits. A failure after initialization is therefore an explicit ambiguous
 effect recoverable only by reapplying the exact accepted plan.

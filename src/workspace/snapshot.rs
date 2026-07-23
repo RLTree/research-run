@@ -8,10 +8,10 @@ use crate::domain::{CanonicalRecord, ContributionProtocol, ProjectManifest};
 use crate::{Error, Result};
 
 use super::path_safety::{interrupted_target_name, reject_symlink_chain};
-use super::storage::{ReadBudget, map_io, read_json_with_budget};
+use super::storage::{ReadBudget, map_io, read_json_with_budget, read_json_with_limit};
 use super::{
     CONTRIBUTION_PROTOCOL_DIRECTORY, MAX_RECORDS_PER_KIND, Snapshot, Workspace,
-    injected_storage_failure,
+    injected_storage_failure, record_byte_limit,
 };
 
 impl Workspace {
@@ -116,8 +116,9 @@ impl Workspace {
     {
         let entries = self.record_paths(directory, allow_pending)?;
         let mut records = Vec::with_capacity(entries.len());
+        let maximum = record_byte_limit(directory);
         for record_path in entries {
-            let record: T = read_json_with_budget(&record_path, budget)?;
+            let record: T = read_json_with_limit(&record_path, budget, maximum)?;
             record.validate()?;
             if record_path.file_stem().and_then(OsStr::to_str) != Some(record.id()) {
                 return Err(Error::invalid(

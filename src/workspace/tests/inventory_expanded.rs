@@ -1,21 +1,20 @@
 use super::*;
-use crate::domain::{MaterialClass, MaterialEntry, ReconciliationKind};
+use crate::domain::{InventoryEntry, MaterialClass, MaterialEntry, ReconciliationKind};
 use crate::workspace::inventory_reconcile::reconcile;
-use crate::workspace::inventory_scan::{
-    add_inventory_bytes, classify_material, enforce_file_count, scan_materials,
-};
+use crate::workspace::inventory_scan::{classify_material, scan_materials};
 
 fn digest(byte: char) -> String {
     byte.to_string().repeat(64)
 }
 
-fn material(path: &str, byte: char) -> MaterialEntry {
+fn material(path: &str, byte: char) -> InventoryEntry {
     MaterialEntry {
         path: path.to_owned(),
         class: MaterialClass::Note,
         bytes: 1,
         sha256: digest(byte),
     }
+    .into()
 }
 
 #[test]
@@ -55,13 +54,13 @@ fn reconciliation_distinguishes_each_fingerprint_and_consumes_only_exact_moves()
     assert!(reconcile(&[material("same", 'a')], &[material("same", 'a')]).is_empty());
 
     let mut hash_changed = material("same", 'a');
-    hash_changed.sha256 = digest('b');
+    indexed_mut(&mut hash_changed).sha256 = digest('b');
     assert_eq!(
         reconcile(&[material("same", 'a')], &[hash_changed])[0].kind,
         ReconciliationKind::Changed
     );
     let mut size_changed = material("same", 'a');
-    size_changed.bytes = 2;
+    indexed_mut(&mut size_changed).bytes = 2;
     assert_eq!(
         reconcile(&[material("same", 'a')], &[size_changed])[0].kind,
         ReconciliationKind::Changed
@@ -84,14 +83,11 @@ fn reconciliation_distinguishes_each_fingerprint_and_consumes_only_exact_moves()
     assert_eq!(ambiguous.len(), 5);
 }
 
-#[test]
-fn inventory_count_and_byte_budgets_accept_the_limit_and_reject_the_next_unit() {
-    assert!(enforce_file_count(crate::domain::MAX_INVENTORY_ENTRIES).is_ok());
-    assert!(enforce_file_count(crate::domain::MAX_INVENTORY_ENTRIES + 1).is_err());
-    let limit = 512 * 1_048_576;
-    assert_eq!(add_inventory_bytes(0, limit).expect("exact limit"), limit);
-    assert!(add_inventory_bytes(limit, 1).is_err());
-    assert!(add_inventory_bytes(u64::MAX, 1).is_err());
+fn indexed_mut(entry: &mut InventoryEntry) -> &mut MaterialEntry {
+    match entry {
+        InventoryEntry::Indexed(entry) => entry,
+        InventoryEntry::Boundary(_) => panic!("fixture must be indexed"),
+    }
 }
 
 #[test]

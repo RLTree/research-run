@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v1/inventory-policy.schema.json",
+  "title": "Research Run Inventory Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "limits", "boundaries"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "inventory-policy" },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_entries", "max_file_bytes", "max_total_bytes"],
+      "properties": {
+        "max_entries": { "type": "integer", "minimum": 1 },
+        "max_file_bytes": { "type": "integer", "minimum": 1 },
+        "max_total_bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "boundaries": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/referenceOnly" },
+          { "$ref": "#/$defs/childWorkspace" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "class": {
+      "enum": [
+        "note",
+        "protocol",
+        "source",
+        "experiment",
+        "observation",
+        "analysis",
+        "decision",
+        "artifact",
+        "plan",
+        "presentation",
+        "unknown"
+      ]
+    },
+    "declaredReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_kind", "locator_type", "locator", "description"],
+      "properties": {
+        "reference_kind": { "enum": ["provenance", "manifest"] },
+        "locator_type": { "enum": ["workspace", "external"] },
+        "locator": { "$ref": "types.schema.json#/$defs/text" },
+        "description": { "$ref": "types.schema.json#/$defs/text" },
+        "sha256": { "$ref": "types.schema.json#/$defs/sha256" }
+      }
+    },
+    "referenceOnly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary_kind", "path", "class", "rationale"],
+      "properties": {
+        "boundary_kind": { "const": "reference-only" },
+        "path": { "$ref": "types.schema.json#/$defs/workspaceLocator" },
+        "class": { "$ref": "#/$defs/class" },
+        "rationale": { "$ref": "types.schema.json#/$defs/text" },
+        "reference": { "$ref": "#/$defs/declaredReference" }
+      }
+    },
+    "childWorkspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary_kind", "path", "rationale"],
+      "properties": {
+        "boundary_kind": { "const": "child-workspace" },
+        "path": { "$ref": "types.schema.json#/$defs/workspaceLocator" },
+        "rationale": { "$ref": "types.schema.json#/$defs/text" }
+      }
+    }
+  }
+}

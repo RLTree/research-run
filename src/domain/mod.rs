@@ -18,8 +18,10 @@ pub use experiments::{
     ReviewAuthority, ReviewAuthorization, ReviewDecision, ReviewRequest,
 };
 pub use inventory::{
-    InventoryPlan, InventorySnapshot, MaterialClass, MaterialEntry, ReconciliationChange,
-    ReconciliationKind,
+    BoundaryEntry, ChildInventoryIdentity, ChildWorkspaceObservation, DeclaredReference,
+    DeclaredReferenceKind, InspectionStatus, InventoryBoundary, InventoryEntry, InventoryLimits,
+    InventoryPlan, InventoryPolicy, InventorySnapshot, MaterialClass, MaterialEntry,
+    ReconciliationChange, ReconciliationKind, RootNodeKind, RootObservation,
 };
 pub use knowledge::{
     EntityKind, EntityRef, KnowledgeKind, KnowledgeRecord, KnowledgeState, RelationshipKind,
@@ -57,8 +59,6 @@ fn take_random_failure() -> bool {
 const fn take_random_failure() -> bool {
     false
 }
-pub const MAX_INVENTORY_ENTRIES: usize = 2_048;
-
 pub trait CanonicalRecord: Serialize + Sized {
     const KIND: &'static str;
 

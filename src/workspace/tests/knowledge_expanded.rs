@@ -1,7 +1,7 @@
 use super::*;
 use crate::domain::{
-    EntityKind, EntityRef, InventorySnapshot, KnowledgeKind, KnowledgeRecord, KnowledgeState,
-    RelationshipKind, RelationshipRecord,
+    EntityKind, EntityRef, KnowledgeKind, KnowledgeRecord, KnowledgeState, RelationshipKind,
+    RelationshipRecord,
 };
 use crate::workspace::MAX_RECORDS_PER_KIND;
 use crate::workspace::knowledge::{ensure_capacity, relationship_reference_errors};
@@ -70,7 +70,7 @@ fn knowledge_relations_resolve_every_entity_kind_and_remain_idempotent() {
             .add_knowledge(&knowledge("knowledge-one"))
             .expect("retry")
     );
-    publish_inventory(&workspace);
+    super::knowledge_inventory::publish_inventory(&workspace);
     let entities = [
         (EntityKind::Source, "source-one"),
         (EntityKind::Claim, "claim-one"),
@@ -90,23 +90,6 @@ fn knowledge_relations_resolve_every_entity_kind_and_remain_idempotent() {
         assert!(!workspace.add_relationship(&record).expect("retry"));
     }
     fs::remove_dir_all(root).expect("remove fixture");
-}
-
-fn publish_inventory(workspace: &Workspace) {
-    let inventory = InventorySnapshot {
-        schema_version: 1,
-        kind: "inventory".to_owned(),
-        id: "inventory-one".to_owned(),
-        project_name: "Relations".to_owned(),
-        project_id: "relations".to_owned(),
-        observed_at: "2026-07-18T20:00:00Z".to_owned(),
-        previous_snapshot_id: None,
-        entries: Vec::new(),
-        changes: Vec::new(),
-    };
-    workspace
-        .publish_record("inventories", &inventory)
-        .expect("inventory");
 }
 
 #[test]

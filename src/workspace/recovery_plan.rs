@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use crate::{Error, Result};
 
 use super::path_safety::{interrupted_target_name, reject_symlink_chain};
-use super::storage::{ReadBudget, map_io, read_bounded_with_budget};
-use super::{MAX_RECORDS_PER_KIND, Workspace, injected_storage_failure};
+use super::storage::{ReadBudget, map_io, read_bounded_with_budget_and_limit};
+use super::{MAX_RECORDS_PER_KIND, Workspace, injected_storage_failure, record_byte_limit};
 
 pub(super) struct PendingRecord {
     pub(super) path: PathBuf,
@@ -28,6 +28,11 @@ fn collect_pending_records(directory: &Path) -> Result<Vec<PendingRecord>> {
     inject_pending_symlink_race(directory);
     let mut pending = Vec::new();
     let mut budget = ReadBudget::default();
+    let maximum = directory
+        .file_name()
+        .and_then(OsStr::to_str)
+        .map(record_byte_limit)
+        .unwrap_or(super::MAX_RECORD_BYTES);
     for entry in map_io(
         fs::read_dir(directory),
         "read recovery directory",
@@ -42,7 +47,7 @@ fn collect_pending_records(directory: &Path) -> Result<Vec<PendingRecord>> {
         reject_symlink_chain(&path)?;
         pending.push(PendingRecord {
             target: directory.join(target_name),
-            bytes: read_bounded_with_budget(&path, &mut budget)?,
+            bytes: read_bounded_with_budget_and_limit(&path, &mut budget, maximum)?,
             path,
         });
         if pending.len() > MAX_RECORDS_PER_KIND || injected_storage_failure("pending record count")

@@ -5,7 +5,7 @@ use crate::domain::{CanonicalRecord, ReconciliationKind};
 use crate::{Error, Result};
 
 use super::inventory_reconcile::reconcile;
-use super::inventory_scan::scan_materials;
+use super::inventory_scan::scan_materials_with_policy;
 use super::recovery_plan::PendingRecord;
 use super::{Snapshot, Workspace};
 
@@ -43,7 +43,11 @@ fn validate_inventory(
             "recovered inventory identity does not match target workspace".to_owned(),
         ));
     }
-    let (_, entries) = scan_materials(&workspace.root)?;
+    let (_, entries) = scan_materials_with_policy(
+        &workspace.root,
+        candidate.policy.as_ref(),
+        &snapshot.manifest,
+    )?;
     let previous = snapshot
         .inventories
         .iter()

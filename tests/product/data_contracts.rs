@@ -39,6 +39,7 @@ fn every_versioned_schema_is_well_formed_json() {
         "evidence.schema.json",
         "experiment.schema.json",
         "handoff.schema.json",
+        "inventory-policy.schema.json",
         "inventory.schema.json",
         "knowledge.schema.json",
         "migration.schema.json",
