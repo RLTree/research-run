@@ -83,15 +83,17 @@ impl Workspace {
         ] {
             create_directory_chain(&workspace.state.join(directory))?;
         }
-        workspace.install_contribution_protocol()?;
+        let snapshot = workspace.load_snapshot_for_activation()?;
         if workspace.record_is_identical("migrations", &record)? {
+            workspace.install_contribution_protocol()?;
             return Ok(false);
         }
-        if !workspace.load_snapshot()?.migrations.is_empty() {
+        if !snapshot.migrations.is_empty() {
             return Err(Error::Conflict(
                 "workspace already contains a different v0.1 migration record".to_owned(),
             ));
         }
+        workspace.install_contribution_protocol()?;
         workspace.publish_record("migrations", &record)
     }
 

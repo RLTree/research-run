@@ -29,8 +29,12 @@ fn authority_publication_failure_never_exposes_a_manifest() {
 #[test]
 fn contribution_protocol_publication_failures_propagate_on_init_and_retry() {
     let fresh = temporary();
-    inject_storage_failure("publish canonical record#2");
+    inject_storage_failure("publish canonical record");
     assert!(Workspace::initialize(&fresh, "Protocol publication").is_err());
+    assert!(
+        !fresh.join(".research-run/manifest.json").exists(),
+        "failed activation publication exposed a discoverable workspace"
+    );
 
     let retry = temporary();
     Workspace::initialize(&retry, "Protocol retry").expect("initialize retry fixture");
@@ -38,6 +42,25 @@ fn contribution_protocol_publication_failures_propagate_on_init_and_retry() {
     assert!(Workspace::initialize(&retry, "Protocol retry").is_err());
     fs::remove_dir_all(fresh).expect("remove fresh fixture");
     fs::remove_dir_all(retry).expect("remove retry fixture");
+}
+
+#[test]
+fn existing_invalid_workspace_is_not_activated_before_validation() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Legacy activation").expect("initialize");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    fs::remove_file(&protocol).expect("remove protocol");
+    fs::write(workspace.state.join("inventories/bad.json"), b"{}").expect("bad inventory");
+
+    assert!(Workspace::initialize(&root, "Legacy activation").is_err());
+    assert!(
+        !protocol.exists(),
+        "invalid canonical state was mutated before validation"
+    );
+
+    fs::remove_dir_all(root).expect("remove fixture");
 }
 
 #[test]

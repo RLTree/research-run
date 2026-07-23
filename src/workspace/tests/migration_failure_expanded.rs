@@ -128,6 +128,33 @@ fn migration_propagates_contribution_protocol_publication_failure() {
 }
 
 #[test]
+fn migration_validates_activation_directory_before_publication() {
+    let root = temporary();
+    let workspace =
+        Workspace::initialize(&root, "Migration activation validation").expect("initialize");
+    let migration = plan(&root, "migration");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    fs::remove_file(&protocol).expect("remove activation policy");
+    fs::write(
+        workspace
+            .state
+            .join("contribution-protocols/unexpected.json"),
+        b"{}",
+    )
+    .expect("unexpected activation record");
+
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    assert!(
+        !protocol.exists(),
+        "migration mutated invalid activation state before validation"
+    );
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn migration_plan_reader_and_authority_recursion_propagate_failures() {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Migration read boundary").expect("initialize");

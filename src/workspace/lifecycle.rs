@@ -102,13 +102,15 @@ impl Workspace {
         }
         if manifest_path.is_file() {
             workspace.stage_initialized_authority(authority)?;
+            let snapshot = workspace.load_snapshot_for_activation()?;
+            verify_initialized_authority_records(authority, &snapshot.review_authorities)?;
             workspace.install_contribution_protocol()?;
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
         workspace.stage_initialized_authority(authority)?;
-        workspace.publish_value(&manifest_path, &manifest)?;
         workspace.install_contribution_protocol()?;
+        workspace.publish_value(&manifest_path, &manifest)?;
         workspace.verify_initialized_authority(authority)?;
         Ok(workspace)
     }

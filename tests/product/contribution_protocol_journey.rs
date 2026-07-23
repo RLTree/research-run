@@ -2,6 +2,8 @@ use std::fs;
 
 use serde_json::{Value, json};
 
+use crate::review_test_signing::initialize_with_test_authority;
+
 use super::researcher_journey::{TempDir, cli, succeeds};
 
 #[test]
@@ -122,10 +124,14 @@ fn assert_handoff_ready(project: &std::path::Path, protocol: &Value) {
 #[test]
 fn activation_policy_fails_closed_and_cannot_promote_agent_claims() {
     let temporary = TempDir::new("contribution-protocol-defense");
-    let project = temporary.0.join("project");
-    initialize_unanchored(&temporary, &project, "Protocol defense");
-    assert_agent_claim_cannot_promote(&project);
-    assert_malformed_and_missing_policy_fail(&project);
+    let unanchored = temporary.0.join("unanchored");
+    initialize_unanchored(&temporary, &unanchored, "Protocol defense");
+    assert_agent_claim_cannot_promote(&unanchored);
+    assert_malformed_and_missing_policy_fail(&unanchored);
+
+    let anchored = temporary.0.join("anchored");
+    initialize_with_test_authority(&temporary.0, &anchored, "Anchored protocol defense");
+    assert_agent_claim_cannot_promote(&anchored);
 }
 
 fn assert_agent_claim_cannot_promote(project: &std::path::Path) {
