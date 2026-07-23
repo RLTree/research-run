@@ -4,7 +4,7 @@ use crate::workspace::inventory_scan::scan_materials;
 #[test]
 fn material_scan_enforces_file_count_budget() {
     let root = temporary();
-    for index in 0..=2_048 {
+    for index in 0..=crate::domain::MAX_INVENTORY_ENTRIES {
         fs::write(root.join(format!("file-{index:04}")), b"").expect("file fixture");
     }
     assert!(scan_materials(&root).is_err());
