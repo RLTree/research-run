@@ -63,12 +63,13 @@ fn migration_planning_and_application_fail_closed_at_authority_boundaries() {
 fn migration_retry_reports_protocol_repair_as_an_effect() {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Migration repair").expect("initialize");
-    let plan =
-        Workspace::plan_migration(&root, "migration-one", "2026-07-18T20:00:00Z").expect("plan");
-    assert!(Workspace::apply_migration(&root, plan.clone()).expect("apply"));
     let protocol = workspace
         .state
         .join("contribution-protocols/agent-contribution.json");
+    fs::remove_file(&protocol).expect("make legacy activation state");
+    let plan =
+        Workspace::plan_migration(&root, "migration-one", "2026-07-18T20:00:00Z").expect("plan");
+    assert!(Workspace::apply_migration(&root, plan.clone()).expect("apply"));
     fs::remove_file(&protocol).expect("remove activation protocol");
 
     assert!(

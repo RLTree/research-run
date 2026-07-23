@@ -4,10 +4,12 @@ use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
 
-use crate::domain::{FORMAT_VERSION, MigrationPlan, MigrationRecord};
+use crate::domain::{ContributionProtocol, FORMAT_VERSION, MigrationPlan, MigrationRecord};
 use crate::{Error, Result};
 
-use super::path_safety::{absolute_path, create_directory_chain, reject_symlink_chain};
+use super::path_safety::{
+    absolute_path, create_directory_chain, interrupted_target_name, reject_symlink_chain,
+};
 use super::storage::{ReadBudget, map_io, read_bounded, read_json_with_budget};
 use super::write_lock::WorkspaceWriteLock;
 use super::{Workspace, injected_storage_failure};
@@ -61,18 +63,31 @@ impl Workspace {
                 "migration project identity does not match target workspace".to_owned(),
             ));
         }
+        let record = MigrationRecord::from(plan);
+        let identical = workspace.record_is_identical("migrations", &record)?;
+        if identical {
+            workspace.load_snapshot_for_activation()?;
+            let protocol = ContributionProtocol::agent_v1();
+            if workspace.record_is_identical(super::CONTRIBUTION_PROTOCOL_DIRECTORY, &protocol)? {
+                return Ok(false);
+            }
+            create_directory_chain(&workspace.state.join(super::CONTRIBUTION_PROTOCOL_DIRECTORY))?;
+            workspace
+                .stage_record_for_recovery(super::CONTRIBUTION_PROTOCOL_DIRECTORY, &protocol)?;
+            workspace.recover_pending_under_lock()?;
+            return Ok(true);
+        }
         let current = workspace.authority_fingerprint()?;
         let expected = (
-            plan.authority_files,
-            plan.authority_bytes,
-            plan.authority_sha256.clone(),
+            record.authority_files,
+            record.authority_bytes,
+            record.authority_sha256.clone(),
         );
         if current != expected {
             return Err(Error::Conflict(
                 "canonical v0.1 authority changed after migration planning".to_owned(),
             ));
         }
-        let record = MigrationRecord::from(plan);
         for directory in [
             "inventories",
             "knowledge",
@@ -84,10 +99,6 @@ impl Workspace {
             create_directory_chain(&workspace.state.join(directory))?;
         }
         let snapshot = workspace.load_snapshot_for_activation()?;
-        let identical = workspace.record_is_identical("migrations", &record)?;
-        if identical {
-            return workspace.install_contribution_protocol();
-        }
         if !snapshot.migrations.is_empty() {
             return Err(Error::Conflict(
                 "workspace already contains a different v0.1 migration record".to_owned(),
@@ -107,8 +118,23 @@ impl Workspace {
     }
 
     pub(super) fn authority_fingerprint(&self) -> Result<(usize, u64, String)> {
+        self.authority_fingerprint_with_activation(true)
+    }
+
+    pub(super) fn pre_activation_authority_fingerprint(&self) -> Result<(usize, u64, String)> {
+        self.authority_fingerprint_with_activation(false)
+    }
+
+    fn authority_fingerprint_with_activation(
+        &self,
+        include_activation: bool,
+    ) -> Result<(usize, u64, String)> {
         let mut paths = Vec::new();
         collect_authority(&self.state, &self.state, &mut paths)?;
+        if !include_activation {
+            let activation = self.state.join(super::CONTRIBUTION_PROTOCOL_DIRECTORY);
+            paths.retain(|path| !path.starts_with(&activation));
+        }
         paths.sort();
         let mut hasher = Sha256::new();
         let mut total = 0_u64;
@@ -158,11 +184,11 @@ pub(super) fn collect_authority(
                 format!("symlink is forbidden: {}", path.display()),
             ));
         }
-        if relative.components().count() == 1
-            && matches!(
-                entry.file_name().to_str(),
-                Some("migrations") | Some(super::CONTRIBUTION_PROTOCOL_DIRECTORY)
-            )
+        if relative.components().count() == 1 && entry.file_name().to_str() == Some("migrations") {
+            continue;
+        }
+        if relative.parent() == Some(Path::new(super::CONTRIBUTION_PROTOCOL_DIRECTORY))
+            && interrupted_target_name(&entry.file_name()).is_some()
         {
             continue;
         }

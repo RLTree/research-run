@@ -119,9 +119,9 @@ fn migration_manifest_fingerprint_and_identical_record_failures_propagate() {
 fn migration_propagates_contribution_protocol_publication_failure() {
     let root = temporary();
     Workspace::initialize(&root, "Migration activation").expect("initialize");
-    let migration = plan(&root, "migration");
     fs::remove_file(root.join(".research-run/contribution-protocols/agent-contribution.json"))
         .expect("remove activation policy");
+    let migration = plan(&root, "migration");
     inject_storage_failure("create pending record#2");
     assert!(Workspace::apply_migration(&root, migration).is_err());
     fs::remove_dir_all(root).expect("remove fixture");
@@ -131,12 +131,12 @@ fn migration_propagates_contribution_protocol_publication_failure() {
 fn migration_interruption_never_publishes_a_protocol_only_state() {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Atomic migration").expect("initialize");
-    let migration = plan(&root, "migration");
     let protocol = workspace
         .state
         .join("contribution-protocols/agent-contribution.json");
     let migration_record = workspace.state.join("migrations/migration.json");
     fs::remove_file(&protocol).expect("remove activation policy");
+    let migration = plan(&root, "migration");
 
     inject_storage_failure("publish recovered record");
     assert!(Workspace::apply_migration(&root, migration).is_err());
@@ -163,12 +163,12 @@ fn migration_interruption_never_publishes_a_protocol_only_state() {
 fn migration_recovery_publishes_protocol_before_record() {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Ordered migration").expect("initialize");
-    let migration = plan(&root, "migration");
     let protocol = workspace
         .state
         .join("contribution-protocols/agent-contribution.json");
     let migration_record = workspace.state.join("migrations/migration.json");
     fs::remove_file(&protocol).expect("remove activation policy");
+    let migration = plan(&root, "migration");
 
     inject_storage_failure("publish recovered record#2");
     assert!(Workspace::apply_migration(&root, migration).is_err());
@@ -194,11 +194,11 @@ fn migration_validates_activation_directory_before_publication() {
     let root = temporary();
     let workspace =
         Workspace::initialize(&root, "Migration activation validation").expect("initialize");
-    let migration = plan(&root, "migration");
     let protocol = workspace
         .state
         .join("contribution-protocols/agent-contribution.json");
     fs::remove_file(&protocol).expect("remove activation policy");
+    let migration = plan(&root, "migration");
     fs::write(
         workspace
             .state
