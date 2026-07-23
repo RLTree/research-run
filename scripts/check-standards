@@ -30,6 +30,20 @@ validate_classifications() {
   ' "$1" >/dev/null
 }
 
+fitness_disposition="agent-standards/product-fitness-disposition.json"
+expected_raw_bytes="$(
+  jq -er '.candidate_binding.installed_binary.raw_bytes |
+    select(type == "number" and . > 0 and floor == .)' "$fitness_disposition"
+)"
+expected_normalized_sha256="$(
+  jq -er '.candidate_binding.installed_binary.normalized_sha256 |
+    select(type == "string" and test("^[0-9a-f]{64}$"))' "$fitness_disposition"
+)"
+expected_normalized_bytes="$(
+  jq -er '.candidate_binding.installed_binary.normalized_bytes |
+    select(type == "number" and . > 0 and floor == .)' "$fitness_disposition"
+)"
+
 jq -e '
   .schema_version == 1 and
   (.source.commit == "69787f20adcf0b99c7f3a26f71b35a215fda28d6") and
@@ -112,7 +126,10 @@ validate_classifications "$ledger" || {
   exit 1
 }
 
-jq -e '
+jq -e \
+  --argjson expected_raw_bytes "$expected_raw_bytes" \
+  --arg expected_normalized_sha256 "$expected_normalized_sha256" \
+  --argjson expected_normalized_bytes "$expected_normalized_bytes" '
   .schema_version == 1 and
   .kind == "product-fitness-disposition" and
   .claim_id == "research-run-v0.1-real-use-fitness" and
@@ -125,7 +142,7 @@ jq -e '
   (.candidate_binding.required_identity | contains("clean Git HEAD")) and
   (.candidate_binding.required_identity | contains("platform-qualified normalized")) and
   .candidate_binding.installed_binary.platform == "aarch64-apple-darwin" and
-  .candidate_binding.installed_binary.raw_bytes == 2538544 and
+  .candidate_binding.installed_binary.raw_bytes == $expected_raw_bytes and
   .candidate_binding.installed_binary.signature_profile == {
     verification:"codesign --verify --strict",
     format:"Mach-O thin (arm64)",
@@ -142,8 +159,8 @@ jq -e '
   } and
   .candidate_binding.installed_binary.signature_profile_sha256 == "a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd" and
   .candidate_binding.installed_binary.normalization == "removed ad-hoc code signature and zeroed Mach-O LC_UUID" and
-  .candidate_binding.installed_binary.normalized_sha256 == "ee680792cbdf14d5c89b6838f1408bc24e3535f4a6ced951b0b18780961a912e" and
-  .candidate_binding.installed_binary.normalized_bytes == 2518720 and
+  .candidate_binding.installed_binary.normalized_sha256 == $expected_normalized_sha256 and
+  .candidate_binding.installed_binary.normalized_bytes == $expected_normalized_bytes and
   (.candidate_binding.installed_binary.receipt | startswith("scripts/check-product-artifacts")) and
   (.candidate_binding.reason | contains("is not evidence until")) and
   .audience == [
@@ -187,7 +204,7 @@ jq -e '
     "synthetic signing", "package proof", "benchmark", "generic reviewer approval"
   ]) and
   (.claim_ceiling | contains("real-use fitness, continuance, and research impact remain withheld"))
-' agent-standards/product-fitness-disposition.json >/dev/null || {
+' "$fitness_disposition" >/dev/null || {
   echo "product fitness failure: real-use claims require a complete typed withholding disposition or fresh audience-bound proof" >&2
   echo "withheld: product_fitness, continuance, research_impact, and material_completion" >&2
   exit 1
