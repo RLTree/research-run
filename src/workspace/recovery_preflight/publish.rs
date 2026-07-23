@@ -6,7 +6,7 @@ use crate::workspace::{CONTRIBUTION_PROTOCOL_DIRECTORY, RecoveryResult, Workspac
 
 impl RecoveryBatch {
     pub(in crate::workspace) fn authorizes_contribution_protocol_bootstrap(&self) -> bool {
-        self.manifest.iter().any(|record| !record.target.exists()) || !self.migrations.is_empty()
+        self.authorizes_contribution_protocol_bootstrap
     }
 
     pub(in crate::workspace) fn publish(

@@ -29,6 +29,7 @@ pub(super) struct RecoveryBatch {
     contribution_protocols: Vec<PendingRecord>,
     requires_contribution_protocol_bootstrap: bool,
     requires_contribution_protocol_staging: bool,
+    authorizes_contribution_protocol_bootstrap: bool,
 }
 
 struct CoreRecovery {
@@ -67,6 +68,11 @@ impl Workspace {
         let activation_is_pending_only = contribution_protocol_pending
             .iter()
             .any(|record| !record.target.exists());
+        let authorizes_contribution_protocol_bootstrap = core
+            .manifest_pending
+            .iter()
+            .any(|record| !record.target.exists())
+            || !migrations.is_empty();
         let (
             contribution_protocol,
             requires_contribution_protocol_bootstrap,
@@ -114,6 +120,7 @@ impl Workspace {
             contribution_protocols: contribution_protocol_pending,
             requires_contribution_protocol_bootstrap,
             requires_contribution_protocol_staging,
+            authorizes_contribution_protocol_bootstrap,
         };
         batch.validate(self, &snapshot)?;
         Ok(batch)
