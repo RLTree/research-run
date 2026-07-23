@@ -3,15 +3,17 @@ use serde::de::DeserializeOwned;
 
 use crate::Result;
 use crate::domain::{
-    CanonicalRecord, InventorySnapshot, KnowledgeRecord, MigrationRecord, RelationshipRecord,
+    CanonicalRecord, ContributionProtocol, InventorySnapshot, KnowledgeRecord, MigrationRecord,
+    RelationshipRecord,
 };
 
-use super::Workspace;
 use super::recovery_canonical::canonical_records;
 use super::recovery_plan::PendingRecord;
 use super::storage::ReadBudget;
+use super::{CONTRIBUTION_PROTOCOL_DIRECTORY, Workspace};
 
 pub(super) struct OptionalRecovery {
+    pub(super) contribution_protocols: Vec<ContributionProtocol>,
     pub(super) inventories: Vec<InventorySnapshot>,
     pub(super) knowledge: Vec<KnowledgeRecord>,
     pub(super) relationships: Vec<RelationshipRecord>,
@@ -20,6 +22,7 @@ pub(super) struct OptionalRecovery {
     pub(super) knowledge_pending: Vec<PendingRecord>,
     pub(super) relationship_pending: Vec<PendingRecord>,
     pub(super) migration_pending: Vec<PendingRecord>,
+    pub(super) contribution_protocol_pending: Vec<PendingRecord>,
 }
 
 pub(super) fn preflight_optional(
@@ -30,12 +33,21 @@ pub(super) fn preflight_optional(
     let mut knowledge_pending = collect_optional(workspace, "knowledge")?;
     let mut relationship_pending = collect_optional(workspace, "relationships")?;
     let mut migration_pending = collect_optional(workspace, "migrations")?;
+    let mut contribution_protocol_pending =
+        collect_optional(workspace, CONTRIBUTION_PROTOCOL_DIRECTORY)?;
     let inventories = records_optional(workspace, "inventories", &mut inventory_pending, budget)?;
     let knowledge = records_optional(workspace, "knowledge", &mut knowledge_pending, budget)?;
     let pending = &mut relationship_pending;
     let relationships = records_optional(workspace, "relationships", pending, budget)?;
     let migrations = records_optional(workspace, "migrations", &mut migration_pending, budget)?;
+    let contribution_protocols = records_optional(
+        workspace,
+        CONTRIBUTION_PROTOCOL_DIRECTORY,
+        &mut contribution_protocol_pending,
+        budget,
+    )?;
     Ok(OptionalRecovery {
+        contribution_protocols,
         inventories,
         knowledge,
         relationships,
@@ -44,6 +56,7 @@ pub(super) fn preflight_optional(
         knowledge_pending,
         relationship_pending,
         migration_pending,
+        contribution_protocol_pending,
     })
 }
 

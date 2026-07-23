@@ -4,7 +4,7 @@ use crate::workspace::inventory_scan::scan_materials;
 #[test]
 fn material_scan_enforces_file_count_budget() {
     let root = temporary();
-    for index in 0..=2_048 {
+    for index in 0..=crate::domain::InventoryLimits::legacy().max_entries {
         fs::write(root.join(format!("file-{index:04}")), b"").expect("file fixture");
     }
     assert!(scan_materials(&root).is_err());
@@ -210,15 +210,18 @@ fn inventory_application_propagates_exact_root_record_and_latest_failures() {
             }
             "identical record" => {
                 Workspace::apply_inventory_plan(&root, plan.clone()).expect("seed");
-                inject_storage_failure("inspect record#7");
+                inject_storage_failure("inspect record#8");
             }
             _ => fs::write(workspace.state.join("inventories/bad.json"), b"{}")
                 .expect("bad inventory"),
         }
-        assert!(
-            Workspace::apply_inventory_plan(&root, plan).is_err(),
-            "{scenario}"
-        );
+        let error = Workspace::apply_inventory_plan(&root, plan).expect_err(scenario);
+        if scenario == "identical record" {
+            assert!(
+                error.to_string().contains("inventories/inventory.json"),
+                "identity fault reached the wrong record: {error}"
+            );
+        }
         fs::remove_dir_all(root).expect("remove fixture");
     }
 }

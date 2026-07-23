@@ -25,7 +25,7 @@ pub(super) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(super) enum Command {
-    /// Initialize a local research workspace.
+    /// Initialize a workspace with the versioned agent contribution protocol.
     Init {
         #[arg(default_value = ".")]
         path: PathBuf,
@@ -50,7 +50,7 @@ pub(super) enum Command {
         #[arg(long)]
         without_review_authority: bool,
     },
-    /// Inventory a populated project and initialize managed state only on apply.
+    /// Inventory a project; apply activates the versioned contribution protocol.
     Retrofit {
         #[command(subcommand)]
         command: InventoryCommand,
@@ -118,9 +118,9 @@ pub(super) enum Command {
     Blockers(LimitArgs),
     /// Show open typed next actions.
     Next(LimitArgs),
-    /// Build a bounded fresh-agent context projection.
+    /// Retrieve bounded context and the required contribution protocol.
     Context(ContextArgs),
-    /// Create or inspect a portable fresh-agent handoff bundle.
+    /// Create or inspect a portable handoff with contribution requirements.
     Handoff {
         #[command(subcommand)]
         command: HandoffCommand,

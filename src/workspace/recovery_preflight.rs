@@ -1,16 +1,18 @@
 use crate::domain::{
-    ClaimRecord, EvidenceLink, ExperimentReceipt, ReviewAuthority, ReviewDecision, SourceRecord,
+    ClaimRecord, EvidenceLink, ExperimentReceipt, ProjectManifest, ReviewAuthority, ReviewDecision,
+    SourceRecord,
 };
 use crate::{Error, Result};
 
 use super::recovery_canonical::{canonical_manifest, canonical_records};
-use super::recovery_commit::commit_recovery;
 use super::recovery_optional::{OptionalRecovery, preflight_optional};
 use super::recovery_plan::PendingRecord;
 use super::recovery_review::validate_pending_review_graphs;
 use super::recovery_semantics::validate_recovered_authority;
 use super::storage::ReadBudget;
-use super::{RecoveryResult, Snapshot, Workspace, injected_storage_failure};
+use super::{Snapshot, Workspace, injected_storage_failure};
+
+mod publish;
 
 pub(super) struct RecoveryBatch {
     manifest: Vec<PendingRecord>,
@@ -24,48 +26,35 @@ pub(super) struct RecoveryBatch {
     knowledge: Vec<PendingRecord>,
     relationships: Vec<PendingRecord>,
     migrations: Vec<PendingRecord>,
+    contribution_protocols: Vec<PendingRecord>,
+    requires_contribution_protocol_bootstrap: bool,
+    requires_contribution_protocol_staging: bool,
+    authorizes_contribution_protocol_bootstrap: bool,
+}
+
+struct CoreRecovery {
+    manifest: ProjectManifest,
+    sources: Vec<SourceRecord>,
+    claims: Vec<ClaimRecord>,
+    experiments: Vec<ExperimentReceipt>,
+    evidence: Vec<EvidenceLink>,
+    reviews: Vec<ReviewDecision>,
+    review_authorities: Vec<ReviewAuthority>,
+    manifest_pending: Vec<PendingRecord>,
+    source_pending: Vec<PendingRecord>,
+    claim_pending: Vec<PendingRecord>,
+    experiment_pending: Vec<PendingRecord>,
+    evidence_pending: Vec<PendingRecord>,
+    review_pending: Vec<PendingRecord>,
+    review_authority_pending: Vec<PendingRecord>,
 }
 
 impl Workspace {
     pub(super) fn preflight_recovery_batch(&self) -> Result<RecoveryBatch> {
-        let mut manifest_pending = self.collect_recovery_pending(&self.state)?;
-        let mut source_pending = collect_named(self, "sources")?;
-        let mut claim_pending = collect_named(self, "claims")?;
-        let mut experiment_pending = collect_named(self, "experiments")?;
-        let mut evidence_pending = collect_named(self, "evidence")?;
-        let mut review_pending = collect_named(self, "reviews")?;
-        let mut review_authority_pending = collect_named_optional(self, "review-authorities")?;
         let mut budget = ReadBudget::default();
-        let manifest = canonical_manifest(self, &mut manifest_pending, &mut budget)?;
-        let sources =
-            canonical_records::<SourceRecord>(self, "sources", &mut source_pending, &mut budget)?;
-        let claims =
-            canonical_records::<ClaimRecord>(self, "claims", &mut claim_pending, &mut budget)?;
-        let experiments = canonical_records::<ExperimentReceipt>(
-            self,
-            "experiments",
-            &mut experiment_pending,
-            &mut budget,
-        )?;
-        let evidence = canonical_records::<EvidenceLink>(
-            self,
-            "evidence",
-            &mut evidence_pending,
-            &mut budget,
-        )?;
-        let reviews =
-            canonical_records::<ReviewDecision>(self, "reviews", &mut review_pending, &mut budget)?;
-        let review_authorities = if self.state.join("review-authorities").exists() {
-            canonical_records::<ReviewAuthority>(
-                self,
-                "review-authorities",
-                &mut review_authority_pending,
-                &mut budget,
-            )?
-        } else {
-            Vec::new()
-        };
+        let core = preflight_core(self, &mut budget)?;
         let OptionalRecovery {
+            contribution_protocols,
             inventories,
             knowledge,
             relationships,
@@ -74,36 +63,103 @@ impl Workspace {
             knowledge_pending,
             relationship_pending,
             migration_pending,
+            contribution_protocol_pending,
         } = preflight_optional(self, &mut budget)?;
+        let activation_is_pending_only = contribution_protocol_pending
+            .iter()
+            .any(|record| !record.target.exists());
+        let authorizes_contribution_protocol_bootstrap = core
+            .manifest_pending
+            .iter()
+            .any(|record| !record.target.exists())
+            || !migrations.is_empty();
+        let (
+            contribution_protocol,
+            requires_contribution_protocol_bootstrap,
+            requires_contribution_protocol_staging,
+        ) = match contribution_protocols.as_slice() {
+            [contribution_protocol] => (
+                contribution_protocol.clone(),
+                activation_is_pending_only,
+                false,
+            ),
+            [] => (crate::domain::ContributionProtocol::agent_v1(), true, true),
+            _ => {
+                return Err(Error::invalid(
+                    "recovery activation",
+                    "exactly one contribution protocol must be canonical or recoverable",
+                ));
+            }
+        };
         let snapshot = Snapshot {
-            manifest,
-            sources,
-            claims,
-            experiments,
-            evidence,
-            reviews,
-            review_authorities,
+            manifest: core.manifest,
+            contribution_protocol,
+            sources: core.sources,
+            claims: core.claims,
+            experiments: core.experiments,
+            evidence: core.evidence,
+            reviews: core.reviews,
+            review_authorities: core.review_authorities,
             inventories,
             knowledge,
             relationships,
             migrations,
         };
         let batch = RecoveryBatch {
-            manifest: manifest_pending,
-            sources: source_pending,
-            claims: claim_pending,
-            experiments: experiment_pending,
-            evidence: evidence_pending,
-            reviews: review_pending,
-            review_authorities: review_authority_pending,
+            manifest: core.manifest_pending,
+            sources: core.source_pending,
+            claims: core.claim_pending,
+            experiments: core.experiment_pending,
+            evidence: core.evidence_pending,
+            reviews: core.review_pending,
+            review_authorities: core.review_authority_pending,
             inventories: inventory_pending,
             knowledge: knowledge_pending,
             relationships: relationship_pending,
             migrations: migration_pending,
+            contribution_protocols: contribution_protocol_pending,
+            requires_contribution_protocol_bootstrap,
+            requires_contribution_protocol_staging,
+            authorizes_contribution_protocol_bootstrap,
         };
         batch.validate(self, &snapshot)?;
         Ok(batch)
     }
+}
+
+fn preflight_core(workspace: &Workspace, budget: &mut ReadBudget) -> Result<CoreRecovery> {
+    let mut manifest_pending = workspace.collect_recovery_pending(&workspace.state)?;
+    let mut source_pending = collect_named(workspace, "sources")?;
+    let mut claim_pending = collect_named(workspace, "claims")?;
+    let mut experiment_pending = collect_named(workspace, "experiments")?;
+    let mut evidence_pending = collect_named(workspace, "evidence")?;
+    let mut review_pending = collect_named(workspace, "reviews")?;
+    let mut review_authority_pending = collect_named_optional(workspace, "review-authorities")?;
+    Ok(CoreRecovery {
+        manifest: canonical_manifest(workspace, &mut manifest_pending, budget)?,
+        sources: canonical_records(workspace, "sources", &mut source_pending, budget)?,
+        claims: canonical_records(workspace, "claims", &mut claim_pending, budget)?,
+        experiments: canonical_records(workspace, "experiments", &mut experiment_pending, budget)?,
+        evidence: canonical_records(workspace, "evidence", &mut evidence_pending, budget)?,
+        reviews: canonical_records(workspace, "reviews", &mut review_pending, budget)?,
+        review_authorities: if workspace.state.join("review-authorities").exists() {
+            canonical_records(
+                workspace,
+                "review-authorities",
+                &mut review_authority_pending,
+                budget,
+            )?
+        } else {
+            Vec::new()
+        },
+        manifest_pending,
+        source_pending,
+        claim_pending,
+        experiment_pending,
+        evidence_pending,
+        review_pending,
+        review_authority_pending,
+    })
 }
 
 fn collect_named(workspace: &Workspace, name: &str) -> Result<Vec<PendingRecord>> {
@@ -120,6 +176,14 @@ fn collect_named_optional(workspace: &Workspace, name: &str) -> Result<Vec<Pendi
 }
 
 impl RecoveryBatch {
+    pub(super) fn requires_contribution_protocol_bootstrap(&self) -> bool {
+        self.requires_contribution_protocol_bootstrap
+    }
+
+    pub(super) fn requires_contribution_protocol_staging(&self) -> bool {
+        self.requires_contribution_protocol_staging
+    }
+
     fn validate(&self, workspace: &Workspace, snapshot: &Snapshot) -> Result<()> {
         validate_recovered_authority(
             workspace,
@@ -166,24 +230,5 @@ impl RecoveryBatch {
                 ),
             ))
         }
-    }
-
-    pub(super) fn publish(self, workspace: &Workspace, result: &mut RecoveryResult) -> Result<()> {
-        commit_recovery(&workspace.state, self.manifest, result)?;
-        for (directory, pending) in [
-            ("sources", self.sources),
-            ("claims", self.claims),
-            ("experiments", self.experiments),
-            ("evidence", self.evidence),
-            ("review-authorities", self.review_authorities),
-            ("reviews", self.reviews),
-            ("inventories", self.inventories),
-            ("knowledge", self.knowledge),
-            ("relationships", self.relationships),
-            ("migrations", self.migrations),
-        ] {
-            commit_recovery(&workspace.state.join(directory), pending, result)?;
-        }
-        Ok(())
     }
 }

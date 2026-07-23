@@ -26,6 +26,17 @@ fn explicit_recovery_completes_init_interrupted_before_manifest_publication() {
     for directory in ["sources", "claims", "evidence", "experiments", "reviews"] {
         fs::create_dir_all(state.join(directory)).expect("create partial workspace");
     }
+    let protocols = state.join("contribution-protocols");
+    fs::create_dir(&protocols).expect("create contribution protocol directory");
+    let mut protocol =
+        serde_json::to_vec_pretty(&research_run::domain::ContributionProtocol::agent_v1())
+            .expect("protocol JSON");
+    protocol.push(b'\n');
+    fs::write(
+        protocols.join(".agent-contribution.json.999.0.tmp"),
+        protocol,
+    )
+    .expect("write pending contribution protocol");
     fs::write(
         state.join(".manifest.json.999.0.tmp"),
         r#"{
@@ -41,6 +52,46 @@ fn explicit_recovery_completes_init_interrupted_before_manifest_publication() {
     let project_text = project.to_string_lossy();
     succeeds(&temporary.0, &["recover", &project_text, "--json"]);
     succeeds(&project, &["validate", "--json"]);
+}
+
+#[test]
+fn recovery_rejects_legacy_pending_effect_without_typed_migration() {
+    let project = workspace("legacy-recovery-activation");
+    let state = project.0.join(".research-run");
+    fs::remove_file(state.join("contribution-protocols/agent-contribution.json"))
+        .expect("remove activation protocol");
+    let mut protocol =
+        serde_json::to_vec_pretty(&research_run::domain::ContributionProtocol::agent_v1())
+            .expect("protocol JSON");
+    protocol.push(b'\n');
+    fs::write(
+        state.join("contribution-protocols/.agent-contribution.json.999.0.tmp"),
+        protocol,
+    )
+    .expect("write pending activation protocol");
+    fs::write(
+        state.join("sources/.source-legacy.json.999.0.tmp"),
+        r#"{
+  "schema_version": 1,
+  "kind": "source",
+  "id": "source-legacy",
+  "citation": "Legacy pending observation",
+  "locator": "local:legacy",
+  "provenance": "human",
+  "notes": ""
+}
+"#,
+    )
+    .expect("write legacy pending source");
+
+    let output = cli(&project.0, &["recover", "--json"]);
+    assert!(!output.status.success());
+    assert!(!state.join("sources/source-legacy.json").exists());
+    assert!(
+        !state
+            .join("contribution-protocols/agent-contribution.json")
+            .is_file()
+    );
 }
 
 #[cfg(unix)]

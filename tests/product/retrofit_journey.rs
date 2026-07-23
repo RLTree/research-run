@@ -69,6 +69,11 @@ fn apply_and_repeat_retrofit(
     let applied: Value = serde_json::from_slice(&applied.stdout).expect("apply JSON");
     assert_eq!(applied["review_authority"]["mode"], "anchored");
     assert_eq!(applied["review_authority"]["promotion_capable"], true);
+    assert!(
+        project
+            .join(".research-run/contribution-protocols/agent-contribution.json")
+            .is_file()
+    );
     assert_eq!(fs::read(note).expect("note after"), before_note);
     assert_eq!(fs::read(protocol).expect("protocol after"), before_protocol);
     let repeated = succeeds(

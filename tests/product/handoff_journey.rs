@@ -71,6 +71,49 @@ fn fresh_process_consumes_handoff_without_source_workspace() {
     assert!(String::from_utf8_lossy(&human_create.stdout).contains("Research Run context"));
 }
 
+#[test]
+fn legacy_v1_handoff_without_activation_protocol_remains_inspectable() {
+    let temporary = TempDir::new("handoff-v1-compatibility");
+    let current_path = create_handoff_fixture(&temporary);
+    let legacy_path = temporary.0.join("handoff-v1.json");
+    let mut legacy: Value =
+        serde_json::from_slice(&fs::read(current_path).expect("read current handoff")).unwrap();
+    legacy["schema_version"] = json!(1);
+    legacy["context"]
+        .as_object_mut()
+        .expect("context object")
+        .remove("contribution_protocol");
+    fs::write(&legacy_path, serde_json::to_vec_pretty(&legacy).unwrap()).unwrap();
+
+    let fresh = temporary.0.join("legacy-agent");
+    fs::create_dir(&fresh).expect("legacy agent directory");
+    let inspected = succeeds(
+        &fresh,
+        &[
+            "handoff",
+            "inspect",
+            "--input",
+            legacy_path.to_str().unwrap(),
+        ],
+    );
+    let inspected: Value = serde_json::from_slice(&inspected.stdout).expect("legacy handoff JSON");
+    assert_eq!(inspected["schema_version"], 1);
+    assert!(inspected["context"].get("contribution_protocol").is_none());
+    let human = succeeds(
+        &fresh,
+        &[
+            "handoff",
+            "inspect",
+            "--input",
+            legacy_path.to_str().unwrap(),
+            "--human",
+        ],
+    );
+    assert!(
+        String::from_utf8_lossy(&human.stdout).contains("Not embedded in this legacy v1 handoff")
+    );
+}
+
 pub(super) fn create_handoff_fixture(temporary: &TempDir) -> std::path::PathBuf {
     let project = temporary.0.join("project");
     crate::review_test_signing::initialize_with_test_authority(

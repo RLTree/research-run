@@ -2,14 +2,16 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use crate::domain::{CanonicalRecord, ProjectManifest, ReviewAuthority};
+use crate::domain::{CanonicalRecord, ContributionProtocol, ProjectManifest, ReviewAuthority};
 use crate::{Error, Result};
 
 use super::path_safety::{absolute_path, create_directory_chain, reject_symlink_chain};
 use super::sshsig::parse_authority_key;
 use super::storage::ReadBudget;
 use super::write_lock::WorkspaceWriteLock;
-use super::{STATE_DIRECTORY, Workspace, injected_storage_failure};
+use super::{
+    CONTRIBUTION_PROTOCOL_DIRECTORY, STATE_DIRECTORY, Workspace, injected_storage_failure,
+};
 
 impl Workspace {
     pub fn initialize(root: &Path, name: &str) -> Result<Self> {
@@ -93,19 +95,47 @@ impl Workspace {
             "knowledge",
             "relationships",
             "migrations",
+            CONTRIBUTION_PROTOCOL_DIRECTORY,
         ] {
             let path = workspace.state.join(directory);
             create_directory_chain(&path)?;
         }
         if manifest_path.is_file() {
+            workspace.require_existing_contribution_protocol()?;
+            let snapshot = workspace.load_snapshot_for_activation_with_authority(authority)?;
+            verify_initialized_authority_records(authority, &snapshot.review_authorities)?;
             workspace.stage_initialized_authority(authority)?;
+            workspace.install_contribution_protocol()?;
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
+        workspace.stage_value_for_recovery(&manifest_path, &manifest)?;
         workspace.stage_initialized_authority(authority)?;
-        workspace.publish_value(&manifest_path, &manifest)?;
+        workspace.recover_pending_under_lock()?;
         workspace.verify_initialized_authority(authority)?;
         Ok(workspace)
+    }
+
+    pub(super) fn install_contribution_protocol(&self) -> Result<bool> {
+        self.publish_record(
+            CONTRIBUTION_PROTOCOL_DIRECTORY,
+            &ContributionProtocol::agent_v1(),
+        )
+    }
+
+    fn require_existing_contribution_protocol(&self) -> Result<()> {
+        let protocol_path = self
+            .state
+            .join(CONTRIBUTION_PROTOCOL_DIRECTORY)
+            .join("agent-contribution.json");
+        reject_symlink_chain(&protocol_path)?;
+        if protocol_path.is_file() {
+            return Ok(());
+        }
+        Err(Error::Conflict(
+            "pre-activation workspace requires 'research-run migrate apply'; init cannot create an unrecorded activation"
+                .to_owned(),
+        ))
     }
 
     fn stage_initialized_authority(&self, expected: Option<&ReviewAuthority>) -> Result<()> {

@@ -100,12 +100,13 @@ fn validate_migration(
         ));
     }
     let expected = workspace.authority_fingerprint()?;
+    let pre_activation = workspace.pre_activation_authority_fingerprint()?;
     let actual = (
         candidate.authority_files,
         candidate.authority_bytes,
         candidate.authority_sha256.clone(),
     );
-    if actual != expected {
+    if actual != expected && actual != pre_activation {
         return Err(Error::Conflict(
             "recovered migration does not match current canonical authority".to_owned(),
         ));

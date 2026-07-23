@@ -48,7 +48,7 @@ fn migration_application_propagates_validation_root_and_directory_failures() {
 
 #[test]
 fn migration_application_propagates_record_snapshot_and_publication_failures() {
-    for point in ["inspect record", "publish canonical record"] {
+    for point in ["inspect record", "publish recovered record"] {
         let root = temporary();
         Workspace::initialize(&root, "Migration record faults").expect("initialize");
         let migration = plan(&root, "migration-one");
@@ -110,8 +110,109 @@ fn migration_manifest_fingerprint_and_identical_record_failures_propagate() {
     Workspace::initialize(&root, "Migration identical boundary").expect("initialize");
     let migration = plan(&root, "migration");
     Workspace::apply_migration(&root, migration.clone()).expect("seed");
-    inject_storage_failure("inspect record#4");
+    inject_storage_failure("inspect record#5");
     assert!(Workspace::apply_migration(&root, migration).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn migration_propagates_contribution_protocol_publication_failure() {
+    let root = temporary();
+    Workspace::initialize(&root, "Migration activation").expect("initialize");
+    fs::remove_file(root.join(".research-run/contribution-protocols/agent-contribution.json"))
+        .expect("remove activation policy");
+    let migration = plan(&root, "migration");
+    inject_storage_failure("create pending record#2");
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn migration_interruption_never_publishes_a_protocol_only_state() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Atomic migration").expect("initialize");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    let migration_record = workspace.state.join("migrations/migration.json");
+    fs::remove_file(&protocol).expect("remove activation policy");
+    let migration = plan(&root, "migration");
+
+    inject_storage_failure("publish recovered record");
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    assert!(
+        !protocol.exists(),
+        "failed migration activated the workspace"
+    );
+    assert!(
+        !migration_record.exists(),
+        "failed migration published its canonical record"
+    );
+
+    workspace.recover().expect("recover migration batch");
+    assert!(protocol.is_file());
+    assert!(migration_record.is_file());
+    workspace
+        .load_snapshot()
+        .expect("validate recovered migration");
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn migration_recovery_publishes_protocol_before_record() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Ordered migration").expect("initialize");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    let migration_record = workspace.state.join("migrations/migration.json");
+    fs::remove_file(&protocol).expect("remove activation policy");
+    let migration = plan(&root, "migration");
+
+    inject_storage_failure("publish recovered record#2");
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    assert!(protocol.is_file(), "migration published before activation");
+    assert!(
+        !migration_record.is_file(),
+        "interruption left an activated migration record"
+    );
+    workspace
+        .recover()
+        .expect("recover after ordered migration interruption");
+    assert!(protocol.is_file());
+    assert!(migration_record.is_file());
+    workspace
+        .load_snapshot()
+        .expect("validate recovered migration");
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn migration_validates_activation_directory_before_publication() {
+    let root = temporary();
+    let workspace =
+        Workspace::initialize(&root, "Migration activation validation").expect("initialize");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    fs::remove_file(&protocol).expect("remove activation policy");
+    let migration = plan(&root, "migration");
+    fs::write(
+        workspace
+            .state
+            .join("contribution-protocols/unexpected.json"),
+        b"{}",
+    )
+    .expect("unexpected activation record");
+
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    assert!(
+        !protocol.exists(),
+        "migration mutated invalid activation state before validation"
+    );
+
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

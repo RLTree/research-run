@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{
-    MAX_LIST_ITEMS, required_text, validate_id, validate_timestamp, validate_workspace_locator,
+    ContributionProtocol, MAX_LIST_ITEMS, required_text, validate_id, validate_timestamp,
+    validate_workspace_locator,
 };
 use crate::{Error, Result};
 
@@ -154,6 +155,8 @@ pub struct ContextBundle {
     pub project_name: String,
     pub claim_ceiling: String,
     pub scope: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contribution_protocol: Option<ContributionProtocol>,
     pub matches: Vec<ProjectionItem>,
     pub unresolved: Vec<ProjectionItem>,
     pub blockers: Vec<ProjectionItem>,
@@ -175,6 +178,9 @@ impl ContextBundle {
             ));
         }
         bounded_text(&self.scope, "handoff scope")?;
+        if let Some(protocol) = &self.contribution_protocol {
+            crate::domain::CanonicalRecord::validate(protocol)?;
+        }
         for (name, items) in [
             ("matches", &self.matches),
             ("unresolved", &self.unresolved),
@@ -214,8 +220,14 @@ pub struct HandoffBundle {
 
 impl HandoffBundle {
     pub fn validate(&self) -> Result<()> {
-        if self.schema_version != 1 || self.kind != "handoff" {
+        if !matches!(self.schema_version, 1 | 2) || self.kind != "handoff" {
             return Err(Error::invalid("handoff", "unknown version or record kind"));
+        }
+        if self.schema_version == 2 && self.context.contribution_protocol.is_none() {
+            return Err(Error::invalid(
+                "handoff",
+                "version 2 requires the contribution protocol",
+            ));
         }
         validate_id(&self.id, "handoff id")?;
         validate_timestamp(&self.generated_at)?;

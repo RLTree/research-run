@@ -189,6 +189,15 @@ fn identical_inventory_read_failure_propagates_from_apply() {
             .to_string()
             .contains("inventory bootstrap for inventory-one")
     );
+    inject_storage_failure("materials changed under lock");
+    let error = Workspace::apply_inventory_plan(&root, plan.clone())
+        .expect_err("existing workspace material recheck fault");
+    assert!(error.to_string().contains("project materials changed"));
+    assert!(
+        !error
+            .to_string()
+            .contains("inventory bootstrap for inventory-one")
+    );
     inject_storage_failure("record identity#4");
     let error = Workspace::apply_inventory_plan(&root, plan).expect_err("inventory read fault");
     assert!(

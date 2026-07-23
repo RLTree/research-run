@@ -4,13 +4,14 @@ use std::path::PathBuf;
 
 use serde::de::DeserializeOwned;
 
-use crate::domain::{CanonicalRecord, ProjectManifest};
+use crate::domain::{CanonicalRecord, ContributionProtocol, ProjectManifest, ReviewAuthority};
 use crate::{Error, Result};
 
 use super::path_safety::{interrupted_target_name, reject_symlink_chain};
 use super::storage::{ReadBudget, map_io, read_json_with_budget, read_json_with_limit};
 use super::{
-    MAX_RECORDS_PER_KIND, Snapshot, Workspace, injected_storage_failure, record_byte_limit,
+    CONTRIBUTION_PROTOCOL_DIRECTORY, MAX_RECORDS_PER_KIND, Snapshot, Workspace,
+    injected_storage_failure, record_byte_limit,
 };
 
 impl Workspace {
@@ -50,6 +51,30 @@ impl Workspace {
     }
 
     pub(super) fn load_snapshot_allow_pending(&self, allow_pending: bool) -> Result<Snapshot> {
+        self.load_snapshot_with_activation(allow_pending, None, None)
+    }
+
+    pub(super) fn load_snapshot_for_activation(&self) -> Result<Snapshot> {
+        self.load_snapshot_with_activation(false, Some(&ContributionProtocol::agent_v1()), None)
+    }
+
+    pub(super) fn load_snapshot_for_activation_with_authority(
+        &self,
+        prospective_authority: Option<&ReviewAuthority>,
+    ) -> Result<Snapshot> {
+        self.load_snapshot_with_activation(
+            false,
+            Some(&ContributionProtocol::agent_v1()),
+            prospective_authority,
+        )
+    }
+
+    fn load_snapshot_with_activation(
+        &self,
+        allow_pending: bool,
+        prospective_protocol: Option<&ContributionProtocol>,
+        prospective_authority: Option<&ReviewAuthority>,
+    ) -> Result<Snapshot> {
         let mut budget = ReadBudget::default();
         let manifest: ProjectManifest =
             read_json_with_budget(&self.state.join("manifest.json"), &mut budget)?;
@@ -58,10 +83,33 @@ impl Workspace {
             self.load_optional_records("relationships", allow_pending, &mut budget)?;
         let knowledge = self.load_optional_records("knowledge", allow_pending, &mut budget)?;
         let migrations = self.load_optional_records("migrations", allow_pending, &mut budget)?;
-        let review_authorities =
+        let mut review_authorities =
             self.load_optional_records("review-authorities", allow_pending, &mut budget)?;
+        if let Some(prospective_authority) = prospective_authority
+            && review_authorities.is_empty()
+        {
+            review_authorities.push(prospective_authority.clone());
+        }
+        let contribution_protocols: Vec<ContributionProtocol> = self.load_optional_records(
+            CONTRIBUTION_PROTOCOL_DIRECTORY,
+            allow_pending,
+            &mut budget,
+        )?;
+        let contribution_protocol = match contribution_protocols.as_slice() {
+            [protocol] => protocol.clone(),
+            [] if prospective_protocol.is_some() => prospective_protocol
+                .expect("prospective protocol was checked")
+                .clone(),
+            _ => {
+                return Err(Error::invalid(
+                    "workspace activation",
+                    "exactly one canonical contribution protocol is required; migrate this workspace if it predates activation policy v1",
+                ));
+            }
+        };
         Ok(Snapshot {
             manifest,
+            contribution_protocol,
             sources: self.load_records("sources", allow_pending, &mut budget)?,
             claims: self.load_records("claims", allow_pending, &mut budget)?,
             evidence: self.load_records("evidence", allow_pending, &mut budget)?,

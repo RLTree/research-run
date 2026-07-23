@@ -4,6 +4,7 @@ use std::cell::Cell;
 
 use crate::Result;
 
+mod contribution;
 mod experiments;
 mod inventory;
 mod knowledge;
@@ -11,6 +12,7 @@ mod migration;
 mod records;
 mod validation;
 
+pub use contribution::ContributionProtocol;
 pub use experiments::{
     ArtifactLocatorType, ArtifactPointer, ExperimentReceipt, REVIEW_SIGNATURE_NAMESPACE,
     ReviewAuthority, ReviewAuthorization, ReviewDecision, ReviewRequest,

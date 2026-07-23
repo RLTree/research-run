@@ -30,7 +30,7 @@ pub(super) enum InventoryCommand {
         )]
         without_review_authority: bool,
     },
-    /// Apply an unchanged plan after revalidating every indexed project byte.
+    /// Apply an unchanged plan and activate the contribution protocol.
     Apply {
         #[arg(default_value = ".")]
         path: PathBuf,

@@ -211,6 +211,8 @@ mod inventory_failure_expanded;
 mod inventory_policy;
 #[path = "tests/inventory_policy_failures.rs"]
 mod inventory_policy_failures;
+#[path = "tests/inventory_protocol_coverage.rs"]
+mod inventory_protocol_coverage;
 #[path = "tests/inventory_tamper.rs"]
 mod inventory_tamper;
 #[path = "tests/knowledge_expanded.rs"]
@@ -219,6 +221,8 @@ mod knowledge_expanded;
 mod migration_expanded;
 #[path = "tests/migration_failure_expanded.rs"]
 mod migration_failure_expanded;
+#[path = "tests/migration_protocol_retry.rs"]
+mod migration_protocol_retry;
 #[path = "tests/records.rs"]
 mod records;
 #[path = "tests/recovery.rs"]

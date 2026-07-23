@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "kind": "contribution-protocol",
+  "id": "agent-contribution",
+  "sequence": [
+    "retrieve-bounded-context",
+    "classify-new-material",
+    "append-typed-records",
+    "validate-workspace",
+    "answer-or-handoff"
+  ],
+  "triggers": [
+    "human-observation",
+    "human-correction",
+    "human-decision",
+    "negative-result",
+    "ambiguous-result",
+    "blocker",
+    "next-action"
+  ],
+  "human_input_authorship": "human",
+  "agent_analysis_authorship": "ai",
+  "no_new_material_effect": "no-write",
+  "identical_retry_effect": "no-op",
+  "claim_promotion": "signed-human-review-only"
+}

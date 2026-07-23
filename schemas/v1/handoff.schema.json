@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://research-run.local/schemas/v1/handoff.schema.json",
-  "title": "Research Run Handoff Bundle v1",
+  "title": "Research Run Handoff Bundle v1-v2",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "kind", "id", "generated_at", "context"],
   "properties": {
-    "schema_version": { "const": 1 },
+    "schema_version": { "enum": [1, 2] },
     "kind": { "const": "handoff" },
     "id": { "$ref": "types.schema.json#/$defs/id" },
     "generated_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
@@ -20,6 +20,7 @@
         "project_name": { "type": "string", "minLength": 1 },
         "claim_ceiling": { "const": "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity." },
         "scope": { "type": "string", "minLength": 1 },
+        "contribution_protocol": { "$ref": "contribution-protocol.schema.json" },
         "matches": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
         "unresolved": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
         "blockers": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
@@ -28,6 +29,12 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "schema_version": { "const": 2 } } },
+      "then": { "properties": { "context": { "required": ["contribution_protocol"] } } }
+    }
+  ],
   "$defs": {
     "relationship": {
       "type": "object",

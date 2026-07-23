@@ -18,6 +18,8 @@ use super::{
     MAX_RECORD_BYTES, TEMP_SEQUENCE, Workspace, injected_storage_failure, record_byte_limit,
 };
 
+mod staging;
+
 impl Workspace {
     pub(super) fn publish_record<T: CanonicalRecord>(
         &self,
@@ -85,7 +87,7 @@ pub(super) fn canonical_json_bytes(value: &impl Serialize) -> Vec<u8> {
     content
 }
 
-fn publication_needed(target: &Path, content: &[u8], maximum: u64) -> Result<bool> {
+pub(super) fn publication_needed(target: &Path, content: &[u8], maximum: u64) -> Result<bool> {
     inject_inspection_race(target, content);
     reject_symlink_chain(target)?;
     if content.len() as u64 > maximum {

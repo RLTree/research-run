@@ -1,3 +1,5 @@
+#[path = "product/contribution_protocol_journey.rs"]
+mod contribution_protocol_journey;
 #[path = "product/data_contracts.rs"]
 mod data_contracts;
 #[path = "product/domain_boundaries.rs"]
