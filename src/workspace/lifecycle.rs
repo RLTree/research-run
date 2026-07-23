@@ -101,6 +101,7 @@ impl Workspace {
             create_directory_chain(&path)?;
         }
         if manifest_path.is_file() {
+            workspace.require_existing_contribution_protocol()?;
             workspace.stage_initialized_authority(authority)?;
             let snapshot = workspace.load_snapshot_for_activation()?;
             verify_initialized_authority_records(authority, &snapshot.review_authorities)?;
@@ -120,6 +121,21 @@ impl Workspace {
             CONTRIBUTION_PROTOCOL_DIRECTORY,
             &ContributionProtocol::agent_v1(),
         )
+    }
+
+    fn require_existing_contribution_protocol(&self) -> Result<()> {
+        let protocol_path = self
+            .state
+            .join(CONTRIBUTION_PROTOCOL_DIRECTORY)
+            .join("agent-contribution.json");
+        reject_symlink_chain(&protocol_path)?;
+        if protocol_path.is_file() {
+            return Ok(());
+        }
+        Err(Error::Conflict(
+            "pre-activation workspace requires 'research-run migrate apply'; init cannot create an unrecorded activation"
+                .to_owned(),
+        ))
     }
 
     fn stage_initialized_authority(&self, expected: Option<&ReviewAuthority>) -> Result<()> {

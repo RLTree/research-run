@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{Error, Result};
 
 use super::path_safety::create_directory_chain;
 use super::write_lock::WorkspaceWriteLock;
@@ -13,6 +13,12 @@ impl Workspace {
     pub(super) fn recover_pending_under_lock(&self) -> Result<RecoveryResult> {
         let mut recovery = self.preflight_recovery_batch()?;
         if recovery.requires_contribution_protocol_bootstrap() {
+            if !recovery.has_pending_effects() {
+                return Err(Error::Conflict(
+                    "pre-activation workspace requires 'research-run migrate apply'; recovery has no pending effect to settle"
+                        .to_owned(),
+                ));
+            }
             create_directory_chain(&self.state.join(CONTRIBUTION_PROTOCOL_DIRECTORY))?;
             self.stage_record_for_recovery(
                 CONTRIBUTION_PROTOCOL_DIRECTORY,

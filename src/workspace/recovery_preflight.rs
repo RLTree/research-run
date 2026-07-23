@@ -5,13 +5,14 @@ use crate::domain::{
 use crate::{Error, Result};
 
 use super::recovery_canonical::{canonical_manifest, canonical_records};
-use super::recovery_commit::commit_recovery;
 use super::recovery_optional::{OptionalRecovery, preflight_optional};
 use super::recovery_plan::PendingRecord;
 use super::recovery_review::validate_pending_review_graphs;
 use super::recovery_semantics::validate_recovered_authority;
 use super::storage::ReadBudget;
-use super::{RecoveryResult, Snapshot, Workspace, injected_storage_failure};
+use super::{Snapshot, Workspace, injected_storage_failure};
+
+mod publish;
 
 pub(super) struct RecoveryBatch {
     manifest: Vec<PendingRecord>,
@@ -206,28 +207,5 @@ impl RecoveryBatch {
                 ),
             ))
         }
-    }
-
-    pub(super) fn publish(self, workspace: &Workspace, result: &mut RecoveryResult) -> Result<()> {
-        commit_recovery(&workspace.state, self.manifest, result)?;
-        for (directory, pending) in [
-            ("sources", self.sources),
-            ("claims", self.claims),
-            ("experiments", self.experiments),
-            ("evidence", self.evidence),
-            ("review-authorities", self.review_authorities),
-            ("reviews", self.reviews),
-            ("inventories", self.inventories),
-            ("knowledge", self.knowledge),
-            ("relationships", self.relationships),
-            ("migrations", self.migrations),
-            (
-                super::CONTRIBUTION_PROTOCOL_DIRECTORY,
-                self.contribution_protocols,
-            ),
-        ] {
-            commit_recovery(&workspace.state.join(directory), pending, result)?;
-        }
-        Ok(())
     }
 }

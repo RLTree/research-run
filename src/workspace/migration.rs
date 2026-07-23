@@ -85,16 +85,18 @@ impl Workspace {
         }
         let snapshot = workspace.load_snapshot_for_activation()?;
         let identical = workspace.record_is_identical("migrations", &record)?;
-        if !identical && !snapshot.migrations.is_empty() {
+        if identical {
+            workspace.install_contribution_protocol()?;
+            return Ok(false);
+        }
+        if !snapshot.migrations.is_empty() {
             return Err(Error::Conflict(
                 "workspace already contains a different v0.1 migration record".to_owned(),
             ));
         }
-        if !identical {
-            workspace.stage_record_for_recovery("migrations", &record)?;
-        }
+        workspace.stage_record_for_recovery("migrations", &record)?;
         workspace.recover_pending_under_lock()?;
-        Ok(!identical)
+        Ok(true)
     }
 
     pub fn read_migration_plan(path: &Path) -> Result<MigrationPlan> {

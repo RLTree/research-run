@@ -71,6 +71,24 @@ fn recovery_requires_one_valid_contribution_protocol() {
 }
 
 #[test]
+fn recovery_does_not_activate_an_idle_legacy_workspace() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Idle legacy").expect("initialize");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    fs::remove_file(&protocol).expect("remove activation protocol");
+
+    assert!(workspace.recover().is_err());
+    assert!(
+        !protocol.exists(),
+        "no-op recovery bypassed the typed migration path"
+    );
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn recovered_semantics_propagate_scan_and_migration_authority_failures() {
     let root = temporary();
     fs::write(root.join("material.txt"), b"material").expect("material");

@@ -48,13 +48,13 @@ fn contribution_protocol_publication_failures_propagate_on_init_and_retry() {
 fn fresh_activation_interruption_leaves_one_recoverable_batch() {
     let root = temporary();
 
-    inject_storage_failure("publish recovered record");
+    inject_storage_failure("publish recovered record#2");
     assert!(Workspace::initialize(&root, "Recoverable activation").is_err());
     assert!(!root.join(".research-run/manifest.json").exists());
     assert!(
-        !root
-            .join(".research-run/contribution-protocols/agent-contribution.json")
-            .exists()
+        root.join(".research-run/contribution-protocols/agent-contribution.json")
+            .is_file(),
+        "activation protocol must precede the discoverable manifest"
     );
 
     let workspace = Workspace::for_recovery(&root).expect("partial workspace");
@@ -63,6 +63,30 @@ fn fresh_activation_interruption_leaves_one_recoverable_batch() {
         .expect("discover recovered workspace")
         .load_snapshot()
         .expect("validate recovered activation");
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn existing_legacy_workspace_requires_typed_migration_for_activation() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Legacy init").expect("initialize");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    fs::remove_file(&protocol).expect("remove activation protocol");
+
+    assert!(Workspace::initialize(&root, "Legacy init").is_err());
+    assert!(!protocol.exists(), "init bypassed typed migration");
+    assert!(
+        !workspace
+            .state
+            .join("migrations")
+            .read_dir()
+            .unwrap()
+            .any(|_| true),
+        "init created an undocumented migration"
+    );
 
     fs::remove_dir_all(root).expect("remove fixture");
 }
