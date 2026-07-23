@@ -221,6 +221,8 @@ mod knowledge_expanded;
 mod migration_expanded;
 #[path = "tests/migration_failure_expanded.rs"]
 mod migration_failure_expanded;
+#[path = "tests/migration_protocol_retry.rs"]
+mod migration_protocol_retry;
 #[path = "tests/records.rs"]
 mod records;
 #[path = "tests/recovery.rs"]

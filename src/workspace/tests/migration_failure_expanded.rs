@@ -190,39 +190,6 @@ fn migration_recovery_publishes_protocol_before_record() {
 }
 
 #[test]
-fn identical_migration_retry_recovers_its_pending_protocol() {
-    let root = temporary();
-    let workspace = Workspace::initialize(&root, "Migration protocol retry").expect("initialize");
-    let migration = plan(&root, "migration");
-    Workspace::apply_migration(&root, migration.clone()).expect("seed migration");
-    let protocol = workspace
-        .state
-        .join("contribution-protocols/agent-contribution.json");
-    fs::remove_file(&protocol).expect("remove activation policy");
-    let pending = protocol
-        .parent()
-        .expect("protocol directory")
-        .join(".agent-contribution.json.999.0.tmp");
-    fs::write(
-        pending,
-        crate::workspace::publication::canonical_json_bytes(
-            &crate::domain::ContributionProtocol::agent_v1(),
-        ),
-    )
-    .expect("stage interrupted activation retry");
-
-    workspace
-        .recover()
-        .expect("recover typed migration activation retry");
-    assert!(protocol.is_file());
-    workspace
-        .load_snapshot()
-        .expect("validate recovered activation");
-
-    fs::remove_dir_all(root).expect("remove fixture");
-}
-
-#[test]
 fn migration_validates_activation_directory_before_publication() {
     let root = temporary();
     let workspace =
