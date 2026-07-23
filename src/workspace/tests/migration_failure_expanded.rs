@@ -160,6 +160,36 @@ fn migration_interruption_never_publishes_a_protocol_only_state() {
 }
 
 #[test]
+fn migration_recovery_publishes_protocol_before_record() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Ordered migration").expect("initialize");
+    let migration = plan(&root, "migration");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    let migration_record = workspace.state.join("migrations/migration.json");
+    fs::remove_file(&protocol).expect("remove activation policy");
+
+    inject_storage_failure("publish recovered record#2");
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    assert!(protocol.is_file(), "migration published before activation");
+    assert!(
+        !migration_record.is_file(),
+        "interruption left an activated migration record"
+    );
+    workspace
+        .recover()
+        .expect("recover after ordered migration interruption");
+    assert!(protocol.is_file());
+    assert!(migration_record.is_file());
+    workspace
+        .load_snapshot()
+        .expect("validate recovered migration");
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn migration_validates_activation_directory_before_publication() {
     let root = temporary();
     let workspace =

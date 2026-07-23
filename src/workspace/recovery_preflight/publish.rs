@@ -38,8 +38,8 @@ impl RecoveryBatch {
             ("inventories", self.inventories),
             ("knowledge", self.knowledge),
             ("relationships", self.relationships),
-            ("migrations", self.migrations),
             (CONTRIBUTION_PROTOCOL_DIRECTORY, self.contribution_protocols),
+            ("migrations", self.migrations),
         ] {
             commit_recovery(&workspace.state.join(directory), pending, result)?;
         }
