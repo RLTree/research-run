@@ -108,9 +108,9 @@ impl Workspace {
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
         }
+        workspace.stage_value_for_recovery(&manifest_path, &manifest)?;
         workspace.stage_initialized_authority(authority)?;
-        workspace.install_contribution_protocol()?;
-        workspace.publish_value(&manifest_path, &manifest)?;
+        workspace.recover_pending_under_lock()?;
         workspace.verify_initialized_authority(authority)?;
         Ok(workspace)
     }

@@ -61,7 +61,12 @@ fn recovery_requires_one_valid_contribution_protocol() {
     assert!(preflight_optional(&workspace, &mut ReadBudget::default()).is_err());
 
     fs::remove_file(&protocol).expect("remove malformed contribution protocol");
-    assert!(workspace.preflight_recovery_batch().is_err());
+    assert!(
+        workspace
+            .preflight_recovery_batch()
+            .expect("legacy activation is recoverable")
+            .requires_contribution_protocol_bootstrap()
+    );
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

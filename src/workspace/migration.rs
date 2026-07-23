@@ -84,17 +84,17 @@ impl Workspace {
             create_directory_chain(&workspace.state.join(directory))?;
         }
         let snapshot = workspace.load_snapshot_for_activation()?;
-        if workspace.record_is_identical("migrations", &record)? {
-            workspace.install_contribution_protocol()?;
-            return Ok(false);
-        }
-        if !snapshot.migrations.is_empty() {
+        let identical = workspace.record_is_identical("migrations", &record)?;
+        if !identical && !snapshot.migrations.is_empty() {
             return Err(Error::Conflict(
                 "workspace already contains a different v0.1 migration record".to_owned(),
             ));
         }
-        workspace.install_contribution_protocol()?;
-        workspace.publish_record("migrations", &record)
+        if !identical {
+            workspace.stage_record_for_recovery("migrations", &record)?;
+        }
+        workspace.recover_pending_under_lock()?;
+        Ok(!identical)
     }
 
     pub fn read_migration_plan(path: &Path) -> Result<MigrationPlan> {

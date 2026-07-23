@@ -48,7 +48,7 @@ fn migration_application_propagates_validation_root_and_directory_failures() {
 
 #[test]
 fn migration_application_propagates_record_snapshot_and_publication_failures() {
-    for point in ["inspect record", "publish canonical record"] {
+    for point in ["inspect record", "publish recovered record"] {
         let root = temporary();
         Workspace::initialize(&root, "Migration record faults").expect("initialize");
         let migration = plan(&root, "migration-one");
@@ -122,8 +122,40 @@ fn migration_propagates_contribution_protocol_publication_failure() {
     let migration = plan(&root, "migration");
     fs::remove_file(root.join(".research-run/contribution-protocols/agent-contribution.json"))
         .expect("remove activation policy");
-    inject_storage_failure("publish canonical record");
+    inject_storage_failure("create pending record#2");
     assert!(Workspace::apply_migration(&root, migration).is_err());
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
+fn migration_interruption_never_publishes_a_protocol_only_state() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Atomic migration").expect("initialize");
+    let migration = plan(&root, "migration");
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    let migration_record = workspace.state.join("migrations/migration.json");
+    fs::remove_file(&protocol).expect("remove activation policy");
+
+    inject_storage_failure("publish recovered record");
+    assert!(Workspace::apply_migration(&root, migration).is_err());
+    assert!(
+        !protocol.exists(),
+        "failed migration activated the workspace"
+    );
+    assert!(
+        !migration_record.exists(),
+        "failed migration published its canonical record"
+    );
+
+    workspace.recover().expect("recover migration batch");
+    assert!(protocol.is_file());
+    assert!(migration_record.is_file());
+    workspace
+        .load_snapshot()
+        .expect("validate recovered migration");
+
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

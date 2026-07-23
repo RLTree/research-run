@@ -86,7 +86,7 @@ fn authority_initialization_retry_restores_the_exact_anchored_record() {
         Workspace::initialize_with_review_authority(&root.join("invalid"), "Invalid", &mismatched)
             .is_err()
     );
-    inject_storage_failure("publish canonical record#2");
+    inject_storage_failure("publish recovered record");
     assert!(Workspace::initialize_with_review_authority(&root, "Retry", &authority).is_err());
     assert!(
         root.join(".research-run/review-authorities/test-human.json")
@@ -97,8 +97,11 @@ fn authority_initialization_retry_restores_the_exact_anchored_record() {
         Workspace::discover(&root).is_err(),
         "authority-first partial state became discoverable"
     );
+    Workspace::for_recovery(&root)
+        .and_then(|workspace| workspace.recover())
+        .expect("recover authority activation");
     Workspace::initialize_with_review_authority(&root, "Retry", &authority)
-        .expect("idempotent retry");
+        .expect("idempotent initialized retry");
     assert!(
         root.join(".research-run/review-authorities/test-human.json")
             .is_file()
@@ -168,7 +171,11 @@ fn initialization_propagates_pre_manifest_authority_snapshot_failure() {
     assert!(Workspace::initialize(&root, "Snapshot failure").is_err());
     assert!(!root.join(".research-run/manifest.json").exists());
     assert!(Workspace::discover(&root).is_err());
-    Workspace::initialize(&root, "Snapshot failure").expect("retry after snapshot failure");
+    Workspace::for_recovery(&root)
+        .expect("partial workspace")
+        .recover()
+        .expect("recover after snapshot failure");
+    Workspace::initialize(&root, "Snapshot failure").expect("retry recovered workspace");
     fs::remove_dir_all(root).expect("remove fixture");
 }
 

@@ -54,6 +54,37 @@ fn explicit_recovery_completes_init_interrupted_before_manifest_publication() {
     succeeds(&project, &["validate", "--json"]);
 }
 
+#[test]
+fn recovery_activates_a_valid_legacy_pending_effect() {
+    let project = workspace("legacy-recovery-activation");
+    let state = project.0.join(".research-run");
+    fs::remove_file(state.join("contribution-protocols/agent-contribution.json"))
+        .expect("remove activation protocol");
+    fs::write(
+        state.join("sources/.source-legacy.json.999.0.tmp"),
+        r#"{
+  "schema_version": 1,
+  "kind": "source",
+  "id": "source-legacy",
+  "citation": "Legacy pending observation",
+  "locator": "local:legacy",
+  "provenance": "human",
+  "notes": ""
+}
+"#,
+    )
+    .expect("write legacy pending source");
+
+    succeeds(&project.0, &["recover", "--json"]);
+    succeeds(&project.0, &["validate", "--json"]);
+    assert!(state.join("sources/source-legacy.json").is_file());
+    assert!(
+        state
+            .join("contribution-protocols/agent-contribution.json")
+            .is_file()
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn symlinked_record_fails_closed_and_does_not_leak_target_content() {

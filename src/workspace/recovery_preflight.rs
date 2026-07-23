@@ -26,6 +26,7 @@ pub(super) struct RecoveryBatch {
     relationships: Vec<PendingRecord>,
     migrations: Vec<PendingRecord>,
     contribution_protocols: Vec<PendingRecord>,
+    requires_contribution_protocol_bootstrap: bool,
 }
 
 struct CoreRecovery {
@@ -61,15 +62,20 @@ impl Workspace {
             migration_pending,
             contribution_protocol_pending,
         } = preflight_optional(self, &mut budget)?;
-        let [contribution_protocol] = contribution_protocols.as_slice() else {
-            return Err(Error::invalid(
-                "recovery activation",
-                "exactly one contribution protocol must be canonical or recoverable",
-            ));
-        };
+        let (contribution_protocol, requires_contribution_protocol_bootstrap) =
+            match contribution_protocols.as_slice() {
+                [contribution_protocol] => (contribution_protocol.clone(), false),
+                [] => (crate::domain::ContributionProtocol::agent_v1(), true),
+                _ => {
+                    return Err(Error::invalid(
+                        "recovery activation",
+                        "exactly one contribution protocol must be canonical or recoverable",
+                    ));
+                }
+            };
         let snapshot = Snapshot {
             manifest: core.manifest,
-            contribution_protocol: contribution_protocol.clone(),
+            contribution_protocol,
             sources: core.sources,
             claims: core.claims,
             experiments: core.experiments,
@@ -94,6 +100,7 @@ impl Workspace {
             relationships: relationship_pending,
             migrations: migration_pending,
             contribution_protocols: contribution_protocol_pending,
+            requires_contribution_protocol_bootstrap,
         };
         batch.validate(self, &snapshot)?;
         Ok(batch)
@@ -149,6 +156,10 @@ fn collect_named_optional(workspace: &Workspace, name: &str) -> Result<Vec<Pendi
 }
 
 impl RecoveryBatch {
+    pub(super) fn requires_contribution_protocol_bootstrap(&self) -> bool {
+        self.requires_contribution_protocol_bootstrap
+    }
+
     fn validate(&self, workspace: &Workspace, snapshot: &Snapshot) -> Result<()> {
         validate_recovered_authority(
             workspace,
