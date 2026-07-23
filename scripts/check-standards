@@ -142,8 +142,8 @@ jq -e '
   } and
   .candidate_binding.installed_binary.signature_profile_sha256 == "a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd" and
   .candidate_binding.installed_binary.normalization == "removed ad-hoc code signature and zeroed Mach-O LC_UUID" and
-  .candidate_binding.installed_binary.normalized_sha256 == "23f398e035459ec5bc5c5adb149c5d4c08b05f5815ed99de6ac9b7792950d97f" and
-  .candidate_binding.installed_binary.normalized_bytes == 2518696 and
+  .candidate_binding.installed_binary.normalized_sha256 == "c5059d6151e913f3d485c2a53f3276633a09ce379c4c738fcfbbe5fcd64f32ea" and
+  .candidate_binding.installed_binary.normalized_bytes == 2518704 and
   (.candidate_binding.installed_binary.receipt | startswith("scripts/check-product-artifacts")) and
   (.candidate_binding.reason | contains("is not evidence until")) and
   .audience == [
