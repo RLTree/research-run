@@ -5,23 +5,8 @@ use crate::workspace::recovery_commit::commit_recovery;
 use crate::workspace::{CONTRIBUTION_PROTOCOL_DIRECTORY, RecoveryResult, Workspace};
 
 impl RecoveryBatch {
-    pub(in crate::workspace) fn has_pending_effects(&self) -> bool {
-        [
-            &self.manifest,
-            &self.sources,
-            &self.claims,
-            &self.experiments,
-            &self.evidence,
-            &self.reviews,
-            &self.review_authorities,
-            &self.inventories,
-            &self.knowledge,
-            &self.relationships,
-            &self.migrations,
-            &self.contribution_protocols,
-        ]
-        .into_iter()
-        .any(|pending| !pending.is_empty())
+    pub(in crate::workspace) fn authorizes_contribution_protocol_bootstrap(&self) -> bool {
+        self.manifest.iter().any(|record| !record.target.exists()) || !self.migrations.is_empty()
     }
 
     pub(in crate::workspace) fn publish(

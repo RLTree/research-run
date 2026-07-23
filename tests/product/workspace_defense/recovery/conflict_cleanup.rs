@@ -55,7 +55,7 @@ fn explicit_recovery_completes_init_interrupted_before_manifest_publication() {
 }
 
 #[test]
-fn recovery_activates_a_valid_legacy_pending_effect() {
+fn recovery_rejects_legacy_pending_effect_without_typed_migration() {
     let project = workspace("legacy-recovery-activation");
     let state = project.0.join(".research-run");
     fs::remove_file(state.join("contribution-protocols/agent-contribution.json"))
@@ -75,11 +75,11 @@ fn recovery_activates_a_valid_legacy_pending_effect() {
     )
     .expect("write legacy pending source");
 
-    succeeds(&project.0, &["recover", "--json"]);
-    succeeds(&project.0, &["validate", "--json"]);
-    assert!(state.join("sources/source-legacy.json").is_file());
+    let output = cli(&project.0, &["recover", "--json"]);
+    assert!(!output.status.success());
+    assert!(!state.join("sources/source-legacy.json").exists());
     assert!(
-        state
+        !state
             .join("contribution-protocols/agent-contribution.json")
             .is_file()
     );

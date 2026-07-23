@@ -59,6 +59,28 @@ fn migration_planning_and_application_fail_closed_at_authority_boundaries() {
     fs::remove_dir_all(root).expect("remove fixture");
 }
 
+#[test]
+fn migration_retry_reports_protocol_repair_as_an_effect() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Migration repair").expect("initialize");
+    let plan =
+        Workspace::plan_migration(&root, "migration-one", "2026-07-18T20:00:00Z").expect("plan");
+    assert!(Workspace::apply_migration(&root, plan.clone()).expect("apply"));
+    let protocol = workspace
+        .state
+        .join("contribution-protocols/agent-contribution.json");
+    fs::remove_file(&protocol).expect("remove activation protocol");
+
+    assert!(
+        Workspace::apply_migration(&root, plan.clone()).expect("repair"),
+        "protocol repair was reported as a no-op"
+    );
+    assert!(protocol.is_file());
+    assert!(!Workspace::apply_migration(&root, plan).expect("identical retry"));
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
 fn assert_migration_identity_failures(root: &std::path::Path, plan: &MigrationPlan) {
     let mut wrong = plan.clone();
     wrong.project_id = "other".to_owned();

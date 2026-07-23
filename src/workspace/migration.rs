@@ -86,8 +86,7 @@ impl Workspace {
         let snapshot = workspace.load_snapshot_for_activation()?;
         let identical = workspace.record_is_identical("migrations", &record)?;
         if identical {
-            workspace.install_contribution_protocol()?;
-            return Ok(false);
+            return workspace.install_contribution_protocol();
         }
         if !snapshot.migrations.is_empty() {
             return Err(Error::Conflict(

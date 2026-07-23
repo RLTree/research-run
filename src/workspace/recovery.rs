@@ -13,9 +13,9 @@ impl Workspace {
     pub(super) fn recover_pending_under_lock(&self) -> Result<RecoveryResult> {
         let mut recovery = self.preflight_recovery_batch()?;
         if recovery.requires_contribution_protocol_bootstrap() {
-            if !recovery.has_pending_effects() {
+            if !recovery.authorizes_contribution_protocol_bootstrap() {
                 return Err(Error::Conflict(
-                    "pre-activation workspace requires 'research-run migrate apply'; recovery has no pending effect to settle"
+                    "pre-activation workspace requires 'research-run migrate apply'; recovery is not completing fresh initialization or a typed migration"
                         .to_owned(),
                 ));
             }
