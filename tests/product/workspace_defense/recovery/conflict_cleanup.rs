@@ -60,6 +60,15 @@ fn recovery_rejects_legacy_pending_effect_without_typed_migration() {
     let state = project.0.join(".research-run");
     fs::remove_file(state.join("contribution-protocols/agent-contribution.json"))
         .expect("remove activation protocol");
+    let mut protocol =
+        serde_json::to_vec_pretty(&research_run::domain::ContributionProtocol::agent_v1())
+            .expect("protocol JSON");
+    protocol.push(b'\n');
+    fs::write(
+        state.join("contribution-protocols/.agent-contribution.json.999.0.tmp"),
+        protocol,
+    )
+    .expect("write pending activation protocol");
     fs::write(
         state.join("sources/.source-legacy.json.999.0.tmp"),
         r#"{

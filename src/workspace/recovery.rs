@@ -19,12 +19,14 @@ impl Workspace {
                         .to_owned(),
                 ));
             }
-            create_directory_chain(&self.state.join(CONTRIBUTION_PROTOCOL_DIRECTORY))?;
-            self.stage_record_for_recovery(
-                CONTRIBUTION_PROTOCOL_DIRECTORY,
-                &crate::domain::ContributionProtocol::agent_v1(),
-            )?;
-            recovery = self.preflight_recovery_batch()?;
+            if recovery.requires_contribution_protocol_staging() {
+                create_directory_chain(&self.state.join(CONTRIBUTION_PROTOCOL_DIRECTORY))?;
+                self.stage_record_for_recovery(
+                    CONTRIBUTION_PROTOCOL_DIRECTORY,
+                    &crate::domain::ContributionProtocol::agent_v1(),
+                )?;
+                recovery = self.preflight_recovery_batch()?;
+            }
         }
         let mut result = RecoveryResult {
             recovered: Vec::new(),

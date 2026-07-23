@@ -28,6 +28,7 @@ pub(super) struct RecoveryBatch {
     migrations: Vec<PendingRecord>,
     contribution_protocols: Vec<PendingRecord>,
     requires_contribution_protocol_bootstrap: bool,
+    requires_contribution_protocol_staging: bool,
 }
 
 struct CoreRecovery {
@@ -63,17 +64,27 @@ impl Workspace {
             migration_pending,
             contribution_protocol_pending,
         } = preflight_optional(self, &mut budget)?;
-        let (contribution_protocol, requires_contribution_protocol_bootstrap) =
-            match contribution_protocols.as_slice() {
-                [contribution_protocol] => (contribution_protocol.clone(), false),
-                [] => (crate::domain::ContributionProtocol::agent_v1(), true),
-                _ => {
-                    return Err(Error::invalid(
-                        "recovery activation",
-                        "exactly one contribution protocol must be canonical or recoverable",
-                    ));
-                }
-            };
+        let activation_is_pending_only = contribution_protocol_pending
+            .iter()
+            .any(|record| !record.target.exists());
+        let (
+            contribution_protocol,
+            requires_contribution_protocol_bootstrap,
+            requires_contribution_protocol_staging,
+        ) = match contribution_protocols.as_slice() {
+            [contribution_protocol] => (
+                contribution_protocol.clone(),
+                activation_is_pending_only,
+                false,
+            ),
+            [] => (crate::domain::ContributionProtocol::agent_v1(), true, true),
+            _ => {
+                return Err(Error::invalid(
+                    "recovery activation",
+                    "exactly one contribution protocol must be canonical or recoverable",
+                ));
+            }
+        };
         let snapshot = Snapshot {
             manifest: core.manifest,
             contribution_protocol,
@@ -102,6 +113,7 @@ impl Workspace {
             migrations: migration_pending,
             contribution_protocols: contribution_protocol_pending,
             requires_contribution_protocol_bootstrap,
+            requires_contribution_protocol_staging,
         };
         batch.validate(self, &snapshot)?;
         Ok(batch)
@@ -159,6 +171,10 @@ fn collect_named_optional(workspace: &Workspace, name: &str) -> Result<Vec<Pendi
 impl RecoveryBatch {
     pub(super) fn requires_contribution_protocol_bootstrap(&self) -> bool {
         self.requires_contribution_protocol_bootstrap
+    }
+
+    pub(super) fn requires_contribution_protocol_staging(&self) -> bool {
+        self.requires_contribution_protocol_staging
     }
 
     fn validate(&self, workspace: &Workspace, snapshot: &Snapshot) -> Result<()> {
