@@ -92,6 +92,37 @@ fn existing_legacy_workspace_requires_typed_migration_for_activation() {
 }
 
 #[test]
+fn malformed_protocol_blocks_authority_recovery_before_publication() {
+    let root = temporary();
+    let authority =
+        ReviewAuthority::from_openssh("test-human".to_owned(), &test_review_public_key())
+            .expect("authority");
+    let workspace =
+        Workspace::initialize_with_review_authority(&root, "Malformed activation", &authority)
+            .expect("initialize");
+    let authority_path = workspace.state.join("review-authorities/test-human.json");
+    fs::remove_file(&authority_path).expect("remove authority");
+    fs::write(
+        workspace
+            .state
+            .join("contribution-protocols/agent-contribution.json"),
+        b"{",
+    )
+    .expect("corrupt activation protocol");
+
+    assert!(
+        Workspace::initialize_with_review_authority(&root, "Malformed activation", &authority)
+            .is_err()
+    );
+    assert!(
+        !authority_path.exists(),
+        "authority was published before protocol validation"
+    );
+
+    fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn existing_invalid_workspace_is_not_activated_before_validation() {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Legacy activation").expect("initialize");

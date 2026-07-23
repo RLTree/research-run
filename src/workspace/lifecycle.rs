@@ -102,9 +102,9 @@ impl Workspace {
         }
         if manifest_path.is_file() {
             workspace.require_existing_contribution_protocol()?;
-            workspace.stage_initialized_authority(authority)?;
-            let snapshot = workspace.load_snapshot_for_activation()?;
+            let snapshot = workspace.load_snapshot_for_activation_with_authority(authority)?;
             verify_initialized_authority_records(authority, &snapshot.review_authorities)?;
+            workspace.stage_initialized_authority(authority)?;
             workspace.install_contribution_protocol()?;
             workspace.verify_initialized_authority(authority)?;
             return Ok(workspace);
