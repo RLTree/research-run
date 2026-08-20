@@ -36,11 +36,42 @@ claim promotion for that workspace.
 
 Every initialized or retrofitted workspace contains the versioned canonical
 protocol at
-`.research-run/contribution-protocols/agent-contribution.json`. A fresh agent
+`.research-run/contribution-protocols/agent-contribution.json`. That proves the
+protocol is installed, not that an agent will receive it before work. Bind the
+protocol into the active root project instructions with an explicit reviewed
+plan kept outside the target workspace:
+
+```console
+research-run agent-integration plan my-study > research-run-agent-plan.json
+research-run agent-integration apply my-study \
+  --input research-run-agent-plan.json --json
+research-run agent-integration status my-study --json
+```
+
+The plan binds the manifest, contribution protocol, active `AGENTS.md` or
+`AGENTS.override.md`, managed block, prospective bytes, and plan itself with
+SHA-256. Apply rechecks the binding under the workspace lock, rejects symlinks,
+drift, path escape, and conflicting managed content, and atomically creates or
+appends without replacing existing instructions. An identical retry is a
+no-op. Init, retrofit, and migration report onboarding as incomplete until this
+separate step succeeds.
+
+Codex discovers project instructions once when a run starts, so after apply,
+start a fresh run/session before claiming that the instruction contract was
+loaded ([Codex `AGENTS.md` guidance](https://learn.chatgpt.com/docs/agent-configuration/agents-md)).
+Project hooks may be an optional trusted guardrail, but they require trust and
+do not cover every tool path; they are not this product invariant
+([Codex hooks guidance](https://learn.chatgpt.com/docs/hooks)). The supported
+readiness claim is limited to deterministic instruction generation,
+installation, and verification for a new agent run. It does not prove universal
+agent compliance or prevent every out-of-band filesystem write.
+
+A fresh agent that received the installed contract
 must retrieve bounded context before work. Before answering or handing off, it
 must classify new material and append supported typed records for new human
 observations, corrections, decisions, negative or ambiguous results, blockers,
-and next actions, then run `research-run validate`. Human input keeps `human`
+and next actions, then run `research-run validate --json` and retain that actual
+CLI result as the validation receipt. Human input keeps `human`
 authorship; agent analysis uses `ai`. No new material means no write, an
 identical retry is a no-op, and only a signed human review may promote a claim.
 `context` and `handoff create` surface this protocol without writing.
@@ -188,6 +219,9 @@ Ambiguous identity conflicts cannot be applied.
 If initialization commits but inventory publication does not, apply reports an
 ambiguous effect and retains a plan-digest marker; reapply that exact accepted
 plan to finish the combined bootstrap transaction.
+Retrofit does not edit an existing project instruction file. Run the separate
+`agent-integration plan` and reviewed `apply` flow afterward, then start a fresh
+agent run/session.
 
 ### Large datasets and nested projects
 
@@ -326,6 +360,8 @@ and appends a migration record without rewriting existing canonical records.
 Repeating the same accepted plan is a no-op. Until migrated, validation and
 mutation fail closed with a workspace-activation diagnostic; migration planning
 remains available so the workspace can be upgraded losslessly.
+Migration likewise preserves project instructions and reports agent integration
+as incomplete until the separate plan/apply flow is accepted.
 
 ## Development and proof surfaces
 

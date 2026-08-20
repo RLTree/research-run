@@ -80,6 +80,15 @@ directory publication.
   state root. The lock releases on process exit and serializes supported CLI
   writers; uncooperative concurrent filesystem mutation is not a supported
   product mode and every read still rechecks opened-file identity.
+- Installing the canonical contribution protocol does not make agent integration
+  ready. Project-instruction integration is an explicit plan/apply boundary that
+  binds the current manifest, protocol, active root instruction file, managed
+  content, and prospective bytes with SHA-256. Apply preserves existing
+  instructions, is confined to `AGENTS.md` or `AGENTS.override.md`, rejects
+  symlinks, drift, and conflicting managed content, publishes atomically, and is
+  idempotent on identical retry. Readiness is only for a fresh agent run/session;
+  the current session remains unverified. This proves no universal compliance
+  and cannot prevent every out-of-band write.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
 - Review preparation is read-only. The repository owner anchors the one Ed25519

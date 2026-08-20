@@ -8,7 +8,7 @@ use crate::{Error, Result};
 use super::publication::canonical_json_bytes;
 use super::references::claim_evidence_ids;
 use super::write_lock::WorkspaceWriteLock;
-use super::{MAX_RECORDS_PER_KIND, ValidationResult, Workspace};
+use super::{AgentIntegrationStatus, MAX_RECORDS_PER_KIND, ValidationResult, Workspace};
 
 impl Workspace {
     pub fn add_source(&self, record: &SourceRecord) -> Result<bool> {
@@ -143,17 +143,30 @@ impl Workspace {
                 let mut errors = self.reference_errors(&snapshot);
                 errors.extend(self.review_binding_errors(&snapshot));
                 errors.extend(self.review_authorization_errors(&snapshot));
+                let agent_integration = match self.agent_integration_status_from_snapshot(&snapshot)
+                {
+                    Ok(status) => status,
+                    Err(error) => {
+                        errors.push(error.to_string());
+                        AgentIntegrationStatus::unavailable(error.to_string(), true)
+                    }
+                };
                 ValidationResult {
                     valid: errors.is_empty(),
                     errors,
                     counts,
+                    agent_integration,
                 }
             }
-            Err(error) => ValidationResult {
-                valid: false,
-                errors: vec![error.to_string()],
-                counts: BTreeMap::new(),
-            },
+            Err(error) => {
+                let diagnostic = error.to_string();
+                ValidationResult {
+                    valid: false,
+                    errors: vec![diagnostic.clone()],
+                    counts: BTreeMap::new(),
+                    agent_integration: AgentIntegrationStatus::unavailable(diagnostic, false),
+                }
+            }
         }
     }
 

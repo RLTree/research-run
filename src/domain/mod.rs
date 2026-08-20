@@ -4,6 +4,7 @@ use std::cell::Cell;
 
 use crate::Result;
 
+mod agent_integration;
 mod contribution;
 mod experiments;
 mod inventory;
@@ -12,6 +13,8 @@ mod migration;
 mod records;
 mod validation;
 
+pub(crate) use agent_integration::digest;
+pub use agent_integration::{AgentIntegrationOperation, AgentIntegrationPlan};
 pub use contribution::ContributionProtocol;
 pub use experiments::{
     ArtifactLocatorType, ArtifactPointer, ExperimentReceipt, REVIEW_SIGNATURE_NAMESPACE,
@@ -66,6 +69,9 @@ pub trait CanonicalRecord: Serialize + Sized {
     fn validate(&self) -> Result<()>;
 }
 
+#[cfg(test)]
+#[path = "tests/agent_integration.rs"]
+mod agent_integration_tests;
 #[cfg(test)]
 #[path = "tests/calendar.rs"]
 mod calendar_tests;

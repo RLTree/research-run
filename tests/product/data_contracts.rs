@@ -34,6 +34,7 @@ fn every_versioned_schema_is_well_formed_json() {
         })
         .collect::<BTreeSet<_>>();
     let expected = [
+        "agent-integration-plan.schema.json",
         "claim.schema.json",
         "contribution-protocol.schema.json",
         "evidence.schema.json",

@@ -1,8 +1,16 @@
+use serde::Serialize;
+
 use crate::{Error, Result};
 
 use super::path_safety::create_directory_chain;
 use super::write_lock::WorkspaceWriteLock;
-use super::{CONTRIBUTION_PROTOCOL_DIRECTORY, RecoveryResult, Workspace};
+use super::{CONTRIBUTION_PROTOCOL_DIRECTORY, Workspace};
+
+#[derive(Debug, Serialize)]
+pub struct RecoveryResult {
+    pub recovered: Vec<String>,
+    pub discarded_identical: Vec<String>,
+}
 
 impl Workspace {
     pub fn recover(&self) -> Result<RecoveryResult> {

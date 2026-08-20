@@ -9,6 +9,7 @@ use super::researcher_journey::{TempDir, cli, succeeds};
 fn accepted_v01_workspace_migrates_without_rewriting_authority() {
     let temporary = TempDir::new("migration");
     let project = legacy_workspace(&temporary);
+    fs::write(project.join("AGENTS.md"), b"# Legacy agent law\n").unwrap();
     let before = canonical_bytes(&project);
     let plan = succeeds(
         &temporary.0,
@@ -37,6 +38,14 @@ fn accepted_v01_workspace_migrates_without_rewriting_authority() {
     );
     let applied: Value = serde_json::from_slice(&applied.stdout).expect("apply JSON");
     assert_eq!(applied["created"], true);
+    assert_eq!(
+        applied["agent_integration"]["agent_integration_ready"],
+        false
+    );
+    assert_eq!(
+        fs::read(project.join("AGENTS.md")).unwrap(),
+        b"# Legacy agent law\n"
+    );
     for (path, bytes) in before {
         assert_eq!(fs::read(path).expect("authority after migration"), bytes);
     }

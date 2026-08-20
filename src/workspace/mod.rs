@@ -10,6 +10,10 @@ use crate::domain::{
     ReviewAuthority, ReviewDecision, SourceRecord,
 };
 
+mod agent_integration;
+mod agent_integration_content;
+mod agent_integration_publication;
+mod agent_integration_types;
 mod inventory;
 mod inventory_authority;
 mod inventory_bootstrap;
@@ -45,7 +49,8 @@ mod status_authority;
 mod storage;
 mod write_lock;
 
-pub use inventory::ReviewBootstrap;
+pub use inventory::{InventoryApplyResult, ReviewBootstrap};
+pub use recovery::RecoveryResult;
 
 pub(super) const STATE_DIRECTORY: &str = ".research-run";
 pub(super) const CONTRIBUTION_PROTOCOL_DIRECTORY: &str = "contribution-protocols";
@@ -147,7 +152,10 @@ pub struct ValidationResult {
     pub valid: bool,
     pub errors: Vec<String>,
     pub counts: BTreeMap<&'static str, usize>,
+    pub agent_integration: AgentIntegrationStatus,
 }
+
+pub use agent_integration_types::{AgentIntegrationApplyResult, AgentIntegrationStatus};
 
 #[derive(Debug, Serialize)]
 pub struct Status {
@@ -178,11 +186,6 @@ pub struct ReviewAuthorityStatus {
     pub repairable: bool,
     pub blocker: Option<&'static str>,
     pub next_action: &'static str,
-}
-
-pub struct InventoryApplyResult {
-    pub created: bool,
-    pub review_authority: ReviewAuthorityStatus,
 }
 
 #[derive(Debug, Serialize)]
@@ -218,12 +221,6 @@ pub struct AiDraftStatus {
     pub kind: &'static str,
     pub id: String,
     pub reason: &'static str,
-}
-
-#[derive(Debug, Serialize)]
-pub struct RecoveryResult {
-    pub recovered: Vec<String>,
-    pub discarded_identical: Vec<String>,
 }
 
 pub use retrieval_types::{

@@ -75,6 +75,21 @@ rechecks that fingerprint under the workspace lock, creates only missing
 extended record directories, and appends one migration record. It does not
 rewrite, delete, or reinterpret an existing record.
 
+Agent activation is a separate project-instruction boundary. Canonical protocol
+installation and agent-integration readiness are distinct states. A read-only
+`agent-integration plan` binds the exact manifest and protocol bytes, the active
+root `AGENTS.override.md` or `AGENTS.md` surface, its existing digest, the
+managed block, prospective digest, and plan digest. Apply rechecks the plan
+under the canonical workspace lock, confines the target to those two root
+filenames, rejects symlinks, drift, and conflicting markers, preserves existing
+instruction bytes, and publishes the resulting instruction file atomically.
+Identical retry is a no-op. The installed block requires bounded retrieval,
+typed CLI contributions, no generic canonical JSON writes, a real validation
+receipt, and v2 handoff. Readiness is scoped to a newly started agent run because
+instruction discovery occurs at run start; current-session loading remains
+unverified. This boundary does not claim universal agent compliance or prevent
+uncooperative filesystem mutation.
+
 ## Proof and governance
 
 - `tests/product.rs` routes product journeys, failure/recovery behavior, and

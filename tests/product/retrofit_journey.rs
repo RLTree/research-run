@@ -13,10 +13,16 @@ fn retrofit_preserves_bytes_and_reconcile_records_a_move() {
     fs::create_dir_all(project.join("protocols")).expect("protocol directory");
     let note = project.join("notes/result.md");
     let protocol = project.join("protocols/assay.md");
+    let instructions = project.join("AGENTS.md");
     fs::write(&note, b"negative result\n").expect("write note");
     fs::write(&protocol, b"safe synthetic protocol\n").expect("write protocol");
+    fs::write(&instructions, b"# Existing agent law\n").expect("write instructions");
     let public_key = write_test_public_key(&temporary.0);
     apply_and_repeat_retrofit(&temporary, &project, &note, &protocol, &public_key);
+    assert_eq!(
+        fs::read(&instructions).expect("instructions after retrofit"),
+        b"# Existing agent law\n"
+    );
     let moved = project.join("notes/negative-result.md");
     fs::rename(&note, &moved).expect("move note");
     assert_move_plan(&temporary, &project);
@@ -50,7 +56,7 @@ fn apply_and_repeat_retrofit(
         ],
     );
     let plan: Value = serde_json::from_slice(&plan_output.stdout).expect("plan JSON");
-    assert_eq!(plan["entries"].as_array().expect("entries").len(), 2);
+    assert_eq!(plan["entries"].as_array().expect("entries").len(), 3);
     assert_eq!(plan["review_authority"]["id"], "test-human");
     let plan_path = temporary.0.join("retrofit-plan.json");
     fs::write(&plan_path, &plan_output.stdout).expect("write plan");
@@ -69,6 +75,7 @@ fn apply_and_repeat_retrofit(
     let applied: Value = serde_json::from_slice(&applied.stdout).expect("apply JSON");
     assert_eq!(applied["review_authority"]["mode"], "anchored");
     assert_eq!(applied["review_authority"]["promotion_capable"], true);
+    assert_retrofit_onboarding(&applied);
     assert!(
         project
             .join(".research-run/contribution-protocols/agent-contribution.json")
@@ -100,6 +107,13 @@ fn apply_and_repeat_retrofit(
         ],
     );
     assert!(String::from_utf8_lossy(&human.stdout).contains("Already present"));
+}
+
+fn assert_retrofit_onboarding(applied: &Value) {
+    assert_eq!(
+        applied["agent_integration"]["agent_integration_ready"],
+        false
+    );
 }
 
 fn assert_move_plan(temporary: &TempDir, project: &std::path::Path) {
