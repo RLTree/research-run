@@ -34,9 +34,11 @@ fn relationship() -> RelationshipProjection {
 fn bundle() -> HandoffBundle {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Handoff branches").expect("initialize");
-    let bundle = workspace
+    let mut bundle = workspace
         .handoff("handoff-one", "2026-07-18T20:10:00Z", None, 10)
         .expect("handoff");
+    bundle.schema_version = 1;
+    bundle.validation = None;
     fs::remove_dir_all(root).expect("remove fixture");
     bundle
 }

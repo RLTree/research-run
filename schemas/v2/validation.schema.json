@@ -4,9 +4,15 @@
   "title": "Research Run validation projection v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "valid", "errors", "counts", "agent_integration"],
+  "required": ["schema_version", "authority", "valid", "errors", "counts", "agent_integration"],
   "properties": {
     "schema_version": { "const": 2 },
+    "authority": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/validationAuthority" }
+      ]
+    },
     "valid": { "type": "boolean" },
     "errors": { "type": "array", "items": { "$ref": "../v1/types.schema.json#/$defs/text" } },
     "counts": { "$ref": "#/$defs/counts" },
@@ -16,6 +22,10 @@
     "counts": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "source", "claim", "evidence", "experiment", "review", "review-authority",
+        "inventory", "knowledge", "relationship", "migration", "contribution-protocol"
+      ],
       "properties": {
         "source": { "type": "integer", "minimum": 0, "maximum": 10000 },
         "claim": { "type": "integer", "minimum": 0, "maximum": 10000 },
@@ -28,6 +38,30 @@
         "relationship": { "type": "integer", "minimum": 0, "maximum": 10000 },
         "migration": { "type": "integer", "minimum": 0, "maximum": 10000 },
         "contribution-protocol": { "const": 1 }
+      }
+    },
+    "validationAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id", "workspace_id", "manifest_sha256", "protocol_sha256", "instruction_sha256"
+      ],
+      "properties": {
+        "project_id": { "$ref": "../v1/types.schema.json#/$defs/id" },
+        "workspace_id": {
+          "oneOf": [
+            { "const": "" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        },
+        "manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "protocol_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "instruction_sha256": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        }
       }
     },
     "agentIntegrationStatus": {
@@ -43,11 +77,43 @@
         "instruction_contract_installed": { "type": "boolean" },
         "agent_integration_ready": { "type": "boolean" },
         "ready_scope": { "enum": ["new-agent-run", "unavailable"] },
-        "instruction_path": { "type": "string" },
+        "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md", "unavailable"] },
         "current_session_loaded": { "const": "unverified" },
         "fresh_session_required": { "type": "boolean" },
         "diagnostic": { "$ref": "../v1/types.schema.json#/$defs/text" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "agent_integration_ready": { "const": true } }, "required": ["agent_integration_ready"] },
+          "then": {
+            "properties": {
+              "protocol_installed": { "const": true },
+              "instruction_contract_installed": { "const": true },
+              "ready_scope": { "const": "new-agent-run" },
+              "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md"] },
+              "fresh_session_required": { "const": true }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "ready_scope": { "const": "unavailable" } }, "required": ["ready_scope"] },
+          "then": {
+            "properties": {
+              "agent_integration_ready": { "const": false },
+              "instruction_contract_installed": { "const": false },
+              "instruction_path": { "const": "unavailable" },
+              "fresh_session_required": { "const": false }
+            }
+          }
+        }
+      ]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "valid": { "const": true } }, "required": ["valid"] },
+      "then": { "properties": { "errors": { "maxItems": 0 } } },
+      "else": { "properties": { "errors": { "minItems": 1 } } }
+    }
+  ]
 }

@@ -1,3 +1,5 @@
+#[path = "product/agent_integration_activation_defense.rs"]
+mod agent_integration_activation_defense;
 #[path = "product/agent_integration_defense.rs"]
 mod agent_integration_defense;
 #[path = "product/agent_integration_journey.rs"]

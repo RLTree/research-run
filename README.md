@@ -75,8 +75,12 @@ CLI result as the validation receipt. Human input keeps `human`
 authorship; agent analysis uses `ai`. No new material means no write, an
 identical retry is a no-op, and only a signed human review may promote a claim.
 `context` and `handoff create` surface this protocol without writing.
-New handoffs use schema version 2 to carry the protocol; existing version 1
-handoffs remain inspectable without it.
+New handoffs use schema version 2 to carry the protocol plus the exact current
+validation result, its workspace/authority identity, and SHA-256 bindings to
+both that result and the bounded context. Handoff creation validates one locked
+snapshot and carries a successful or failed result without converting handoff
+validity into a scientific or ledger-validity claim. Existing version 1
+handoffs remain inspectable without this receipt.
 
 Add a source and a scoped claim:
 

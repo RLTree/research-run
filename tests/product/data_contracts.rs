@@ -100,6 +100,7 @@ fn validation_projection_versions_have_distinct_immutable_authority() {
         v2["required"],
         json!([
             "schema_version",
+            "authority",
             "valid",
             "errors",
             "counts",
@@ -107,6 +108,10 @@ fn validation_projection_versions_have_distinct_immutable_authority() {
         ])
     );
     assert_eq!(v2["properties"]["schema_version"]["const"], 2);
+    assert_eq!(
+        object_keys(&v2["$defs"]["counts"]["properties"]),
+        string_set(&v2["$defs"]["counts"]["required"])
+    );
     assert_eq!(
         v2["properties"]["agent_integration"]["$ref"],
         "#/$defs/agentIntegrationStatus"
@@ -123,6 +128,15 @@ fn object_keys(value: &Value) -> BTreeSet<&str> {
         .expect("schema object")
         .keys()
         .map(String::as_str)
+        .collect()
+}
+
+fn string_set(value: &Value) -> BTreeSet<&str> {
+    value
+        .as_array()
+        .expect("schema string array")
+        .iter()
+        .map(|value| value.as_str().expect("schema string"))
         .collect()
 }
 
@@ -177,6 +191,7 @@ fn instruction_inspection_failure_does_not_invalidate_the_canonical_ledger() {
     let validation: Value =
         serde_json::from_slice(&succeeds(&project, &["validate", "--json"]).stdout).unwrap();
     assert_eq!(validation["schema_version"], 2);
+    assert_eq!(validation["authority"], Value::Null);
     assert_eq!(validation["valid"], true);
     assert_eq!(validation["errors"], json!([]));
     assert_eq!(
@@ -224,6 +239,7 @@ fn checked_in_synthetic_example_is_valid_and_reports_limited_claim() {
     let validation: Value =
         serde_json::from_slice(&validation.stdout).expect("validation projection JSON");
     assert_eq!(validation["schema_version"], 2);
+    assert!(validation["authority"]["manifest_sha256"].is_string());
     let status = Command::new(binary)
         .current_dir(&example)
         .args(["status", "--json"])

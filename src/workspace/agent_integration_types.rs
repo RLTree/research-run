@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub(super) const MAX_INSTRUCTION_BYTES: u64 = 1_048_576;
 
@@ -20,14 +20,14 @@ impl InstructionFile {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AgentIntegrationStatus {
     pub protocol_installed: bool,
     pub instruction_contract_installed: bool,
     pub agent_integration_ready: bool,
-    pub ready_scope: &'static str,
+    pub ready_scope: String,
     pub instruction_path: String,
-    pub current_session_loaded: &'static str,
+    pub current_session_loaded: String,
     pub fresh_session_required: bool,
     pub diagnostic: String,
 }
@@ -38,12 +38,40 @@ impl AgentIntegrationStatus {
             protocol_installed,
             instruction_contract_installed: false,
             agent_integration_ready: false,
-            ready_scope: "unavailable",
+            ready_scope: "unavailable".to_owned(),
             instruction_path: "unavailable".to_owned(),
-            current_session_loaded: "unverified",
+            current_session_loaded: "unverified".to_owned(),
             fresh_session_required: false,
             diagnostic,
         }
+    }
+
+    pub(super) fn is_consistent(&self) -> bool {
+        if self.current_session_loaded != "unverified" {
+            return false;
+        }
+        if self.agent_integration_ready {
+            return self.protocol_installed
+                && self.instruction_contract_installed
+                && self.ready_scope == "new-agent-run"
+                && matches!(
+                    self.instruction_path.as_str(),
+                    "AGENTS.md" | "AGENTS.override.md"
+                )
+                && self.fresh_session_required;
+        }
+        if self.ready_scope == "unavailable" {
+            return !self.instruction_contract_installed
+                && self.instruction_path == "unavailable"
+                && !self.fresh_session_required;
+        }
+        self.ready_scope == "new-agent-run"
+            && !self.instruction_contract_installed
+            && matches!(
+                self.instruction_path.as_str(),
+                "AGENTS.md" | "AGENTS.override.md"
+            )
+            && !self.fresh_session_required
     }
 }
 

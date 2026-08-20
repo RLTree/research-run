@@ -136,6 +136,29 @@ installed_command() {
   (cd "$workspace" && "$binary" "$@")
 }
 
+"$binary" agent-integration plan "$workspace" >"$observation_root/agent-plan.json"
+"$binary" agent-integration apply "$workspace" \
+  --input "$observation_root/agent-plan.json" --json | jq -e \
+  '.changed == true and .ready_for_new_agent_run == true and .current_session_loaded == "unverified"' \
+  >/dev/null
+"$binary" agent-integration apply "$workspace" \
+  --input "$observation_root/agent-plan.json" --json | jq -e '.changed == false' >/dev/null
+"$binary" agent-integration status "$workspace" --json | jq -e \
+  '.agent_integration_ready == true and .ready_scope == "new-agent-run" and .fresh_session_required == true' \
+  >/dev/null
+installed_command context --query buffer | jq -e \
+  '.contribution_protocol.sequence == ["retrieve-bounded-context", "classify-new-material", "append-typed-records", "validate-workspace", "answer-or-handoff"]' \
+  >/dev/null
+jq -n '{schema_version:1,kind:"knowledge",id:"decision-buffer",record_type:"decision",title:"Use the selected buffer",body:"The researcher selected the recorded buffer condition.",occurred_at:"2026-08-20T18:00:00Z",state:"active",authorship:"human"}' \
+  >"$observation_root/decision.json"
+jq -n '{schema_version:1,kind:"knowledge",id:"next-buffer-check",record_type:"next-action",title:"Check the buffer condition",body:"Verify the selected buffer condition in the next bounded run.",occurred_at:"2026-08-20T18:01:00Z",state:"open",authorship:"human"}' \
+  >"$observation_root/next.json"
+jq -n '{schema_version:1,kind:"relationship",id:"relationship-buffer-next",relationship:"depends-on",from:{kind:"knowledge",id:"next-buffer-check"},to:{kind:"knowledge",id:"decision-buffer"},rationale:"The next action implements the human decision.",occurred_at:"2026-08-20T18:02:00Z",authorship:"human"}' \
+  >"$observation_root/relationship.json"
+installed_command knowledge add --input "$observation_root/decision.json" >/dev/null
+installed_command knowledge add --input "$observation_root/next.json" >/dev/null
+installed_command relationship add --input "$observation_root/relationship.json" >/dev/null
+
 installed_command source add --id source-one --citation Citation --locator local:source \
   --provenance human >/dev/null
 installed_command claim add --id claim-one --text Claim --scope Scope --owner Researcher \
@@ -152,7 +175,13 @@ ssh-keygen -Y sign -f "$observation_root/review-key" \
   -n research-run-review-v1 "$observation_root/review-request.json" >/dev/null
 installed_command review add --request "$observation_root/review-request.json" \
   --signature "$observation_root/review-request.json.sig" >/dev/null
-installed_command validate --json | jq -e '.valid == true' >/dev/null
+installed_command validate --json | jq -e \
+  '.schema_version == 2 and .valid == true and .authority.project_id == "installed-researcher-journey" and .agent_integration.agent_integration_ready == true' \
+  >/dev/null
+installed_command handoff create --id handoff-installed-agent \
+  --generated-at 2026-08-20T20:00:00Z --query buffer | jq -e \
+  '.schema_version == 2 and .validation.result.valid == true and .validation.result.authority.project_id == .context.project_id and (.context.matches | any(.id == "decision-buffer"))' \
+  >/dev/null
 installed_command status --json | jq -e \
   '.claims[0].assessment == "limited" and .experiments[0].outcome == "negative"' >/dev/null
 

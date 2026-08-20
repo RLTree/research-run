@@ -10,7 +10,7 @@ use super::retrieval_context::{
 };
 use super::retrieval_items::projection_items;
 use super::retrieval_types::{
-    ContextBundle, HandoffBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
+    ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
 };
 
 impl Workspace {
@@ -176,24 +176,6 @@ impl Workspace {
         let snapshot = self.load_snapshot()?;
         context_from_snapshot(self, snapshot, query, limit)
     }
-
-    pub fn handoff(
-        &self,
-        id: &str,
-        generated_at: &str,
-        query: Option<&str>,
-        limit: usize,
-    ) -> Result<HandoffBundle> {
-        let bundle = HandoffBundle {
-            schema_version: 2,
-            kind: "handoff".to_owned(),
-            id: id.to_owned(),
-            generated_at: generated_at.to_owned(),
-            context: self.context(query, limit)?,
-        };
-        bundle.validate()?;
-        Ok(bundle)
-    }
 }
 
 pub(super) fn unresolved_kind(kind: KnowledgeKind) -> bool {
@@ -208,7 +190,7 @@ pub(super) fn unresolved_kind(kind: KnowledgeKind) -> bool {
     )
 }
 
-fn validate_limit(limit: usize) -> Result<usize> {
+pub(super) fn validate_limit(limit: usize) -> Result<usize> {
     if (1..=MAX_LIST_ITEMS).contains(&limit) {
         Ok(limit)
     } else {

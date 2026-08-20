@@ -92,6 +92,9 @@ validity. An unavailable instruction inspection leaves a structurally valid
 ledger valid while exposing readiness as unavailable; explicit
 `agent-integration status` still fails closed. This boundary does not claim
 universal agent compliance or prevent uncooperative filesystem mutation.
+Handoff v2 acquires the workspace lock, derives context and validation from one
+snapshot, and embeds the authority-bound validation result plus digests of the
+result and context. Standalone v1 handoffs remain inspectable without that field.
 
 ## Proof and governance
 

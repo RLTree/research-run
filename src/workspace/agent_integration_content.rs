@@ -5,6 +5,7 @@ use super::Snapshot;
 
 const START_MARKER: &str = "<!-- research-run:agent-integration:v1:start -->";
 const END_MARKER: &str = "<!-- research-run:agent-integration:v1:end -->";
+const INSTALLATION_MARKER: &str = "<!-- research-run:agent-integration-installation:v1 ";
 
 pub(super) enum InstructionAssessment {
     Missing,
@@ -37,12 +38,11 @@ pub(super) fn assess_instruction(
             "Research Run managed instruction markers are missing or duplicated".to_owned(),
         ));
     }
-    if text.contains(expected) {
+    if text.contains(expected) && installed_transition_matches(bytes, expected)? {
         Ok(InstructionAssessment::Integrated)
     } else {
         Ok(InstructionAssessment::Conflict(
-            "Research Run managed instruction content conflicts with the canonical workspace binding"
-                .to_owned(),
+            "Research Run managed instruction content conflicts with the canonical workspace binding: content drifted or the installation transition is incomplete".to_owned(),
         ))
     }
 }
@@ -100,6 +100,46 @@ fn operation_name(operation: AgentIntegrationOperation) -> &'static str {
         AgentIntegrationOperation::Append => "append",
         AgentIntegrationOperation::NoOp => "no-op",
     }
+}
+
+fn installed_transition_matches(content: &[u8], block: &str) -> Result<bool> {
+    if compose_planned_instruction(b"", block, AgentIntegrationOperation::Create)? == content {
+        return Ok(true);
+    }
+    let text = std::str::from_utf8(content)
+        .map_err(|_| Error::invalid("project instructions", "must be UTF-8"))?;
+    let Some((_, marker)) = text.rsplit_once(INSTALLATION_MARKER) else {
+        return Ok(false);
+    };
+    let Some(fields) = marker.strip_suffix(" -->\n") else {
+        return Ok(false);
+    };
+    let mut fields = fields.split(' ');
+    if fields.next() != Some("operation=append") {
+        return Ok(false);
+    }
+    let Some(length) = fields
+        .next()
+        .and_then(|field| field.strip_prefix("instruction-bytes="))
+        .and_then(|value| value.parse::<usize>().ok())
+    else {
+        return Ok(false);
+    };
+    let Some(expected_digest) = fields
+        .next()
+        .and_then(|field| field.strip_prefix("instruction-sha256="))
+    else {
+        return Ok(false);
+    };
+    if fields.next().is_some() {
+        return Ok(false);
+    }
+    let Some(original) = content.get(..length) else {
+        return Ok(false);
+    };
+    Ok(digest(original) == expected_digest
+        && compose_planned_instruction(original, block, AgentIntegrationOperation::Append)?
+            == content)
 }
 
 pub(super) fn managed_block(snapshot: &Snapshot, manifest_sha: &str, protocol_sha: &str) -> String {

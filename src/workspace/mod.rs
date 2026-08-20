@@ -15,6 +15,8 @@ mod agent_integration_content;
 mod agent_integration_publication;
 mod agent_integration_recovery;
 mod agent_integration_types;
+mod handoff;
+mod handoff_types;
 mod inventory;
 mod inventory_authority;
 mod inventory_bootstrap;
@@ -48,6 +50,7 @@ mod sshsig;
 mod status;
 mod status_authority;
 mod storage;
+mod validation_types;
 mod write_lock;
 
 pub use inventory::{InventoryApplyResult, ReviewBootstrap};
@@ -148,16 +151,9 @@ pub struct Workspace {
     pub(super) state: PathBuf,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ValidationResult {
-    pub schema_version: u32,
-    pub valid: bool,
-    pub errors: Vec<String>,
-    pub counts: BTreeMap<&'static str, usize>,
-    pub agent_integration: AgentIntegrationStatus,
-}
-
 pub use agent_integration_types::{AgentIntegrationApplyResult, AgentIntegrationStatus};
+pub use handoff_types::{HandoffBundle, HandoffValidationReceipt};
+pub use validation_types::{ValidationAuthority, ValidationResult};
 
 #[derive(Debug, Serialize)]
 pub struct Status {
@@ -165,7 +161,7 @@ pub struct Status {
     pub project: ProjectStatus,
     pub review_authority: ReviewAuthorityStatus,
     pub claim_ceiling: &'static str,
-    pub counts: BTreeMap<&'static str, usize>,
+    pub counts: BTreeMap<String, usize>,
     pub claims: Vec<ClaimStatus>,
     pub experiments: Vec<ExperimentStatus>,
     pub unreviewed_ai_drafts: Vec<AiDraftStatus>,
@@ -226,7 +222,7 @@ pub struct AiDraftStatus {
 }
 
 pub use retrieval_types::{
-    ContextBundle, HandoffBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
+    ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
 };
 
 pub(super) struct Snapshot {
@@ -245,19 +241,19 @@ pub(super) struct Snapshot {
 }
 
 impl Snapshot {
-    pub(super) fn counts(&self) -> BTreeMap<&'static str, usize> {
+    pub(super) fn counts(&self) -> BTreeMap<String, usize> {
         BTreeMap::from([
-            ("contribution-protocol", 1),
-            ("source", self.sources.len()),
-            ("claim", self.claims.len()),
-            ("evidence", self.evidence.len()),
-            ("experiment", self.experiments.len()),
-            ("review", self.reviews.len()),
-            ("review-authority", self.review_authorities.len()),
-            ("inventory", self.inventories.len()),
-            ("knowledge", self.knowledge.len()),
-            ("relationship", self.relationships.len()),
-            ("migration", self.migrations.len()),
+            ("contribution-protocol".to_owned(), 1),
+            ("source".to_owned(), self.sources.len()),
+            ("claim".to_owned(), self.claims.len()),
+            ("evidence".to_owned(), self.evidence.len()),
+            ("experiment".to_owned(), self.experiments.len()),
+            ("review".to_owned(), self.reviews.len()),
+            ("review-authority".to_owned(), self.review_authorities.len()),
+            ("inventory".to_owned(), self.inventories.len()),
+            ("knowledge".to_owned(), self.knowledge.len()),
+            ("relationship".to_owned(), self.relationships.len()),
+            ("migration".to_owned(), self.migrations.len()),
         ])
     }
 }

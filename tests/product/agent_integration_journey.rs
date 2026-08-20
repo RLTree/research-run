@@ -45,6 +45,13 @@ fn material_human_decision_uses_supported_agent_ready_journey() {
         ],
     );
     assert_eq!(handoff["schema_version"], 2);
+    assert_eq!(handoff["validation"]["result"]["valid"], true);
+    assert_eq!(
+        handoff["validation"]["result"]["authority"]["project_id"],
+        handoff["context"]["project_id"]
+    );
+    assert!(handoff["validation"]["result_sha256"].is_string());
+    assert!(handoff["validation"]["context_sha256"].is_string());
     assert!(
         handoff["context"]["matches"]
             .as_array()

@@ -207,6 +207,8 @@ fn non_history_relationship_may_close_a_history_path() {
 mod handoff_expanded;
 #[path = "tests/handoff_validation.rs"]
 mod handoff_validation;
+#[path = "tests/handoff_validation_receipt.rs"]
+mod handoff_validation_receipt;
 #[path = "tests/inventory_expanded.rs"]
 mod inventory_expanded;
 #[path = "tests/inventory_failure_expanded.rs"]

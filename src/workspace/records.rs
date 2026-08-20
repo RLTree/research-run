@@ -138,34 +138,36 @@ impl Workspace {
 
     pub fn validate(&self) -> ValidationResult {
         match self.load_snapshot() {
-            Ok(snapshot) => {
-                let counts = snapshot.counts();
-                let mut errors = self.reference_errors(&snapshot);
-                errors.extend(self.review_binding_errors(&snapshot));
-                errors.extend(self.review_authorization_errors(&snapshot));
-                let agent_integration = match self.agent_integration_status_from_snapshot(&snapshot)
-                {
-                    Ok(status) => status,
-                    Err(error) => AgentIntegrationStatus::unavailable(error.to_string(), true),
-                };
-                ValidationResult {
-                    schema_version: 2,
-                    valid: errors.is_empty(),
-                    errors,
-                    counts,
-                    agent_integration,
-                }
-            }
+            Ok(snapshot) => self.validation_from_snapshot(&snapshot),
             Err(error) => {
                 let diagnostic = error.to_string();
                 ValidationResult {
                     schema_version: 2,
+                    authority: None,
                     valid: false,
                     errors: vec![diagnostic.clone()],
                     counts: BTreeMap::new(),
                     agent_integration: AgentIntegrationStatus::unavailable(diagnostic, false),
                 }
             }
+        }
+    }
+
+    pub(super) fn validation_from_snapshot(&self, snapshot: &super::Snapshot) -> ValidationResult {
+        let counts = snapshot.counts();
+        let mut errors = self.reference_errors(snapshot);
+        errors.extend(self.review_binding_errors(snapshot));
+        errors.extend(self.review_authorization_errors(snapshot));
+        let agent_integration = self
+            .agent_integration_status_from_snapshot(snapshot)
+            .unwrap_or_else(|error| AgentIntegrationStatus::unavailable(error.to_string(), true));
+        ValidationResult {
+            schema_version: 2,
+            authority: self.validation_authority(snapshot).ok(),
+            valid: errors.is_empty(),
+            errors,
+            counts,
+            agent_integration,
         }
     }
 

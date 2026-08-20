@@ -15,7 +15,9 @@ use super::agent_integration_types::{InstructionFile, MAX_INSTRUCTION_BYTES};
 use super::path_safety::reject_symlink_chain;
 use super::storage::{parse_json, read_bounded_with_limit};
 use super::write_lock::WorkspaceWriteLock;
-use super::{AgentIntegrationApplyResult, AgentIntegrationStatus, Snapshot, Workspace};
+use super::{
+    AgentIntegrationApplyResult, AgentIntegrationStatus, Snapshot, ValidationAuthority, Workspace,
+};
 
 impl Workspace {
     pub fn plan_agent_integration(root: &Path) -> Result<AgentIntegrationPlan> {
@@ -126,9 +128,9 @@ impl Workspace {
             protocol_installed: true,
             instruction_contract_installed: installed,
             agent_integration_ready: installed,
-            ready_scope: "new-agent-run",
+            ready_scope: "new-agent-run".to_owned(),
             instruction_path: relative_name(&path),
-            current_session_loaded: "unverified",
+            current_session_loaded: "unverified".to_owned(),
             fresh_session_required: installed,
             diagnostic,
         })
@@ -170,6 +172,18 @@ impl Workspace {
             plan_sha256: String::new(),
         }
         .seal())
+    }
+
+    pub(super) fn validation_authority(&self, snapshot: &Snapshot) -> Result<ValidationAuthority> {
+        let (manifest_sha256, protocol_sha256) = self.agent_integration_authority_digests()?;
+        let instruction = read_optional_instruction(&self.active_instruction_path()?)?;
+        Ok(ValidationAuthority {
+            project_id: snapshot.manifest.project_id.clone(),
+            workspace_id: snapshot.manifest.workspace_id.clone(),
+            manifest_sha256,
+            protocol_sha256,
+            instruction_sha256: instruction.exists().then(|| digest(instruction.bytes())),
+        })
     }
 
     fn active_instruction_path(&self) -> Result<PathBuf> {
