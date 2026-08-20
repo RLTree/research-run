@@ -2,9 +2,12 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::AgentIntegrationStatus;
+use crate::domain::{ContributionProtocol, digest};
+
+use super::{AgentIntegrationStatus, publication::canonical_json_bytes};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ValidationAuthority {
     pub project_id: String,
     pub workspace_id: String,
@@ -14,6 +17,7 @@ pub struct ValidationAuthority {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ValidationResult {
     pub schema_version: u32,
     pub authority: Option<ValidationAuthority>,
@@ -28,8 +32,12 @@ impl ValidationResult {
         &self,
         project_id: &str,
         workspace_id: Option<&str>,
+        contribution_protocol: Option<&ContributionProtocol>,
     ) -> bool {
         let Some(authority) = &self.authority else {
+            return false;
+        };
+        let Some(contribution_protocol) = contribution_protocol else {
             return false;
         };
         let count_keys = [
@@ -51,7 +59,7 @@ impl ValidationResult {
             && workspace_id == Some(authority.workspace_id.as_str())
             && (authority.workspace_id.is_empty() || is_digest(&authority.workspace_id))
             && is_digest(&authority.manifest_sha256)
-            && is_digest(&authority.protocol_sha256)
+            && authority.protocol_sha256 == digest(&canonical_json_bytes(contribution_protocol))
             && authority
                 .instruction_sha256
                 .as_deref()

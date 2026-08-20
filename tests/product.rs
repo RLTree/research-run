@@ -14,6 +14,8 @@ mod data_contracts_validation_schema;
 mod domain_boundaries;
 #[path = "product/handoff_defense.rs"]
 mod handoff_defense;
+#[path = "product/handoff_human.rs"]
+mod handoff_human;
 #[path = "product/handoff_journey.rs"]
 mod handoff_journey;
 #[path = "product/identifier_validation.rs"]

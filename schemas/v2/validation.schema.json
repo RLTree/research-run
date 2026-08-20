@@ -116,6 +116,7 @@
           },
           "then": {
             "properties": {
+              "protocol_installed": { "const": true },
               "instruction_contract_installed": { "const": false },
               "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md"] },
               "fresh_session_required": { "const": false }

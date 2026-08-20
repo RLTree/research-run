@@ -21,6 +21,7 @@ impl InstructionFile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct AgentIntegrationStatus {
     pub protocol_installed: bool,
     pub instruction_contract_installed: bool,
@@ -65,7 +66,8 @@ impl AgentIntegrationStatus {
                 && self.instruction_path == "unavailable"
                 && !self.fresh_session_required;
         }
-        self.ready_scope == "new-agent-run"
+        self.protocol_installed
+            && self.ready_scope == "new-agent-run"
             && !self.instruction_contract_installed
             && matches!(
                 self.instruction_path.as_str(),

@@ -1,5 +1,7 @@
 use std::fs;
 
+use crate::domain::digest;
+
 use super::{Workspace, temporary};
 
 #[test]
@@ -36,4 +38,107 @@ fn handoff_validation_receipt_binds_result_context_and_project() {
     assert!(cross_workspace.validate().is_err());
     fs::remove_dir_all(root).unwrap();
     fs::remove_dir_all(other_root).unwrap();
+}
+
+#[test]
+fn handoff_v2_rejects_empty_workspace_identity_even_with_recomputed_receipt() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Empty workspace receipt").unwrap();
+    let mut bundle = workspace
+        .handoff("handoff-empty-workspace", "2026-08-20T20:02:00Z", None, 10)
+        .unwrap();
+
+    bundle.context.workspace_id = Some(String::new());
+    let validation = bundle.validation.as_mut().unwrap();
+    validation.result.authority.as_mut().unwrap().workspace_id = String::new();
+    validation.result_sha256 = digest(&serde_json::to_vec(&validation.result).unwrap());
+    validation.context_sha256 = digest(&serde_json::to_vec(&bundle.context).unwrap());
+
+    let error = bundle.validate().unwrap_err().to_string();
+    assert!(error.contains("non-empty immutable workspace identity"));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn handoff_rejects_new_agent_status_without_installed_protocol() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Missing protocol status").unwrap();
+    let mut bundle = workspace
+        .handoff("handoff-missing-protocol", "2026-08-20T20:03:00Z", None, 10)
+        .unwrap();
+
+    let validation = bundle.validation.as_mut().unwrap();
+    let status = &mut validation.result.agent_integration;
+    status.protocol_installed = false;
+    status.instruction_contract_installed = false;
+    status.agent_integration_ready = false;
+    status.ready_scope = "new-agent-run".to_owned();
+    status.instruction_path = "AGENTS.md".to_owned();
+    status.fresh_session_required = false;
+    validation
+        .result
+        .authority
+        .as_mut()
+        .unwrap()
+        .instruction_sha256 = None;
+    validation.result_sha256 = digest(&serde_json::to_vec(&validation.result).unwrap());
+
+    assert!(bundle.validate().is_err());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn handoff_deserialization_rejects_unknown_nested_validation_fields() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Strict validation receipt").unwrap();
+    let bundle = workspace
+        .handoff("handoff-strict-receipt", "2026-08-20T20:04:00Z", None, 10)
+        .unwrap();
+    let serialized = serde_json::to_value(bundle).unwrap();
+
+    for nested_object in ["result", "authority", "agent_integration"] {
+        let mut tampered = serialized.clone();
+        let result = tampered["validation"]["result"]
+            .as_object_mut()
+            .expect("validation result object");
+        let object = match nested_object {
+            "result" => result,
+            "authority" => result["authority"]
+                .as_object_mut()
+                .expect("validation authority object"),
+            "agent_integration" => result["agent_integration"]
+                .as_object_mut()
+                .expect("agent integration object"),
+            _ => unreachable!(),
+        };
+        object.insert("unexpected_field".to_owned(), serde_json::Value::Bool(true));
+
+        let error = serde_json::from_value::<crate::workspace::HandoffBundle>(tampered)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("unknown field"), "{nested_object}: {error}");
+    }
+
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn handoff_rejects_mismatched_protocol_authority_with_recomputed_result_digest() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Protocol authority binding").unwrap();
+    let mut bundle = workspace
+        .handoff("handoff-protocol-binding", "2026-08-20T20:05:00Z", None, 10)
+        .unwrap();
+
+    let validation = bundle.validation.as_mut().unwrap();
+    validation
+        .result
+        .authority
+        .as_mut()
+        .unwrap()
+        .protocol_sha256 = "0".repeat(64);
+    validation.result_sha256 = digest(&serde_json::to_vec(&validation.result).unwrap());
+
+    assert!(bundle.validate().is_err());
+    fs::remove_dir_all(root).unwrap();
 }

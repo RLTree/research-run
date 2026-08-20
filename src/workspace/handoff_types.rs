@@ -25,10 +25,11 @@ impl HandoffValidationReceipt {
     }
 
     fn validate(&self, context: &ContextBundle) -> Result<()> {
-        if !self
-            .result
-            .is_handoff_receipt_for(&context.project_id, context.workspace_id.as_deref())
-        {
+        if !self.result.is_handoff_receipt_for(
+            &context.project_id,
+            context.workspace_id.as_deref(),
+            context.contribution_protocol.as_ref(),
+        ) {
             return Err(Error::invalid(
                 "handoff validation receipt",
                 "result is invalid, contradictory, or bound to another project",
@@ -75,10 +76,16 @@ impl HandoffBundle {
                 "version 2 requires the contribution protocol",
             ));
         }
-        if self.schema_version == 2 && self.context.workspace_id.is_none() {
+        if self.schema_version == 2
+            && self
+                .context
+                .workspace_id
+                .as_deref()
+                .is_none_or(str::is_empty)
+        {
             return Err(Error::invalid(
                 "handoff",
-                "version 2 requires the immutable workspace identity",
+                "version 2 requires a non-empty immutable workspace identity",
             ));
         }
         if self.schema_version == 2 {
