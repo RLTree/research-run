@@ -226,3 +226,7 @@ fn create(target: &Path, temporary: &Path, content: &[u8]) -> Result<bool> {
         Err(error) => Err(Error::io("create project instructions", target, error)),
     }
 }
+
+#[cfg(all(coverage, test))]
+#[path = "tests/agent_integration_publication_coverage.rs"]
+mod coverage_tests;

@@ -168,3 +168,7 @@ fn source_matches_plan(plan: &AgentIntegrationPlan, bytes: &[u8]) -> bool {
     bytes.len() as u64 == plan.instruction_bytes
         && plan.instruction_sha256.as_deref() == Some(digest(bytes).as_str())
 }
+
+#[cfg(all(coverage, test))]
+#[path = "tests/agent_integration_transaction_recovery_coverage.rs"]
+mod coverage_tests;

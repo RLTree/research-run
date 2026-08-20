@@ -59,7 +59,7 @@ mod retrieval_inventory;
 #[path = "tests/security_findings.rs"]
 mod security_findings;
 
-fn temporary() -> std::path::PathBuf {
+pub(super) fn temporary() -> std::path::PathBuf {
     let path = std::env::temp_dir().join(format!(
         "research-run-workspace-test-{}-{}",
         std::process::id(),

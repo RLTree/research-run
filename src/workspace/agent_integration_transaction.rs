@@ -210,3 +210,7 @@ fn inject_concurrent_target_claim(target: &Path) {
 
 #[cfg(not(any(test, coverage)))]
 fn inject_concurrent_target_claim(_target: &Path) {}
+
+#[cfg(all(coverage, test))]
+#[path = "tests/agent_integration_transaction_coverage.rs"]
+mod coverage_tests;
