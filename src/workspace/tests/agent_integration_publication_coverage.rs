@@ -28,12 +28,25 @@ fn create_post_effect_failures_and_pending_discovery_are_explicit() {
 
     inject_storage_failure("inspect pending project instructions");
     assert!(ensure_no_instruction_pending(&target).is_err());
+    fs::write(root.join(".AGENTS.md.1.3.tmp"), b"pending").unwrap();
+    inject_storage_failure("inspect pending project instruction path");
+    assert!(ensure_no_instruction_pending(&target).is_err());
+    fs::remove_file(root.join(".AGENTS.md.1.3.tmp")).unwrap();
     fs::create_dir(root.join(".AGENTS.md.1.1.tmp")).unwrap();
     assert!(ensure_no_instruction_pending(&target).is_err());
     fs::remove_dir(root.join(".AGENTS.md.1.1.tmp")).unwrap();
     fs::write(root.join(".AGENTS.md.1.2.txn"), b"wrong shape").unwrap();
     assert!(ensure_no_instruction_pending(&target).is_err());
     fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_transaction_artifact_names_are_not_claimed() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let name = OsStr::from_bytes(b".AGENTS.md.1.\xff.txn");
+    assert!(!is_instruction_transaction_name(name, "AGENTS.md"));
 }
 
 #[test]

@@ -60,3 +60,67 @@ fn link_verify_restore_and_cleanup_cover_each_fail_closed_branch() {
     ));
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn transaction_collision_and_restoration_ambiguity_fail_closed() {
+    let root = temporary();
+    let target = root.join("AGENTS.md");
+    let transaction = root.join("transaction");
+    fs::create_dir(&transaction).unwrap();
+    assert!(create_transaction(&transaction).is_err());
+
+    let source = transaction.join("source");
+    fs::write(&source, b"source").unwrap();
+    fs::write(&target, b"claimant").unwrap();
+    let original = Error::Conflict("original".to_owned());
+    assert!(matches!(
+        restore_after_failure(&target, &source, &transaction, original),
+        Error::AmbiguousEffect(_)
+    ));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn verification_restoration_and_cleanup_failures_are_ambiguous() {
+    let root = temporary();
+    let target = root.join("AGENTS.md");
+    let missing_source = root.join("missing-source");
+    fs::write(&target, b"planned").unwrap();
+    assert!(matches!(
+        verify_published(&target, &missing_source, b"planned", b"source"),
+        Err(Error::AmbiguousEffect(_))
+    ));
+
+    let transaction = root.join("transaction");
+    fs::create_dir(&transaction).unwrap();
+    let source = transaction.join("source");
+    fs::write(&source, b"source").unwrap();
+    fs::remove_file(&target).unwrap();
+    inject_storage_failure("open record directory for sync");
+    assert!(matches!(
+        restore_source(&target, &source, &transaction),
+        Err(Error::AmbiguousEffect(_))
+    ));
+
+    fs::remove_file(&target).unwrap();
+    inject_storage_failure("remove abandoned pending record");
+    assert!(matches!(
+        cleanup_after_publication(&target, &transaction),
+        Err(Error::AmbiguousEffect(_))
+    ));
+    fs::remove_dir_all(root).unwrap();
+
+    let root = temporary();
+    let target = root.join("AGENTS.md");
+    let transaction = root.join("transaction");
+    fs::create_dir(&transaction).unwrap();
+    fs::write(transaction.join("planned"), b"planned").unwrap();
+    fs::write(transaction.join("source"), b"source").unwrap();
+    inject_storage_failure("open record directory for sync#3");
+    assert!(matches!(
+        cleanup_after_publication(&target, &transaction),
+        Err(Error::AmbiguousEffect(_))
+    ));
+    assert!(!transaction.exists());
+    fs::remove_dir_all(root).unwrap();
+}
