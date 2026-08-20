@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::MAX_STRUCTURED_INPUT_BYTES;
 use crate::domain::{digest, validate_id, validate_timestamp};
 use crate::{Error, Result};
 
@@ -70,6 +71,12 @@ impl HandoffBundle {
         if !matches!(self.schema_version, 1 | 2) || self.kind != "handoff" {
             return Err(Error::invalid("handoff", "unknown version or record kind"));
         }
+        if self.schema_version == 1 && self.validation.is_some() {
+            return Err(Error::invalid(
+                "handoff",
+                "version 1 cannot carry a validation receipt",
+            ));
+        }
         if self.schema_version == 2 && self.context.contribution_protocol.is_none() {
             return Err(Error::invalid(
                 "handoff",
@@ -98,6 +105,16 @@ impl HandoffBundle {
         }
         validate_id(&self.id, "handoff id")?;
         validate_timestamp(&self.generated_at)?;
-        self.context.validate()
+        self.context.validate()?;
+        let output_bytes = serde_json::to_vec_pretty(self)
+            .expect("handoff projections contain only JSON-representable values")
+            .len() as u64
+            + 1;
+        if output_bytes > MAX_STRUCTURED_INPUT_BYTES {
+            return Err(Error::Budget(format!(
+                "handoff output exceeds the {MAX_STRUCTURED_INPUT_BYTES} byte inspection budget"
+            )));
+        }
+        Ok(())
     }
 }

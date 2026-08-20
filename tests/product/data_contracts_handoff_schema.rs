@@ -5,7 +5,7 @@ use jsonschema::Resource;
 use serde_json::{Value, json};
 
 #[test]
-fn handoff_schema_limits_empty_workspace_identity_to_v1() {
+fn handoff_schema_enforces_versioned_identity_and_receipts() {
     let schemas = Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas");
     let handoff = read_json(&schemas.join("v1/handoff.schema.json"));
     let validator = jsonschema::draft202012::options()
@@ -34,6 +34,7 @@ fn handoff_schema_limits_empty_workspace_identity_to_v1() {
 
     let mut legacy_v1 = anchored;
     legacy_v1["schema_version"] = Value::from(1);
+    assert!(!validator.is_valid(&legacy_v1));
     legacy_v1
         .as_object_mut()
         .expect("handoff object")

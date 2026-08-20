@@ -56,6 +56,11 @@ fn agent_status_and_apply_propagate_owned_boundary_failures() {
     assert!(instruction_failure.protocol_installed);
     assert!(instruction_failure.is_consistent());
 
+    inject_storage_failure("read agent integration protocol digest");
+    let protocol_digest_failure = workspace.agent_integration_onboarding_status();
+    assert!(!protocol_digest_failure.protocol_installed);
+    assert!(protocol_digest_failure.is_consistent());
+
     let plan = Workspace::plan_agent_integration(&root).unwrap();
     inject_storage_failure("agent instruction drift after plan");
     assert!(Workspace::apply_agent_integration(&root, plan).is_err());

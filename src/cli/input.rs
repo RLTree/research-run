@@ -4,10 +4,9 @@ use std::path::Path;
 
 use serde::de::DeserializeOwned;
 
+use crate::MAX_STRUCTURED_INPUT_BYTES;
 use crate::domain::ReviewAuthority;
 use crate::{Error, Result};
-
-const MAX_INPUT_BYTES: u64 = 1_048_576;
 
 pub(super) fn read_json_input<T: DeserializeOwned>(input: &str) -> Result<T> {
     let (bytes, label) = read_json_bytes(input)?;
@@ -52,7 +51,7 @@ fn read_json_bytes(input: &str) -> Result<(Vec<u8>, std::path::PathBuf)> {
         if !metadata.is_file() {
             return Err(Error::invalid("structured input", "must be a regular file"));
         }
-        if metadata.len() > MAX_INPUT_BYTES {
+        if metadata.len() > MAX_STRUCTURED_INPUT_BYTES {
             return Err(input_budget());
         }
         let mut file =
@@ -123,10 +122,12 @@ fn read_file(file: &mut File) -> Result<Vec<u8>> {
 pub(super) fn read_limited(reader: &mut dyn Read) -> Result<Vec<u8>> {
     let mut bytes = Vec::new();
     reader
-        .take(MAX_INPUT_BYTES + 1)
+        .take(MAX_STRUCTURED_INPUT_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(|source| Error::io("read structured input", Path::new("input"), source))?;
-    if bytes.len() as u64 > MAX_INPUT_BYTES || coverage_input_fault("structured post-read budget") {
+    if bytes.len() as u64 > MAX_STRUCTURED_INPUT_BYTES
+        || coverage_input_fault("structured post-read budget")
+    {
         return Err(input_budget());
     }
     Ok(bytes)
@@ -172,7 +173,7 @@ fn inject_structured_symlink_after_read(_path: &Path) {}
 
 fn input_budget() -> Error {
     Error::Budget(format!(
-        "structured input exceeds the {MAX_INPUT_BYTES} byte budget"
+        "structured input exceeds the {MAX_STRUCTURED_INPUT_BYTES} byte budget"
     ))
 }
 

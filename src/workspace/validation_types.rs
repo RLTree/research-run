@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{ContributionProtocol, MAX_LIST_ITEMS, digest, is_lowercase_sha256};
+use crate::domain::{
+    ContributionProtocol, MAX_LIST_ITEMS, digest, is_lowercase_sha256, required_text,
+};
 
 use super::{AgentIntegrationStatus, publication::canonical_json_bytes};
 
@@ -69,6 +71,10 @@ impl ValidationResult {
         self.schema_version == 2
             && self.valid == self.errors.is_empty()
             && self.errors.len() <= MAX_VALIDATION_ERRORS
+            && self
+                .errors
+                .iter()
+                .all(|error| required_text(error, "handoff validation error").is_ok())
             && authority.project_id == project_id
             && workspace_id == Some(authority.workspace_id.as_str())
             && (authority.workspace_id.is_empty() || is_lowercase_sha256(&authority.workspace_id))

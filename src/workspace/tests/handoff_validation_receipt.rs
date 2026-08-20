@@ -1,6 +1,7 @@
 use std::fs;
 
 use crate::domain::digest;
+use crate::{Error, domain::MAX_TEXT_BYTES};
 
 use super::{Workspace, temporary};
 
@@ -38,6 +39,53 @@ fn handoff_validation_receipt_binds_result_context_and_project() {
     assert!(cross_workspace.validate().is_err());
     fs::remove_dir_all(root).unwrap();
     fs::remove_dir_all(other_root).unwrap();
+}
+
+#[test]
+fn legacy_handoff_rejects_an_unverified_validation_receipt() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Legacy receipt rejection").unwrap();
+    let mut bundle = workspace
+        .handoff("handoff-legacy-receipt", "2026-08-20T20:00:30Z", None, 10)
+        .unwrap();
+    bundle.schema_version = 1;
+
+    assert!(bundle.validate().is_err());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn handoff_receipt_rejects_invalid_error_text() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Receipt error text").unwrap();
+
+    for invalid in [String::new(), "x".repeat(MAX_TEXT_BYTES + 1)] {
+        let mut bundle = workspace
+            .handoff("handoff-error-text", "2026-08-20T20:00:40Z", None, 10)
+            .unwrap();
+        let receipt = bundle.validation.as_mut().unwrap();
+        receipt.result.valid = false;
+        receipt.result.errors = vec![invalid];
+        receipt.result_sha256 = digest(&serde_json::to_vec(&receipt.result).unwrap());
+        assert!(bundle.validate().is_err());
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn handoff_validation_rejects_output_larger_than_the_inspection_budget() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Handoff output budget").unwrap();
+    let mut bundle = workspace
+        .handoff("handoff-output-budget", "2026-08-20T20:00:50Z", None, 10)
+        .unwrap();
+    let receipt = bundle.validation.as_mut().unwrap();
+    receipt.result.valid = false;
+    receipt.result.errors = vec!["x".repeat(4_096); 256];
+    receipt.result_sha256 = digest(&serde_json::to_vec(&receipt.result).unwrap());
+
+    assert!(matches!(bundle.validate(), Err(Error::Budget(_))));
+    fs::remove_dir_all(root).unwrap();
 }
 
 #[test]

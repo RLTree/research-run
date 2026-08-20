@@ -18,14 +18,24 @@ impl Workspace {
 
     pub fn agent_integration_onboarding_status(&self) -> AgentIntegrationStatus {
         match self.load_snapshot() {
-            Ok(snapshot) => self
-                .agent_integration_status_from_snapshot(&snapshot)
-                .unwrap_or_else(|error| {
-                    AgentIntegrationStatus::unavailable(
-                        format!("Agent integration inspection failed: {error}"),
-                        true,
+            Ok(snapshot) => match self.agent_integration_authority_digests() {
+                Ok((manifest_sha, protocol_sha)) => self
+                    .agent_integration_status_with_authority(
+                        &snapshot,
+                        &manifest_sha,
+                        &protocol_sha,
                     )
-                }),
+                    .unwrap_or_else(|error| {
+                        AgentIntegrationStatus::unavailable(
+                            format!("Agent integration inspection failed: {error}"),
+                            true,
+                        )
+                    }),
+                Err(error) => AgentIntegrationStatus::unavailable(
+                    format!("Agent integration inspection failed: {error}"),
+                    false,
+                ),
+            },
             Err(error) => AgentIntegrationStatus::unavailable(
                 format!("Agent integration inspection failed: {error}"),
                 false,
@@ -37,10 +47,19 @@ impl Workspace {
         &self,
         snapshot: &Snapshot,
     ) -> Result<AgentIntegrationStatus> {
+        let (manifest_sha, protocol_sha) = self.agent_integration_authority_digests()?;
+        self.agent_integration_status_with_authority(snapshot, &manifest_sha, &protocol_sha)
+    }
+
+    fn agent_integration_status_with_authority(
+        &self,
+        snapshot: &Snapshot,
+        manifest_sha: &str,
+        protocol_sha: &str,
+    ) -> Result<AgentIntegrationStatus> {
         let path = self.active_instruction_path()?;
         ensure_no_instruction_pending(&path)?;
-        let (manifest_sha, protocol_sha) = self.agent_integration_authority_digests()?;
-        let block = managed_block(snapshot, &manifest_sha, &protocol_sha);
+        let block = managed_block(snapshot, manifest_sha, protocol_sha);
         let bytes = read_optional_instruction(&path)?;
         let assessment = assess_instruction(bytes.bytes(), bytes.exists(), &block)?;
         let (installed, diagnostic) = match assessment {

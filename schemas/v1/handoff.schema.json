@@ -81,6 +81,9 @@
             }
           }
         }
+      },
+      "else": {
+        "not": { "required": ["validation"] }
       }
     }
   ],
