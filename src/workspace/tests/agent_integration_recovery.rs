@@ -13,9 +13,11 @@ fn instruction_size_budget_accepts_the_boundary_and_rejects_one_byte_over() {
     let root = temporary();
     let target = root.join("AGENTS.md");
     let boundary = vec![b'a'; MAX_INSTRUCTION_BYTES as usize];
-    assert!(!publish_instruction(&target, &boundary, AgentIntegrationOperation::NoOp).unwrap());
+    assert!(
+        !publish_instruction(&target, &boundary, AgentIntegrationOperation::NoOp, b"").unwrap()
+    );
     let over = vec![b'a'; MAX_INSTRUCTION_BYTES as usize + 1];
-    assert!(publish_instruction(&target, &over, AgentIntegrationOperation::NoOp).is_err());
+    assert!(publish_instruction(&target, &over, AgentIntegrationOperation::NoOp, b"").is_err());
 
     Workspace::initialize(&root, "Instruction budget").unwrap();
     let missing_plan = Workspace::plan_agent_integration(&root).unwrap();

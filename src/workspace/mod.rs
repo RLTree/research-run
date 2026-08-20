@@ -15,6 +15,8 @@ mod agent_integration_content;
 mod agent_integration_publication;
 mod agent_integration_recovery;
 mod agent_integration_status;
+mod agent_integration_transaction;
+mod agent_integration_transaction_recovery;
 mod agent_integration_types;
 mod handoff;
 mod handoff_types;

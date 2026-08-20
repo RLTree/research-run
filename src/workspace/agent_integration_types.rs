@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::domain::required_text;
+
 pub(super) const MAX_INSTRUCTION_BYTES: u64 = 1_048_576;
 
 pub(super) enum InstructionFile {
@@ -48,7 +50,9 @@ impl AgentIntegrationStatus {
     }
 
     pub fn is_consistent(&self) -> bool {
-        if self.current_session_loaded != "unverified" {
+        if self.current_session_loaded != "unverified"
+            || required_text(&self.diagnostic, "agent integration diagnostic").is_err()
+        {
             return false;
         }
         if self.agent_integration_ready {

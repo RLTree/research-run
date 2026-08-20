@@ -34,5 +34,24 @@
     "prospective_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
     "operation": { "enum": ["create", "append", "no-op"] },
     "plan_sha256": { "$ref": "types.schema.json#/$defs/sha256" }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "create" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "instruction_sha256": { "type": "null" },
+          "instruction_bytes": { "const": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "enum": ["append", "no-op"] } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "instruction_sha256": { "$ref": "types.schema.json#/$defs/sha256" }
+        }
+      }
+    }
+  ]
 }

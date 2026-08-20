@@ -85,8 +85,12 @@ directory publication.
   binds the current manifest, protocol, active root instruction file, managed
   content, and prospective bytes with SHA-256. Apply preserves existing
   instructions, is confined to `AGENTS.md` or `AGENTS.override.md`, rejects
-  symlinks, drift, and conflicting managed content, publishes atomically, and is
-  idempotent on identical retry. Readiness is only for a fresh agent run/session;
+  symlinks, drift, and conflicting managed content, and is idempotent on
+  identical retry. Append publication first moves the live instruction file
+  into a unique same-directory transaction, then uses a create-only hard link
+  for the reviewed bytes. A concurrent canonical claimant is never replaced;
+  the reviewed, displaced, and claimant bytes remain distinct for fail-closed
+  recovery. Readiness is only for a fresh agent run/session;
   the current session remains unverified. This proves no universal compliance
   and cannot prevent every out-of-band write.
 - Diagnostics name record paths and invariant failures but never echo record

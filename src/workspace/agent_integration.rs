@@ -72,6 +72,7 @@ impl Workspace {
                 &workspace.root.join(&plan.instruction_path),
                 &content,
                 plan.operation,
+                instruction.bytes(),
             )?;
             return Ok(apply_result(&plan, changed));
         }

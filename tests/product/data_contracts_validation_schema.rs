@@ -36,13 +36,7 @@ fn validation_v2_schema_rejects_contradictory_readiness_receipt() {
     valid_loaded["agent_integration"]["protocol_installed"] = Value::Bool(true);
     assert!(validator.is_valid(&valid_loaded));
 
-    let mut explicit_empty_legacy_identity = valid_loaded.clone();
-    explicit_empty_legacy_identity["authority"]["workspace_id"] = Value::String(String::new());
-    assert!(validator.is_valid(&explicit_empty_legacy_identity));
-
-    let mut uppercase_identity = valid_loaded.clone();
-    uppercase_identity["authority"]["workspace_id"] = Value::String("A".repeat(64));
-    assert!(!validator.is_valid(&uppercase_identity));
+    assert_authority_contract(&validator, &valid_loaded);
 
     let mut load_failure = valid_loaded.clone();
     load_failure["authority"] = Value::Null;
@@ -84,6 +78,29 @@ fn validation_v2_schema_rejects_contradictory_readiness_receipt() {
         .expect("errors array")
         .push(Value::String("overflow".to_owned()));
     assert!(!validator.is_valid(&bounded_errors));
+}
+
+fn assert_authority_contract(validator: &jsonschema::Validator, valid: &Value) {
+    let mut explicit_empty_legacy_identity = valid.clone();
+    explicit_empty_legacy_identity["authority"]["workspace_id"] = Value::String(String::new());
+    assert!(validator.is_valid(&explicit_empty_legacy_identity));
+
+    let mut uppercase_identity = valid.clone();
+    uppercase_identity["authority"]["workspace_id"] = Value::String("A".repeat(64));
+    assert!(!validator.is_valid(&uppercase_identity));
+
+    let mut ready = valid.clone();
+    ready["agent_integration"]["instruction_contract_installed"] = Value::Bool(true);
+    ready["agent_integration"]["agent_integration_ready"] = Value::Bool(true);
+    ready["agent_integration"]["fresh_session_required"] = Value::Bool(true);
+    assert!(validator.is_valid(&ready));
+
+    let mut missing_authority = ready.clone();
+    missing_authority["authority"] = Value::Null;
+    assert!(!validator.is_valid(&missing_authority));
+
+    ready["authority"]["instruction_sha256"] = Value::Null;
+    assert!(!validator.is_valid(&ready));
 }
 
 fn unavailable_status() -> Value {

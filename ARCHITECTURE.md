@@ -83,6 +83,10 @@ managed block, prospective digest, and plan digest. Apply rechecks the plan
 under the canonical workspace lock, confines the target to those two root
 filenames, rejects symlinks, drift, and conflicting markers, preserves existing
 instruction bytes, and publishes the resulting instruction file atomically.
+Append uses a same-directory transaction: the observed source is moved out of
+the canonical name before a create-only link installs reviewed bytes. If a
+concurrent writer claims the canonical name, its bytes are not replaced and the
+transaction retains both the reviewed and displaced bytes for explicit retry.
 Identical retry is a no-op. The installed block requires bounded retrieval,
 typed CLI contributions, no generic canonical JSON writes, a real validation
 receipt, and v2 handoff. Readiness is scoped to a newly started agent run because

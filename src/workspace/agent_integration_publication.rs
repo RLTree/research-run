@@ -6,6 +6,8 @@ use crate::domain::{AgentIntegrationOperation, AgentIntegrationPlan, digest};
 use crate::{Error, Result};
 
 use super::agent_integration_recovery::plan_transition_matches;
+use super::agent_integration_transaction::publish_append;
+use super::agent_integration_transaction_recovery::recover_transaction;
 use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::path_safety::reject_symlink_chain;
 use super::pending_cleanup::PendingCleanup;
@@ -16,6 +18,7 @@ pub(super) fn publish_instruction(
     target: &Path,
     content: &[u8],
     operation: AgentIntegrationOperation,
+    expected_source: &[u8],
 ) -> Result<bool> {
     ensure_instruction_budget(content)?;
     if operation == AgentIntegrationOperation::NoOp {
@@ -23,19 +26,15 @@ pub(super) fn publish_instruction(
     }
     reject_symlink_chain(target)?;
     ensure_no_instruction_pending(target)?;
+    if operation == AgentIntegrationOperation::Append {
+        return publish_append(target, content, expected_source);
+    }
     let temporary = pending_path(target);
     let mut cleanup = PendingCleanup::new(temporary.clone());
     if let Err(error) = write_pending(&temporary, content) {
         return Err(cleanup.after_failure(error));
     }
-    if let Err(error) = copy_permissions(target, &temporary, operation) {
-        return Err(cleanup.after_failure(error));
-    }
-    let publication = if operation == AgentIntegrationOperation::Create {
-        create(target, &temporary, content)
-    } else {
-        replace(target, &temporary).map(|()| true)
-    };
+    let publication = create(target, &temporary, content);
     let changed = match publication {
         Ok(changed) => changed,
         Err(error) => return Err(cleanup.after_failure(error)),
@@ -47,7 +46,12 @@ pub(super) fn publish_instruction(
             target.display()
         ))
     })?;
-    cleanup.remove()?;
+    cleanup.remove().map_err(|error| {
+        Error::AmbiguousEffect(format!(
+            "project instructions were published at {} but pending cleanup was not durable: {error}",
+            target.display()
+        ))
+    })?;
     Ok(changed)
 }
 
@@ -74,6 +78,9 @@ pub(super) fn recover_instruction_pending(
             "multiple interrupted project instruction publications exist for {}",
             target.display()
         )));
+    }
+    if path.is_dir() {
+        return recover_transaction(path, target, plan);
     }
     let pending_bytes = read_bounded_with_limit(path, MAX_INSTRUCTION_BYTES)?;
     if !plan_transition_matches(plan, &pending_bytes)? {
@@ -127,7 +134,10 @@ fn instruction_pending(target: &Path) -> Result<Vec<PathBuf>> {
     let mut pending = Vec::new();
     for entry in entries {
         let entry = map_io(entry, "inspect pending project instruction", parent)?;
-        if is_instruction_pending_name(&entry.file_name(), target_name) {
+        let name = entry.file_name();
+        if is_instruction_pending_name(&name, target_name)
+            || is_instruction_transaction_name(&name, target_name)
+        {
             let path = entry.path();
             reject_symlink_chain(&path)?;
             let metadata = map_io(
@@ -135,10 +145,15 @@ fn instruction_pending(target: &Path) -> Result<Vec<PathBuf>> {
                 "inspect pending project instruction path",
                 &path,
             )?;
-            if !metadata.is_file() {
+            let expected_shape = if is_instruction_transaction_name(&name, target_name) {
+                metadata.is_dir()
+            } else {
+                metadata.is_file()
+            };
+            if !expected_shape {
                 return Err(Error::invalid(
                     "pending project instruction",
-                    format!("{} is not a regular file", path.display()),
+                    format!("{} has an invalid transaction shape", path.display()),
                 ));
             }
             pending.push(path);
@@ -148,12 +163,20 @@ fn instruction_pending(target: &Path) -> Result<Vec<PathBuf>> {
 }
 
 fn is_instruction_pending_name(name: &OsStr, target_name: &str) -> bool {
+    is_instruction_artifact_name(name, target_name, ".tmp")
+}
+
+fn is_instruction_transaction_name(name: &OsStr, target_name: &str) -> bool {
+    is_instruction_artifact_name(name, target_name, ".txn")
+}
+
+fn is_instruction_artifact_name(name: &OsStr, target_name: &str, suffix: &str) -> bool {
     let Some(name) = name.to_str() else {
         return false;
     };
     let Some(body) = name
         .strip_prefix(&format!(".{target_name}."))
-        .and_then(|name| name.strip_suffix(".tmp"))
+        .and_then(|name| name.strip_suffix(suffix))
     else {
         return false;
     };
@@ -182,26 +205,6 @@ fn read_optional_target(target: &Path) -> Result<Option<Vec<u8>>> {
     }
 }
 
-fn copy_permissions(
-    target: &Path,
-    temporary: &Path,
-    operation: AgentIntegrationOperation,
-) -> Result<()> {
-    if operation != AgentIntegrationOperation::Append {
-        return Ok(());
-    }
-    let metadata = map_io(
-        fs::metadata(target),
-        "inspect project instruction permissions",
-        target,
-    )?;
-    map_io(
-        fs::set_permissions(temporary, metadata.permissions()),
-        "preserve project instruction permissions",
-        temporary,
-    )
-}
-
 fn create(target: &Path, temporary: &Path, content: &[u8]) -> Result<bool> {
     let publication = if super::injected_storage_failure("create project instructions") {
         Err(std::io::Error::other("injected storage failure"))
@@ -222,19 +225,4 @@ fn create(target: &Path, temporary: &Path, content: &[u8]) -> Result<bool> {
         }
         Err(error) => Err(Error::io("create project instructions", target, error)),
     }
-}
-
-fn replace(target: &Path, temporary: &Path) -> Result<()> {
-    if super::injected_storage_failure("replace project instructions") {
-        return Err(Error::io(
-            "replace project instructions",
-            target,
-            std::io::Error::other("injected storage failure"),
-        ));
-    }
-    map_io(
-        fs::rename(temporary, target),
-        "replace project instructions",
-        target,
-    )
 }

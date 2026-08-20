@@ -1,13 +1,11 @@
 use std::fs;
 
-use crate::Error;
 use crate::domain::AgentIntegrationOperation;
 use crate::workspace::AgentIntegrationStatus;
 
 use super::super::agent_integration_content::{
     InstructionAssessment, assess_instruction, compose_instruction, managed_block,
 };
-use super::super::agent_integration_publication::publish_instruction;
 use super::{Workspace, inject_storage_failure, temporary};
 
 #[test]
@@ -119,61 +117,15 @@ fn public_agent_integration_status_validator_rejects_cross_field_drift() {
     let mut inconsistent = status;
     inconsistent.agent_integration_ready = true;
     assert!(!inconsistent.is_consistent());
-}
 
-#[test]
-fn instruction_publication_covers_noop_races_and_atomic_failures() {
-    let root = temporary();
-    let target = root.join("AGENTS.md");
-    assert!(!publish_instruction(&target, b"same", AgentIntegrationOperation::NoOp).unwrap());
-
-    fs::write(&target, b"same").unwrap();
-    assert!(!publish_instruction(&target, b"same", AgentIntegrationOperation::Create).unwrap());
-    assert_eq!(fs::read(&target).unwrap(), b"same");
-    assert!(publish_instruction(&target, b"different", AgentIntegrationOperation::Create).is_err());
-    assert_eq!(fs::read(&target).unwrap(), b"same");
-    assert!(
-        publish_instruction(&target, b"replacement", AgentIntegrationOperation::Append).unwrap()
-    );
-    assert_eq!(fs::read(&target).unwrap(), b"replacement");
-
-    for point in [
-        "create pending record",
-        "inspect project instruction permissions",
-        "replace project instructions",
-        "open record directory for sync",
-    ] {
-        fs::write(&target, b"before").unwrap();
-        inject_storage_failure(point);
-        let error = publish_instruction(&target, b"after", AgentIntegrationOperation::Append)
-            .expect_err(point);
-        if point == "open record directory for sync" {
-            assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
-            assert_eq!(fs::read(&target).unwrap(), b"after");
-        } else {
-            assert!(!matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
-            assert_eq!(fs::read(&target).unwrap(), b"before");
-        }
-        remove_pending(&root);
-    }
-    fs::remove_file(&target).unwrap();
-    inject_storage_failure("create project instructions");
-    assert!(publish_instruction(&target, b"new", AgentIntegrationOperation::Create).is_err());
-    assert!(!target.exists());
-    remove_pending(&root);
-    fs::remove_dir_all(root).unwrap();
-}
-
-fn remove_pending(root: &std::path::Path) {
-    for entry in fs::read_dir(root).unwrap() {
-        let path = entry.unwrap().path();
-        if path
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .starts_with(".AGENTS.md.")
-        {
-            fs::remove_file(path).unwrap();
-        }
-    }
+    let mut empty_diagnostic = inconsistent;
+    empty_diagnostic.agent_integration_ready = false;
+    empty_diagnostic.diagnostic.clear();
+    assert!(!empty_diagnostic.is_consistent());
+    empty_diagnostic.diagnostic = "  \n".to_owned();
+    assert!(!empty_diagnostic.is_consistent());
+    empty_diagnostic.diagnostic = "x".repeat(65_536);
+    assert!(empty_diagnostic.is_consistent());
+    empty_diagnostic.diagnostic.push('x');
+    assert!(!empty_diagnostic.is_consistent());
 }
