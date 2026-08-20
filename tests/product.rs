@@ -8,6 +8,8 @@ mod agent_integration_journey;
 mod contribution_protocol_journey;
 #[path = "product/data_contracts.rs"]
 mod data_contracts;
+#[path = "product/data_contracts_validation_schema.rs"]
+mod data_contracts_validation_schema;
 #[path = "product/domain_boundaries.rs"]
 mod domain_boundaries;
 #[path = "product/handoff_defense.rs"]

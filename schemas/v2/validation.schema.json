@@ -105,6 +105,22 @@
               "fresh_session_required": { "const": false }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "agent_integration_ready": { "const": false },
+              "ready_scope": { "const": "new-agent-run" }
+            },
+            "required": ["agent_integration_ready", "ready_scope"]
+          },
+          "then": {
+            "properties": {
+              "instruction_contract_installed": { "const": false },
+              "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md"] },
+              "fresh_session_required": { "const": false }
+            }
+          }
         }
       ]
     }
