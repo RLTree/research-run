@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{ContributionProtocol, digest};
+use crate::domain::{ContributionProtocol, MAX_LIST_ITEMS, digest, is_lowercase_sha256};
 
 use super::{AgentIntegrationStatus, publication::canonical_json_bytes};
+
+pub(super) const MAX_VALIDATION_ERRORS: usize = MAX_LIST_ITEMS;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -25,6 +27,17 @@ pub struct ValidationResult {
     pub errors: Vec<String>,
     pub counts: BTreeMap<String, usize>,
     pub agent_integration: AgentIntegrationStatus,
+}
+
+pub(super) fn bound_validation_errors(mut errors: Vec<String>) -> Vec<String> {
+    if errors.len() > MAX_VALIDATION_ERRORS {
+        let omitted = errors.len() - (MAX_VALIDATION_ERRORS - 1);
+        errors.truncate(MAX_VALIDATION_ERRORS - 1);
+        errors.push(format!(
+            "validation error budget exceeded: {omitted} additional diagnostics omitted"
+        ));
+    }
+    errors
 }
 
 impl ValidationResult {
@@ -55,15 +68,16 @@ impl ValidationResult {
         ];
         self.schema_version == 2
             && self.valid == self.errors.is_empty()
+            && self.errors.len() <= MAX_VALIDATION_ERRORS
             && authority.project_id == project_id
             && workspace_id == Some(authority.workspace_id.as_str())
-            && (authority.workspace_id.is_empty() || is_digest(&authority.workspace_id))
-            && is_digest(&authority.manifest_sha256)
+            && (authority.workspace_id.is_empty() || is_lowercase_sha256(&authority.workspace_id))
+            && is_lowercase_sha256(&authority.manifest_sha256)
             && authority.protocol_sha256 == digest(&canonical_json_bytes(contribution_protocol))
             && authority
                 .instruction_sha256
                 .as_deref()
-                .is_none_or(is_digest)
+                .is_none_or(is_lowercase_sha256)
             && self.counts.len() == count_keys.len()
             && count_keys.iter().all(|key| self.counts.contains_key(*key))
             && self.counts["contribution-protocol"] == 1
@@ -72,11 +86,4 @@ impl ValidationResult {
             && (!self.agent_integration.agent_integration_ready
                 || authority.instruction_sha256.is_some())
     }
-}
-
-fn is_digest(value: &str) -> bool {
-    value.len() == 64
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }

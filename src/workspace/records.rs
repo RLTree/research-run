@@ -7,6 +7,7 @@ use crate::{Error, Result};
 
 use super::publication::canonical_json_bytes;
 use super::references::claim_evidence_ids;
+use super::validation_types::bound_validation_errors;
 use super::write_lock::WorkspaceWriteLock;
 use super::{AgentIntegrationStatus, MAX_RECORDS_PER_KIND, ValidationResult, Workspace};
 
@@ -158,6 +159,7 @@ impl Workspace {
         let mut errors = self.reference_errors(snapshot);
         errors.extend(self.review_binding_errors(snapshot));
         errors.extend(self.review_authorization_errors(snapshot));
+        let errors = bound_validation_errors(errors);
         let agent_integration = self
             .agent_integration_status_from_snapshot(snapshot)
             .unwrap_or_else(|error| AgentIntegrationStatus::unavailable(error.to_string(), true));

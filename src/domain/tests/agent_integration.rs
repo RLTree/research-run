@@ -1,4 +1,7 @@
+use crate::Error;
 use crate::domain::{AgentIntegrationOperation, AgentIntegrationPlan, digest};
+
+type PlanMutation = (fn(&mut AgentIntegrationPlan), &'static str, bool);
 
 fn plan(operation: AgentIntegrationOperation) -> AgentIntegrationPlan {
     let instruction_sha256 =
@@ -37,19 +40,50 @@ fn agent_integration_plan_validates_each_digest_and_operation_boundary() {
     legacy
         .validate()
         .expect("legacy workspace identity may be empty");
-    let cases: [fn(&mut AgentIntegrationPlan); 7] = [
-        |value| value.workspace_id = "INVALID".to_owned(),
-        |value| value.manifest_sha256 = "a".repeat(63),
-        |value| value.protocol_sha256 = "A".repeat(64),
-        |value| value.instruction_sha256 = Some("bad".to_owned()),
-        |value| value.managed_block_sha256 = "bad".to_owned(),
-        |value| value.prospective_sha256 = "bad".to_owned(),
-        |value| value.plan_sha256 = "bad".to_owned(),
+    let cases: [PlanMutation; 7] = [
+        (
+            |value| value.workspace_id = "INVALID".to_owned(),
+            "agent integration workspace_id",
+            true,
+        ),
+        (
+            |value| value.manifest_sha256 = "a".repeat(63),
+            "agent integration manifest digest",
+            true,
+        ),
+        (
+            |value| value.protocol_sha256 = "A".repeat(64),
+            "agent integration protocol digest",
+            true,
+        ),
+        (
+            |value| value.instruction_sha256 = Some("bad".to_owned()),
+            "agent integration instruction digest",
+            true,
+        ),
+        (
+            |value| value.managed_block_sha256 = "bad".to_owned(),
+            "agent integration managed block digest",
+            true,
+        ),
+        (
+            |value| value.prospective_sha256 = "bad".to_owned(),
+            "agent integration prospective digest",
+            true,
+        ),
+        (
+            |value| value.plan_sha256 = "bad".to_owned(),
+            "agent integration plan digest",
+            false,
+        ),
     ];
-    for mutate in cases {
+    for (mutate, context, reseal) in cases {
         let mut value = plan(AgentIntegrationOperation::Append);
         mutate(&mut value);
-        assert!(value.validate().is_err());
+        if reseal {
+            value = value.seal();
+        }
+        assert_invalid_context(value, context);
     }
 }
 
@@ -57,21 +91,31 @@ fn agent_integration_plan_validates_each_digest_and_operation_boundary() {
 fn agent_integration_plan_rejects_inconsistent_and_modified_content() {
     let mut create_with_file = plan(AgentIntegrationOperation::Create);
     create_with_file.instruction_sha256 = Some(digest(b"unexpected"));
-    assert!(create_with_file.validate().is_err());
+    assert_invalid_context(create_with_file.seal(), "agent integration operation");
 
     let mut append_without_file = plan(AgentIntegrationOperation::Append);
     append_without_file.instruction_sha256 = None;
-    assert!(append_without_file.validate().is_err());
+    assert_invalid_context(append_without_file.seal(), "agent integration operation");
 
     let mut create_with_bytes = plan(AgentIntegrationOperation::Create);
     create_with_bytes.instruction_bytes = 1;
-    assert!(create_with_bytes.validate().is_err());
+    assert_invalid_context(
+        create_with_bytes.seal(),
+        "agent integration instruction identity",
+    );
 
     let mut modified_block = plan(AgentIntegrationOperation::Append);
     modified_block.managed_block_sha256 = digest(b"different block");
-    assert!(modified_block.validate().is_err());
+    assert_invalid_context(modified_block.seal(), "agent integration managed block");
 
     let mut modified_plan = plan(AgentIntegrationOperation::Append);
     modified_plan.project_id = "project-two".to_owned();
-    assert!(modified_plan.validate().is_err());
+    assert_invalid_context(modified_plan, "agent integration plan");
+}
+
+fn assert_invalid_context(plan: AgentIntegrationPlan, expected: &str) {
+    match plan.validate() {
+        Err(Error::Invalid { context, .. }) => assert_eq!(context, expected),
+        result => panic!("expected invalid {expected}, found {result:?}"),
+    }
 }

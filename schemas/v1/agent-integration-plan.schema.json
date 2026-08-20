@@ -13,7 +13,12 @@
     "schema_version": { "const": 1 },
     "kind": { "const": "agent-integration-plan" },
     "project_id": { "$ref": "types.schema.json#/$defs/id" },
-    "workspace_id": { "$ref": "types.schema.json#/$defs/sha256" },
+    "workspace_id": {
+      "oneOf": [
+        { "const": "" },
+        { "$ref": "types.schema.json#/$defs/sha256" }
+      ]
+    },
     "manifest_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
     "protocol_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
     "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md"] },

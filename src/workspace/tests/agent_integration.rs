@@ -1,6 +1,8 @@
 use std::fs;
 
+use crate::Error;
 use crate::domain::AgentIntegrationOperation;
+use crate::workspace::AgentIntegrationStatus;
 
 use super::super::agent_integration_content::{
     InstructionAssessment, assess_instruction, compose_instruction, managed_block,
@@ -49,6 +51,10 @@ fn agent_status_and_apply_propagate_owned_boundary_failures() {
         inject_storage_failure(point);
         assert!(workspace.agent_integration_status().is_err(), "{point}");
     }
+    inject_storage_failure("inspect agent instruction");
+    let instruction_failure = workspace.agent_integration_onboarding_status();
+    assert!(instruction_failure.protocol_installed);
+    assert!(instruction_failure.is_consistent());
 
     let plan = Workspace::plan_agent_integration(&root).unwrap();
     inject_storage_failure("agent instruction drift after plan");
@@ -81,9 +87,33 @@ fn agent_status_and_apply_propagate_owned_boundary_failures() {
         symlink(root.join("outside"), root.join("AGENTS.md")).unwrap();
         let status = workspace.agent_integration_onboarding_status();
         assert_eq!(status.ready_scope, "unavailable");
+        assert!(status.protocol_installed);
         fs::remove_file(root.join("AGENTS.md")).unwrap();
     }
+    fs::remove_file(root.join(".research-run/contribution-protocols/agent-contribution.json"))
+        .unwrap();
+    let protocol_failure = workspace.agent_integration_onboarding_status();
+    assert!(!protocol_failure.protocol_installed);
+    assert!(protocol_failure.is_consistent());
     fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn public_agent_integration_status_validator_rejects_cross_field_drift() {
+    let status = AgentIntegrationStatus {
+        protocol_installed: true,
+        instruction_contract_installed: false,
+        agent_integration_ready: false,
+        ready_scope: "new-agent-run".to_owned(),
+        instruction_path: "AGENTS.md".to_owned(),
+        current_session_loaded: "unverified".to_owned(),
+        fresh_session_required: false,
+        diagnostic: "Plan and apply integration.".to_owned(),
+    };
+    assert!(status.is_consistent());
+    let mut inconsistent = status;
+    inconsistent.agent_integration_ready = true;
+    assert!(!inconsistent.is_consistent());
 }
 
 #[test]
@@ -94,10 +124,13 @@ fn instruction_publication_covers_noop_races_and_atomic_failures() {
 
     fs::write(&target, b"same").unwrap();
     assert!(!publish_instruction(&target, b"same", AgentIntegrationOperation::Create).unwrap());
+    assert_eq!(fs::read(&target).unwrap(), b"same");
     assert!(publish_instruction(&target, b"different", AgentIntegrationOperation::Create).is_err());
+    assert_eq!(fs::read(&target).unwrap(), b"same");
     assert!(
         publish_instruction(&target, b"replacement", AgentIntegrationOperation::Append).unwrap()
     );
+    assert_eq!(fs::read(&target).unwrap(), b"replacement");
 
     for point in [
         "create pending record",
@@ -107,15 +140,21 @@ fn instruction_publication_covers_noop_races_and_atomic_failures() {
     ] {
         fs::write(&target, b"before").unwrap();
         inject_storage_failure(point);
-        assert!(
-            publish_instruction(&target, b"after", AgentIntegrationOperation::Append).is_err(),
-            "{point}"
-        );
+        let error = publish_instruction(&target, b"after", AgentIntegrationOperation::Append)
+            .expect_err(point);
+        if point == "open record directory for sync" {
+            assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
+            assert_eq!(fs::read(&target).unwrap(), b"after");
+        } else {
+            assert!(!matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
+            assert_eq!(fs::read(&target).unwrap(), b"before");
+        }
         remove_pending(&root);
     }
     fs::remove_file(&target).unwrap();
     inject_storage_failure("create project instructions");
     assert!(publish_instruction(&target, b"new", AgentIntegrationOperation::Create).is_err());
+    assert!(!target.exists());
     remove_pending(&root);
     fs::remove_dir_all(root).unwrap();
 }

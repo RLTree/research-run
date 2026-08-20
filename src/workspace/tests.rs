@@ -251,3 +251,5 @@ mod sshsig;
 mod status_authority;
 #[path = "tests/storage.rs"]
 mod storage;
+#[path = "tests/validation_limits.rs"]
+mod validation_limits;

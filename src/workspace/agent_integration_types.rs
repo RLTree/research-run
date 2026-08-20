@@ -47,7 +47,7 @@ impl AgentIntegrationStatus {
         }
     }
 
-    pub(super) fn is_consistent(&self) -> bool {
+    pub fn is_consistent(&self) -> bool {
         if self.current_session_loaded != "unverified" {
             return false;
         }

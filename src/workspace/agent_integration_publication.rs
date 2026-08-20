@@ -225,6 +225,13 @@ fn create(target: &Path, temporary: &Path, content: &[u8]) -> Result<bool> {
 }
 
 fn replace(target: &Path, temporary: &Path) -> Result<()> {
+    if super::injected_storage_failure("replace project instructions") {
+        return Err(Error::io(
+            "replace project instructions",
+            target,
+            std::io::Error::other("injected storage failure"),
+        ));
+    }
     map_io(
         fs::rename(temporary, target),
         "replace project instructions",

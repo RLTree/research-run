@@ -1,5 +1,6 @@
 use std::fs;
 
+use crate::Error;
 use crate::domain::{AgentIntegrationOperation, digest};
 
 use super::super::agent_integration_content::compose_planned_instruction;
@@ -18,34 +19,41 @@ fn instruction_size_budget_accepts_the_boundary_and_rejects_one_byte_over() {
 
     Workspace::initialize(&root, "Instruction budget").unwrap();
     let missing_plan = Workspace::plan_agent_integration(&root).unwrap();
-    let mut low = 0;
-    let mut high = MAX_INSTRUCTION_BYTES as usize;
-    let exact = loop {
-        let length = low + (high - low) / 2;
+    let prospective_len = |length| {
         let current = vec![b'a'; length];
-        let prospective = compose_planned_instruction(
+        compose_planned_instruction(
             &current,
             &missing_plan.managed_block,
             AgentIntegrationOperation::Append,
         )
-        .unwrap();
-        match prospective.len().cmp(&(MAX_INSTRUCTION_BYTES as usize)) {
-            std::cmp::Ordering::Equal => break current,
-            std::cmp::Ordering::Less => low = length + 1,
-            std::cmp::Ordering::Greater => high = length,
-        }
-        assert!(low < high, "an exact boundary fixture");
+        .unwrap()
+        .len()
     };
-    fs::write(&target, &exact).unwrap();
+    let maximum = MAX_INSTRUCTION_BYTES as usize;
+    let mut largest_fitting = 0;
+    let mut first_rejected = maximum + 1;
+    while largest_fitting + 1 < first_rejected {
+        let length = largest_fitting + (first_rejected - largest_fitting) / 2;
+        if prospective_len(length) <= maximum {
+            largest_fitting = length;
+        } else {
+            first_rejected = length;
+        }
+    }
+    assert_eq!(first_rejected, largest_fitting + 1);
+    assert!(prospective_len(largest_fitting) <= maximum);
+    assert!(prospective_len(first_rejected) > maximum);
+
+    let largest = vec![b'a'; largest_fitting];
+    fs::write(&target, &largest).unwrap();
     assert_eq!(
         Workspace::plan_agent_integration(&root)
             .unwrap()
             .instruction_bytes,
-        exact.len() as u64
+        largest.len() as u64
     );
-    let mut one_over = exact;
-    one_over.push(b'a');
-    fs::write(&target, one_over).unwrap();
+    let next = vec![b'a'; first_rejected];
+    fs::write(&target, next).unwrap();
     assert!(Workspace::plan_agent_integration(&root).is_err());
     fs::remove_dir_all(root).unwrap();
 }
@@ -186,7 +194,10 @@ fn installed_retry_rejects_resealed_transition_tamper() {
     altered_operation.operation = AgentIntegrationOperation::Append;
     altered_operation.instruction_sha256 = Some(digest(b""));
     altered_operation = altered_operation.seal();
-    assert!(Workspace::apply_agent_integration(&root, altered_operation).is_err());
+    assert!(matches!(
+        Workspace::apply_agent_integration(&root, altered_operation),
+        Err(Error::Conflict(_))
+    ));
 
     fs::remove_dir_all(&root).unwrap();
     fs::create_dir(&root).unwrap();
@@ -199,12 +210,18 @@ fn installed_retry_rejects_resealed_transition_tamper() {
     let mut altered_digest = append.clone();
     altered_digest.instruction_sha256 = Some(digest(b"# Changed\n"));
     altered_digest = altered_digest.seal();
-    assert!(Workspace::apply_agent_integration(&root, altered_digest).is_err());
+    assert!(matches!(
+        Workspace::apply_agent_integration(&root, altered_digest),
+        Err(Error::Conflict(_))
+    ));
 
     let mut altered_bytes = append;
     altered_bytes.instruction_bytes -= 1;
     altered_bytes.instruction_sha256 = Some(digest(&original[..original.len() - 1]));
     altered_bytes = altered_bytes.seal();
-    assert!(Workspace::apply_agent_integration(&root, altered_bytes).is_err());
+    assert!(matches!(
+        Workspace::apply_agent_integration(&root, altered_bytes),
+        Err(Error::Conflict(_))
+    ));
     fs::remove_dir_all(root).unwrap();
 }

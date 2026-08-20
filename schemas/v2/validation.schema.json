@@ -14,12 +14,22 @@
       ]
     },
     "valid": { "type": "boolean" },
-    "errors": { "type": "array", "items": { "$ref": "../v1/types.schema.json#/$defs/text" } },
+    "errors": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "../v1/types.schema.json#/$defs/text" }
+    },
     "counts": { "$ref": "#/$defs/counts" },
     "agent_integration": { "$ref": "#/$defs/agentIntegrationStatus" }
   },
   "$defs": {
     "counts": {
+      "oneOf": [
+        { "type": "object", "maxProperties": 0 },
+        { "$ref": "#/$defs/completeCounts" }
+      ]
+    },
+    "completeCounts": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -129,8 +139,25 @@
   "allOf": [
     {
       "if": { "properties": { "valid": { "const": true } }, "required": ["valid"] },
-      "then": { "properties": { "errors": { "maxItems": 0 } } },
+      "then": {
+        "properties": {
+          "errors": { "maxItems": 0 },
+          "counts": { "$ref": "#/$defs/completeCounts" }
+        }
+      },
       "else": { "properties": { "errors": { "minItems": 1 } } }
+    },
+    {
+      "if": {
+        "properties": { "counts": { "maxProperties": 0 } },
+        "required": ["counts"]
+      },
+      "then": {
+        "properties": {
+          "authority": { "const": null },
+          "valid": { "const": false }
+        }
+      }
     }
   ]
 }

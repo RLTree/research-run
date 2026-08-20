@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{
-    ContributionProtocol, MAX_LIST_ITEMS, required_text, validate_id, validate_timestamp,
-    validate_workspace_locator,
+    ContributionProtocol, MAX_LIST_ITEMS, is_lowercase_sha256, required_text, validate_id,
+    validate_timestamp, validate_workspace_locator,
 };
 use crate::{Error, Result};
 
@@ -173,11 +173,7 @@ impl ContextBundle {
         }
         validate_id(&self.project_id, "handoff project_id")?;
         if self.workspace_id.as_deref().is_some_and(|workspace_id| {
-            !workspace_id.is_empty()
-                && (workspace_id.len() != 64
-                    || !workspace_id
-                        .bytes()
-                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
+            !workspace_id.is_empty() && !is_lowercase_sha256(workspace_id)
         }) {
             return Err(Error::invalid(
                 "handoff workspace_id",

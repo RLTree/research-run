@@ -35,7 +35,7 @@ pub use records::{
     Assessment, Authorship, ClaimRecord, EvidenceLink, Outcome, ProjectManifest, SourceProvenance,
     SourceRecord, Stance,
 };
-pub(crate) use validation::validate_timestamp;
+pub(crate) use validation::{is_lowercase_sha256, validate_timestamp};
 pub use validation::{required_text, validate_id, validate_workspace_locator};
 
 pub const FORMAT_VERSION: u32 = 1;
