@@ -146,12 +146,10 @@ impl Workspace {
                 let agent_integration = match self.agent_integration_status_from_snapshot(&snapshot)
                 {
                     Ok(status) => status,
-                    Err(error) => {
-                        errors.push(error.to_string());
-                        AgentIntegrationStatus::unavailable(error.to_string(), true)
-                    }
+                    Err(error) => AgentIntegrationStatus::unavailable(error.to_string(), true),
                 };
                 ValidationResult {
+                    schema_version: 2,
                     valid: errors.is_empty(),
                     errors,
                     counts,
@@ -161,6 +159,7 @@ impl Workspace {
             Err(error) => {
                 let diagnostic = error.to_string();
                 ValidationResult {
+                    schema_version: 2,
                     valid: false,
                     errors: vec![diagnostic.clone()],
                     counts: BTreeMap::new(),

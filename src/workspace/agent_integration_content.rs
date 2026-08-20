@@ -1,4 +1,4 @@
-use crate::domain::AgentIntegrationOperation;
+use crate::domain::{AgentIntegrationOperation, digest};
 use crate::{Error, Result};
 
 use super::Snapshot;
@@ -66,6 +66,40 @@ pub(super) fn compose_instruction(
     }
     content.extend_from_slice(block.as_bytes());
     Ok(content)
+}
+
+pub(super) fn compose_planned_instruction(
+    current: &[u8],
+    block: &str,
+    operation: AgentIntegrationOperation,
+) -> Result<Vec<u8>> {
+    let mut content = compose_instruction(current, block, operation)?;
+    if operation == AgentIntegrationOperation::NoOp {
+        return Ok(content);
+    }
+    let original_sha256 = if operation == AgentIntegrationOperation::Create {
+        "missing".to_owned()
+    } else {
+        digest(current)
+    };
+    content.extend_from_slice(
+        format!(
+            "<!-- research-run:agent-integration-installation:v1 operation={} instruction-bytes={} instruction-sha256={} -->\n",
+            operation_name(operation),
+            current.len(),
+            original_sha256,
+        )
+        .as_bytes(),
+    );
+    Ok(content)
+}
+
+fn operation_name(operation: AgentIntegrationOperation) -> &'static str {
+    match operation {
+        AgentIntegrationOperation::Create => "create",
+        AgentIntegrationOperation::Append => "append",
+        AgentIntegrationOperation::NoOp => "no-op",
+    }
 }
 
 pub(super) fn managed_block(snapshot: &Snapshot, manifest_sha: &str, protocol_sha: &str) -> String {

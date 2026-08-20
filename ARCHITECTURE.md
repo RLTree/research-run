@@ -87,8 +87,11 @@ Identical retry is a no-op. The installed block requires bounded retrieval,
 typed CLI contributions, no generic canonical JSON writes, a real validation
 receipt, and v2 handoff. Readiness is scoped to a newly started agent run because
 instruction discovery occurs at run start; current-session loading remains
-unverified. This boundary does not claim universal agent compliance or prevent
-uncooperative filesystem mutation.
+unverified. Validation v2 reports readiness separately from canonical ledger
+validity. An unavailable instruction inspection leaves a structurally valid
+ledger valid while exposing readiness as unavailable; explicit
+`agent-integration status` still fails closed. This boundary does not claim
+universal agent compliance or prevent uncooperative filesystem mutation.
 
 ## Proof and governance
 
@@ -98,7 +101,10 @@ uncooperative filesystem mutation.
   package/install, and observation commands.
 - `AGENTS.md` routes the current contract; `STANDARD.md`, `policy.toml`, and
   `agent-standards/obligations.json` hold human and machine-readable law.
-- `schemas/v1/` and `examples/` describe the current portable data contract.
+- `schemas/v1/` preserves canonical and legacy projection contracts;
+  `schemas/v2/validation.schema.json` describes current validation output.
+  Validation v1 does not describe or accept the v2 readiness-bearing shape.
+- `examples/` provides the checked-in synthetic workspace.
 
 The repository has no network runtime, service, database, async executor,
 telemetry backend, user interface, Python product code, or release machinery.

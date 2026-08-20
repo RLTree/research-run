@@ -157,8 +157,14 @@ control and owner-run initialization establish who may choose the key. v0.1
 provides neither post-initialization enrollment nor key rotation.
 
 Canonical records live under `.research-run/` as deterministic, versioned JSON.
-The machine-readable v1 contracts are in [`schemas/v1`](schemas/v1). The complete
-synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
+Their machine-readable v1 contracts remain in [`schemas/v1`](schemas/v1).
+Current `validate --json` output is the explicitly versioned validation v2
+projection in [`schemas/v2`](schemas/v2); the unchanged v1 validation schema is
+retained only for legacy projections and does not describe v2 output. Ledger
+validity and agent-integration readiness are separate fields in v2, so an
+unavailable instruction inspection does not invalidate an otherwise valid
+canonical ledger. The complete synthetic example is in
+[`examples/synthetic-assay`](examples/synthetic-assay).
 
 ## Failure and recovery behavior
 

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v2/validation.schema.json",
+  "title": "Research Run validation projection v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "valid", "errors", "counts", "agent_integration"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "valid": { "type": "boolean" },
+    "errors": { "type": "array", "items": { "$ref": "../v1/types.schema.json#/$defs/text" } },
+    "counts": { "$ref": "#/$defs/counts" },
+    "agent_integration": { "$ref": "#/$defs/agentIntegrationStatus" }
+  },
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "claim": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "evidence": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "experiment": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "review": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "review-authority": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "inventory": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "knowledge": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "relationship": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "migration": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "contribution-protocol": { "const": 1 }
+      }
+    },
+    "agentIntegrationStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_installed", "instruction_contract_installed", "agent_integration_ready",
+        "ready_scope", "instruction_path", "current_session_loaded",
+        "fresh_session_required", "diagnostic"
+      ],
+      "properties": {
+        "protocol_installed": { "type": "boolean" },
+        "instruction_contract_installed": { "type": "boolean" },
+        "agent_integration_ready": { "type": "boolean" },
+        "ready_scope": { "enum": ["new-agent-run", "unavailable"] },
+        "instruction_path": { "type": "string" },
+        "current_session_loaded": { "const": "unverified" },
+        "fresh_session_required": { "type": "boolean" },
+        "diagnostic": { "$ref": "../v1/types.schema.json#/$defs/text" }
+      }
+    }
+  }
+}

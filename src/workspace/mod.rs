@@ -13,6 +13,7 @@ use crate::domain::{
 mod agent_integration;
 mod agent_integration_content;
 mod agent_integration_publication;
+mod agent_integration_recovery;
 mod agent_integration_types;
 mod inventory;
 mod inventory_authority;
@@ -149,6 +150,7 @@ pub struct Workspace {
 
 #[derive(Debug, Serialize)]
 pub struct ValidationResult {
+    pub schema_version: u32,
     pub valid: bool,
     pub errors: Vec<String>,
     pub counts: BTreeMap<&'static str, usize>,

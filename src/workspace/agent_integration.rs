@@ -5,17 +5,17 @@ use crate::domain::{AgentIntegrationOperation, AgentIntegrationPlan, FORMAT_VERS
 use crate::{Error, Result};
 
 use super::agent_integration_content::{
-    InstructionAssessment, assess_instruction, compose_instruction, managed_block,
+    InstructionAssessment, assess_instruction, compose_planned_instruction, managed_block,
 };
-use super::agent_integration_publication::publish_instruction;
+use super::agent_integration_publication::{
+    ensure_no_instruction_pending, publish_instruction, recover_instruction_pending,
+};
+use super::agent_integration_recovery::identical_retry;
 use super::agent_integration_types::{InstructionFile, MAX_INSTRUCTION_BYTES};
 use super::path_safety::reject_symlink_chain;
 use super::storage::{parse_json, read_bounded_with_limit};
 use super::write_lock::WorkspaceWriteLock;
-use super::{
-    AgentIntegrationApplyResult, AgentIntegrationStatus, CONTRIBUTION_PROTOCOL_DIRECTORY, Snapshot,
-    Workspace,
-};
+use super::{AgentIntegrationApplyResult, AgentIntegrationStatus, Snapshot, Workspace};
 
 impl Workspace {
     pub fn plan_agent_integration(root: &Path) -> Result<AgentIntegrationPlan> {
@@ -39,13 +39,30 @@ impl Workspace {
         let workspace = Self::for_recovery(root)?;
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
         let snapshot = workspace.load_snapshot()?;
+        let instruction_path = workspace.active_instruction_path()?;
+        if !workspace.agent_integration_plan_has_current_authority(
+            &snapshot,
+            &instruction_path,
+            &plan,
+        )? {
+            return Err(Error::Conflict(
+                "agent integration plan drifted; generate a new plan before apply".to_owned(),
+            ));
+        }
+        recover_instruction_pending(&instruction_path, &plan)?;
         let current = workspace.build_agent_integration_plan(&snapshot)?;
         if current == plan {
+            if plan.operation == AgentIntegrationOperation::NoOp {
+                return Ok(apply_result(&plan, false));
+            }
             inject_instruction_drift(&workspace.root.join(&plan.instruction_path));
             let instruction =
                 read_optional_instruction(&workspace.root.join(&plan.instruction_path))?;
-            let content =
-                compose_instruction(instruction.bytes(), &plan.managed_block, plan.operation)?;
+            let content = compose_planned_instruction(
+                instruction.bytes(),
+                &plan.managed_block,
+                plan.operation,
+            )?;
             if digest(&content) != plan.prospective_sha256 {
                 return Err(Error::Conflict(
                     "agent integration prospective content drifted before apply".to_owned(),
@@ -58,7 +75,7 @@ impl Workspace {
             )?;
             return Ok(apply_result(&plan, changed));
         }
-        if identical_retry(&plan, &current) {
+        if identical_retry(&plan, &current, &instruction_path)? {
             return Ok(apply_result(&plan, false));
         }
         Err(Error::Conflict(
@@ -85,7 +102,8 @@ impl Workspace {
         snapshot: &Snapshot,
     ) -> Result<AgentIntegrationStatus> {
         let path = self.active_instruction_path()?;
-        let (manifest_sha, protocol_sha) = self.authority_digests()?;
+        ensure_no_instruction_pending(&path)?;
+        let (manifest_sha, protocol_sha) = self.agent_integration_authority_digests()?;
         let block = managed_block(snapshot, &manifest_sha, &protocol_sha);
         let bytes = read_optional_instruction(&path)?;
         let assessment = assess_instruction(bytes.bytes(), bytes.exists(), &block)?;
@@ -118,7 +136,8 @@ impl Workspace {
 
     fn build_agent_integration_plan(&self, snapshot: &Snapshot) -> Result<AgentIntegrationPlan> {
         let path = self.active_instruction_path()?;
-        let (manifest_sha, protocol_sha) = self.authority_digests()?;
+        ensure_no_instruction_pending(&path)?;
+        let (manifest_sha, protocol_sha) = self.agent_integration_authority_digests()?;
         let block = managed_block(snapshot, &manifest_sha, &protocol_sha);
         let current = read_optional_instruction(&path)?;
         let assessment = assess_instruction(current.bytes(), current.exists(), &block)?;
@@ -128,7 +147,12 @@ impl Workspace {
             InstructionAssessment::Integrated => AgentIntegrationOperation::NoOp,
             InstructionAssessment::Conflict(reason) => return Err(Error::Conflict(reason)),
         };
-        let prospective = compose_instruction(current.bytes(), &block, operation)?;
+        let prospective = compose_planned_instruction(current.bytes(), &block, operation)?;
+        if prospective.len() as u64 > MAX_INSTRUCTION_BYTES {
+            return Err(Error::Budget(format!(
+                "project instructions exceed the {MAX_INSTRUCTION_BYTES} byte budget"
+            )));
+        }
         Ok(AgentIntegrationPlan {
             schema_version: FORMAT_VERSION,
             kind: "agent-integration-plan".to_owned(),
@@ -163,24 +187,9 @@ impl Workspace {
             )),
         }
     }
-
-    fn authority_digests(&self) -> Result<(String, String)> {
-        let manifest = authority_digest(
-            &self.state.join("manifest.json"),
-            "read agent integration manifest digest",
-        )?;
-        let protocol = authority_digest(
-            &self
-                .state
-                .join(CONTRIBUTION_PROTOCOL_DIRECTORY)
-                .join("agent-contribution.json"),
-            "read agent integration protocol digest",
-        )?;
-        Ok((manifest, protocol))
-    }
 }
 
-fn read_optional_instruction(path: &Path) -> Result<InstructionFile> {
+pub(super) fn read_optional_instruction(path: &Path) -> Result<InstructionFile> {
     reject_symlink_chain(path)?;
     let metadata = if super::injected_storage_failure("inspect agent instruction") {
         Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
@@ -200,17 +209,6 @@ fn read_optional_instruction(path: &Path) -> Result<InstructionFile> {
     }
 }
 
-fn authority_digest(path: &Path, injection_point: &'static str) -> Result<String> {
-    if super::injected_storage_failure(injection_point) {
-        return Err(Error::io(
-            injection_point,
-            path,
-            std::io::Error::other("injected storage failure"),
-        ));
-    }
-    read_bounded_with_limit(path, MAX_INSTRUCTION_BYTES).map(|bytes| digest(&bytes))
-}
-
 #[cfg(any(test, coverage))]
 fn inject_instruction_drift(path: &Path) {
     if super::take_storage_failure("agent instruction drift after plan") {
@@ -221,18 +219,7 @@ fn inject_instruction_drift(path: &Path) {
 #[cfg(not(any(test, coverage)))]
 fn inject_instruction_drift(_path: &Path) {}
 
-fn identical_retry(previous: &AgentIntegrationPlan, current: &AgentIntegrationPlan) -> bool {
-    current.operation == AgentIntegrationOperation::NoOp
-        && previous.project_id == current.project_id
-        && previous.workspace_id == current.workspace_id
-        && previous.manifest_sha256 == current.manifest_sha256
-        && previous.protocol_sha256 == current.protocol_sha256
-        && previous.instruction_path == current.instruction_path
-        && previous.managed_block_sha256 == current.managed_block_sha256
-        && previous.prospective_sha256 == current.prospective_sha256
-}
-
-fn relative_name(path: &Path) -> String {
+pub(super) fn relative_name(path: &Path) -> String {
     path.file_name()
         .expect("active instruction paths have a filename")
         .to_string_lossy()
