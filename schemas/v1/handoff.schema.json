@@ -59,7 +59,28 @@
       "if": { "properties": { "schema_version": { "const": 2 } } },
       "then": {
         "required": ["validation"],
-        "properties": { "context": { "required": ["workspace_id", "contribution_protocol"] } }
+        "properties": {
+          "context": {
+            "required": ["workspace_id", "contribution_protocol"],
+            "properties": {
+              "workspace_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          },
+          "validation": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "authority": {
+                    "type": "object",
+                    "properties": {
+                      "workspace_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   ],
