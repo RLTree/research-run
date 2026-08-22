@@ -27,7 +27,7 @@ runtime dependency budget is deliberately small:
 
 - `clap`: typed public CLI parsing and generated help;
 - `serde`: typed domain serialization and deserialization;
-- `serde_json`: deterministic, human-readable canonical JSON.
+- `serde_json`: deterministic, human-readable canonical JSON;
 - `sha2`: portable SHA-256 material identity for byte-preserving retrofit and
   reconciliation plans; fingerprints detect exact content identity but do not
   infer scientific meaning.
@@ -36,11 +36,14 @@ runtime dependency budget is deliberately small:
   stores a review private key.
 - `getrandom`: generate an immutable 256-bit workspace authorization-domain ID
   during initialization.
+- `rustix` 1.1.4 with `fs`: safe, descriptor-anchored atomic exchange for
+  supported Linux and macOS project-instruction append publication.
 
-No async runtime, database, network client, logging/telemetry stack, temporary
-file crate, schema framework, or UI dependency is justified by the v0.1 job.
-Standard-library filesystem primitives provide bounded reads and atomic same-
-directory publication.
+No async runtime, database, network client, logging/telemetry stack, production
+schema framework, or UI dependency is justified by the v0.1 job. Standard-
+library filesystem primitives provide bounded reads and ordinary no-clobber
+publication; the narrowly pinned `rustix` surface owns atomic instruction-file
+exchange without weakening `unsafe_code = "forbid"`.
 
 ## Product and security invariants
 
@@ -86,13 +89,20 @@ directory publication.
   content, and prospective bytes with SHA-256. Apply preserves existing
   instructions, is confined to `AGENTS.md` or `AGENTS.override.md`, rejects
   symlinks, drift, and conflicting managed content, and is idempotent on
-  identical retry. Append publication first moves the live instruction file
-  into a unique same-directory transaction, then uses a create-only hard link
-  for the reviewed bytes. A concurrent canonical claimant is never replaced;
-  the reviewed, displaced, and claimant bytes remain distinct for fail-closed
-  recovery. Readiness is only for a fresh agent run/session;
-  the current session remains unverified. This proves no universal compliance
-  and cannot prevent every out-of-band write.
+  identical retry. Append stages independently durable version, original `O`,
+  reviewed `P`, and exchange=`P` witnesses with the reviewed Unix mode. On
+  Linux and macOS it exchanges the transaction leaf and canonical instruction
+  leaf atomically through opened, identity-checked directory descriptors; the
+  canonical pathname remains bound throughout the supported exchange. There is
+  no non-atomic fallback. Pre- and post-exchange directories are synced and
+  recovery accepts only exact versioned `canonical=O/exchange=P` or
+  `canonical=P/exchange=O` states. Legacy, unsupported, unknown, malformed,
+  impossible, and uncertain states fail closed and retain transaction evidence.
+  The preservation claim covers exact bytes and Unix mode only, not owner,
+  timestamps, xattrs, ACLs, writes through already-open descriptors, or every
+  uncooperative filesystem writer. Readiness is only for a fresh agent
+  run/session; the current session remains unverified. This proves no universal
+  compliance.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
 - Review preparation is read-only. The repository owner anchors the one Ed25519

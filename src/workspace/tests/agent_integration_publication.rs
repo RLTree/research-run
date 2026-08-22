@@ -42,7 +42,7 @@ fn instruction_publication_covers_noop_races_and_atomic_failures() {
         "create pending record",
         "inspect project instruction permissions",
         "replace project instructions",
-        "open record directory for sync#2",
+        "sync project instruction root after exchange",
     ] {
         fs::write(&target, b"before").unwrap();
         inject_storage_failure(point);
@@ -53,7 +53,7 @@ fn instruction_publication_covers_noop_races_and_atomic_failures() {
             b"before",
         )
         .expect_err(point);
-        if point == "open record directory for sync#2" {
+        if point == "sync project instruction root after exchange" {
             assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
             assert_eq!(fs::read(&target).unwrap(), b"after");
         } else {
@@ -100,20 +100,45 @@ fn append_publication_preserves_concurrently_observed_instruction_bytes() {
     )
     .expect_err("concurrent canonical claimant must fail closed");
     assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
-    assert_eq!(fs::read(&target).unwrap(), b"concurrent target claimant");
+    assert_eq!(
+        fs::read(&target).unwrap(),
+        b"reviewed source\nmanaged block"
+    );
     let transaction = fs::read_dir(&root)
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .find(|path| path.extension().is_some_and(|extension| extension == "txn"))
         .expect("preserved append transaction");
     assert_eq!(
-        fs::read(transaction.join("source")).unwrap(),
+        fs::read(transaction.join("original")).unwrap(),
         b"reviewed source"
     );
     assert_eq!(
-        fs::read(transaction.join("planned")).unwrap(),
+        fs::read(transaction.join("reviewed")).unwrap(),
         b"reviewed source\nmanaged block"
     );
+    assert_eq!(
+        fs::read(transaction.join("exchange")).unwrap(),
+        b"concurrent target claimant"
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        let target_metadata = fs::metadata(&target).unwrap();
+        let original_metadata = fs::metadata(transaction.join("original")).unwrap();
+        let reviewed_metadata = fs::metadata(transaction.join("reviewed")).unwrap();
+        let exchange_metadata = fs::metadata(transaction.join("exchange")).unwrap();
+        assert_eq!(original_metadata.nlink(), 1);
+        assert_eq!(reviewed_metadata.nlink(), 1);
+        assert_eq!(exchange_metadata.nlink(), 1);
+        assert_ne!(original_metadata.ino(), reviewed_metadata.ino());
+        assert_ne!(original_metadata.ino(), exchange_metadata.ino());
+        assert_ne!(reviewed_metadata.ino(), exchange_metadata.ino());
+        assert_eq!(target_metadata.mode(), original_metadata.mode());
+        assert_eq!(target_metadata.mode(), reviewed_metadata.mode());
+        assert_eq!(target_metadata.mode(), exchange_metadata.mode());
+    }
     fs::remove_dir_all(root).unwrap();
 }
 

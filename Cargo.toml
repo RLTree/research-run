@@ -16,6 +16,7 @@ clap = { version = "4.5.41", features = ["derive"] }
 ed25519-dalek = "2.2.0"
 getrandom = "0.2.17"
 libc = "0.2.186"
+rustix = { version = "=1.1.4", features = ["fs"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.141"
 sha2 = "0.10.9"

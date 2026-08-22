@@ -83,11 +83,20 @@ managed block, prospective digest, and plan digest. Apply rechecks the plan
 under the canonical workspace lock, confines the target to those two root
 filenames, rejects symlinks, drift, and conflicting markers, preserves existing
 instruction bytes, and publishes the resulting instruction file atomically.
-Append uses a same-directory transaction: the observed source is moved out of
-the canonical name before a create-only link installs reviewed bytes. If a
-concurrent writer claims the canonical name, its bytes are not replaced and the
-transaction retains both the reviewed and displaced bytes for explicit retry.
-Identical retry is a no-op. The installed block requires bounded retrieval,
+Append stages independently durable version, original `O`, reviewed `P`, and
+exchange=`P` files inside a unique same-directory transaction and preserves the
+reviewed Unix mode. On Linux and macOS, `rustix::fs::renameat_with` exchanges the
+transaction and canonical leaves atomically relative to opened, identity-checked
+directory descriptors; the canonical pathname remains continuously bound and
+there is no ordinary-rename, link, or move fallback. The transaction and root
+directories are synced before and after exchange. Recovery advances or finishes
+only exact `canonical=O/exchange=P` and `canonical=P/exchange=O` states whose
+version, plan binding, bytes, identities, and modes agree. It classifies legacy
+layouts separately and retains unknown, malformed, impossible, unsupported, or
+uncertain state. Identical retry is a no-op. The preservation claim is exact
+bytes plus Unix mode, not ownership, timestamps, xattrs, ACLs, universal safety
+against direct writers, or protection from writes through already-open file
+descriptors. The installed block requires bounded retrieval,
 typed CLI contributions, no generic canonical JSON writes, a real validation
 receipt, and v2 handoff. Readiness is scoped to a newly started agent run because
 instruction discovery occurs at run start; current-session loading remains

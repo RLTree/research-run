@@ -1,103 +1,87 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::domain::{AgentIntegrationPlan, digest};
 use crate::{Error, Result};
 
 use super::agent_integration_recovery::plan_transition_matches;
-use super::agent_integration_transaction::{
-    ambiguous, cleanup_after_publication, link_planned, restore_source,
-};
+use super::agent_integration_transaction::witnesses::{WitnessPaths, verify_witnesses};
+use super::agent_integration_transaction::{exchange_and_finish, finish_verified_exchange};
 use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::path_safety::reject_symlink_chain;
-use super::storage::{map_io, read_bounded_with_limit, sync_directory};
+use super::storage::{map_io, read_bounded_with_limit};
+
+const VERSIONED_NAMES: [&str; 4] = ["exchange", "original", "reviewed", "version"];
+const LEGACY_NAMES: [&str; 2] = ["planned", "source"];
+
+enum TransactionLayout {
+    Versioned,
+    Legacy,
+}
 
 pub(super) fn recover_transaction(
     transaction: &Path,
     target: &Path,
     plan: &AgentIntegrationPlan,
 ) -> Result<()> {
-    let (planned, source) = inspect_transaction(transaction)?;
-    let target_bytes = read_optional(target)?;
-    let planned_bytes = planned
-        .as_ref()
-        .map(|path| read_bounded_with_limit(path, MAX_INSTRUCTION_BYTES))
-        .transpose()?;
-    if let Some(bytes) = planned_bytes.as_deref()
-        && !plan_transition_matches(plan, bytes)?
-    {
-        return Err(Error::Conflict(format!(
-            "interrupted project instruction content does not match the reviewed plan: {}",
+    let layout = inspect_layout(transaction).map_err(|error| match error {
+        error @ Error::AmbiguousEffect(_) => error,
+        error => retained_state(transaction, &error.to_string()),
+    })?;
+    match layout {
+        TransactionLayout::Versioned => recover_versioned(transaction, target, plan),
+        TransactionLayout::Legacy => Err(Error::AmbiguousEffect(format!(
+            "legacy project instruction transaction requires explicit inspection and is retained at {}",
             transaction.display()
-        )));
+        ))),
     }
-    let source_bytes = source
-        .as_ref()
-        .map(|path| read_bounded_with_limit(path, MAX_INSTRUCTION_BYTES))
-        .transpose()?;
-    recover_state(
-        transaction,
-        target,
-        plan,
-        target_bytes.as_deref(),
-        planned_bytes.as_deref(),
-        source_bytes.as_deref(),
-    )
 }
 
-fn recover_state(
-    transaction: &Path,
-    target: &Path,
-    plan: &AgentIntegrationPlan,
-    target_bytes: Option<&[u8]>,
-    planned: Option<&[u8]>,
-    source: Option<&[u8]>,
-) -> Result<()> {
-    let source_matches = source.is_none_or(|bytes| source_matches_plan(plan, bytes));
-    let target_is_planned = planned.is_some_and(|bytes| target_bytes == Some(bytes))
-        || target_bytes.is_some_and(|bytes| digest(bytes) == plan.prospective_sha256);
-    if !source_matches {
-        if target_bytes.is_none() {
-            restore_source(target, &transaction.join("source"), transaction)?;
-            return Err(Error::Conflict(
-                "concurrent project instruction bytes were restored; generate a new plan"
-                    .to_owned(),
-            ));
-        }
+fn recover_versioned(transaction: &Path, target: &Path, plan: &AgentIntegrationPlan) -> Result<()> {
+    let paths = WitnessPaths::new(transaction);
+    let original = read_witness(transaction, &paths.original)?;
+    let reviewed = read_witness(transaction, &paths.reviewed)?;
+    let exchanged = read_witness(transaction, &paths.exchange)?;
+    let reviewed_matches = plan_transition_matches(plan, &reviewed)
+        .map_err(|error| retained_state(transaction, &error.to_string()))?;
+    if !source_matches_plan(plan, &original) || !reviewed_matches {
         return Err(Error::AmbiguousEffect(format!(
-            "interrupted append contains concurrent instruction bytes at {}",
+            "project instruction transaction does not match the reviewed plan at {}",
             transaction.display()
         )));
     }
-    match (source, planned, target_bytes, target_is_planned) {
-        (Some(_), Some(_), None, _) => {
-            link_planned(target, &transaction.join("planned"))?;
-            sync_directory(target.parent().expect("instructions have a parent"))
-                .map_err(|error| ambiguous(target, error))?;
-        }
-        (Some(_), _, Some(_), true) | (None, _, Some(_), true) => {}
-        (Some(_), None, None, _) => {
-            restore_source(target, &transaction.join("source"), transaction)?;
-            return Err(Error::Conflict(
-                "interrupted append was rolled back; retry the reviewed plan".to_owned(),
-            ));
-        }
-        (Some(preserved), None, Some(current), false) if preserved == current => {}
-        (None, Some(_), Some(current), false) if source_matches_plan(plan, current) => {}
-        (None, None, Some(current), false) if source_matches_plan(plan, current) => {}
-        (None, Some(_), None, _) | (None, None, None, _) => {}
-        _ => {
-            return Err(Error::AmbiguousEffect(format!(
-                "project instruction state conflicts with interrupted publication at {}",
-                transaction.display()
-            )));
-        }
+    let Some(current) =
+        read_optional(target).map_err(|error| retained_state(transaction, &error.to_string()))?
+    else {
+        return Err(retained_state(
+            transaction,
+            "canonical instruction path is missing",
+        ));
+    };
+    if current == original && exchanged == reviewed {
+        verify_witnesses(target, &paths, &original, &reviewed, &reviewed)
+            .map_err(|error| retained_state(transaction, &error.to_string()))?;
+        return exchange_and_finish(target, transaction, &original, &reviewed);
     }
-    cleanup_after_publication(target, transaction)
+    if current == reviewed && exchanged == original {
+        verify_witnesses(target, &paths, &original, &reviewed, &original)
+            .map_err(|error| retained_state(transaction, &error.to_string()))?;
+        return finish_verified_exchange(target, transaction, &original, &reviewed);
+    }
+    Err(retained_state(
+        transaction,
+        "canonical and exchange bytes are not an exact pre- or post-exchange state",
+    ))
 }
 
-fn inspect_transaction(transaction: &Path) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
+fn read_witness(transaction: &Path, path: &Path) -> Result<Vec<u8>> {
+    read_bounded_with_limit(path, MAX_INSTRUCTION_BYTES)
+        .map_err(|error| retained_state(transaction, &error.to_string()))
+}
+
+fn inspect_layout(transaction: &Path) -> Result<TransactionLayout> {
     reject_symlink_chain(transaction)?;
     let metadata = map_io(
         fs::symlink_metadata(transaction),
@@ -110,8 +94,7 @@ fn inspect_transaction(transaction: &Path) -> Result<(Option<PathBuf>, Option<Pa
             format!("{} is not a directory", transaction.display()),
         ));
     }
-    let mut planned = None;
-    let mut source = None;
+    let mut names = BTreeSet::new();
     for entry in map_io(
         fs::read_dir(transaction),
         "inspect project instruction transaction",
@@ -122,31 +105,47 @@ fn inspect_transaction(transaction: &Path) -> Result<(Option<PathBuf>, Option<Pa
             "inspect project instruction transaction",
             transaction,
         )?;
-        let path = entry.path();
-        reject_symlink_chain(&path)?;
-        let file = map_io(
-            fs::symlink_metadata(&path),
-            "inspect transaction file",
-            &path,
-        )?;
-        if !file.is_file() {
-            return Err(Error::invalid(
-                "project instruction transaction",
-                format!("{} is not a regular file", path.display()),
-            ));
-        }
-        match entry.file_name().to_str() {
-            Some("planned") if planned.is_none() => planned = Some(path),
-            Some("source") if source.is_none() => source = Some(path),
-            _ => {
-                return Err(Error::AmbiguousEffect(format!(
-                    "unexpected project instruction transaction content at {}",
-                    path.display()
-                )));
-            }
-        }
+        inspect_child(transaction, &entry.path())?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            return Err(retained_state(transaction, "non-UTF-8 transaction child"));
+        };
+        names.insert(name);
     }
-    Ok((planned, source))
+    classify_names(transaction, &names)
+}
+
+fn inspect_child(transaction: &Path, path: &Path) -> Result<()> {
+    reject_symlink_chain(path)?;
+    let metadata = map_io(
+        fs::symlink_metadata(path),
+        "inspect transaction witness",
+        path,
+    )?;
+    if !metadata.is_file() {
+        return Err(retained_state(
+            transaction,
+            &format!(
+                "transaction child is not a regular file: {}",
+                path.display()
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn classify_names(transaction: &Path, names: &BTreeSet<String>) -> Result<TransactionLayout> {
+    let versioned: BTreeSet<String> = VERSIONED_NAMES.iter().map(ToString::to_string).collect();
+    let legacy: BTreeSet<String> = LEGACY_NAMES.iter().map(ToString::to_string).collect();
+    if names == &versioned {
+        return Ok(TransactionLayout::Versioned);
+    }
+    if !names.is_empty() && names.is_subset(&legacy) {
+        return Ok(TransactionLayout::Legacy);
+    }
+    Err(retained_state(
+        transaction,
+        "transaction children are missing, mixed, or unexpected",
+    ))
 }
 
 fn read_optional(target: &Path) -> Result<Option<Vec<u8>>> {
@@ -167,6 +166,13 @@ fn read_optional(target: &Path) -> Result<Option<Vec<u8>>> {
 fn source_matches_plan(plan: &AgentIntegrationPlan, bytes: &[u8]) -> bool {
     bytes.len() as u64 == plan.instruction_bytes
         && plan.instruction_sha256.as_deref() == Some(digest(bytes).as_str())
+}
+
+fn retained_state(transaction: &Path, reason: &str) -> Error {
+    Error::AmbiguousEffect(format!(
+        "project instruction transaction is retained at {}: {reason}",
+        transaction.display()
+    ))
 }
 
 #[cfg(all(coverage, test))]
