@@ -17,6 +17,9 @@ use super::storage::{parse_json, read_bounded_with_limit};
 use super::write_lock::WorkspaceWriteLock;
 use super::{AgentIntegrationApplyResult, Snapshot, Workspace};
 
+#[path = "agent_integration_private_staging.rs"]
+pub(super) mod private_staging;
+
 impl Workspace {
     pub fn plan_agent_integration(root: &Path) -> Result<AgentIntegrationPlan> {
         let workspace = Self::for_recovery(root)?;

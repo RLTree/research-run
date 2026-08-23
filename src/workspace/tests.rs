@@ -25,6 +25,8 @@ mod agent_integration_publication;
 mod agent_integration_recovery;
 #[path = "tests/agent_integration_transaction.rs"]
 mod agent_integration_transaction;
+#[path = "tests/agent_integration_transaction_permissions.rs"]
+mod agent_integration_transaction_permissions;
 #[path = "tests/review_binding_policy.rs"]
 mod review_binding_policy;
 #[path = "tests/review_signing.rs"]

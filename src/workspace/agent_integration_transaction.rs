@@ -19,7 +19,7 @@ pub(super) mod directories;
 #[path = "agent_integration_transaction_receipt.rs"]
 mod receipt;
 #[path = "agent_integration_transaction_receipt_io.rs"]
-mod receipt_io;
+pub(super) mod receipt_io;
 #[path = "agent_integration_transaction_witnesses.rs"]
 pub(super) mod witnesses;
 
@@ -29,6 +29,7 @@ use super::storage::{map_io, read_bounded_with_limit, sync_directory};
 use atomic_exchange::{ensure_exchange_platform, exchange};
 use cleanup::{complete_publication, sync_exchanged_state};
 use cleanup_effects::{ambiguous, open_recovered_handles};
+use directories::create_transaction_directory;
 use witnesses::{
     TRANSACTION_VERSION, WitnessPaths, stage_witnesses, sync_witnesses, verify_witnesses,
 };
@@ -123,13 +124,8 @@ pub(super) fn finish_verified_exchange(
     )
 }
 
-fn create_transaction(transaction: &Path) -> Result<()> {
-    map_io(
-        fs::create_dir(transaction),
-        "create project instruction transaction",
-        transaction,
-    )?;
-    sync_directory(transaction.parent().expect("transaction has a parent"))
+pub(in crate::workspace) fn create_transaction(transaction: &Path) -> Result<()> {
+    create_transaction_directory(transaction)
 }
 
 fn transaction_path(target: &Path) -> PathBuf {

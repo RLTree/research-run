@@ -1,17 +1,17 @@
-use std::ffi::OsStr;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{ffi::OsStr, fs};
 
 use crate::domain::{AgentIntegrationOperation, AgentIntegrationPlan, digest};
 use crate::{Error, Result};
 
+use super::agent_integration::private_staging::write_private_pending;
 use super::agent_integration_recovery::plan_transition_matches;
 use super::agent_integration_transaction::{cleanup::recover_completion, publish_append};
 use super::agent_integration_transaction_recovery::recover_transaction;
 use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::path_safety::reject_symlink_chain;
 use super::pending_cleanup::PendingCleanup;
-use super::publication::{pending_path, write_pending};
+use super::publication::pending_path;
 use super::storage::{map_io, read_bounded_with_limit, sync_directory};
 
 pub(super) fn publish_instruction(
@@ -32,7 +32,8 @@ pub(super) fn publish_instruction(
     }
     let temporary = pending_path(target);
     let mut cleanup = PendingCleanup::new(temporary.clone());
-    if let Err(error) = write_pending(&temporary, content) {
+    let parent = target.parent().expect("root instruction has a parent");
+    if let Err(error) = write_private_pending(parent, &temporary, content) {
         return Err(cleanup.after_failure(error));
     }
     let publication = create(target, &temporary, content);
@@ -40,7 +41,6 @@ pub(super) fn publish_instruction(
         Ok(changed) => changed,
         Err(error) => return Err(cleanup.after_failure(error)),
     };
-    let parent = target.parent().expect("root instruction has a parent");
     sync_directory(parent).map_err(|error| {
         Error::AmbiguousEffect(format!(
             "project instructions may be installed at {}; directory sync failed: {error}",

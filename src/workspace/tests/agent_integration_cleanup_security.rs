@@ -15,6 +15,7 @@ fn committed_cleanup_rejects_hardlinks_symlinks_extras_and_identity_conflicts() 
     for state in [
         "hardlink",
         "symlink",
+        "survivor-symlink",
         "extra",
         "canonical",
         "multiple",
@@ -40,6 +41,11 @@ fn committed_cleanup_rejects_hardlinks_symlinks_extras_and_identity_conflicts() 
                 fs::remove_file(&receipt).unwrap();
                 symlink(root.join("outside-receipt"), &receipt).unwrap();
             }
+            "survivor-symlink" => {
+                fs::remove_file(transaction.join("original")).unwrap();
+                fs::write(root.join("outside-original"), &original).unwrap();
+                symlink(root.join("outside-original"), transaction.join("original")).unwrap();
+            }
             "extra" => fs::write(transaction.join("unexpected"), b"x").unwrap(),
             "canonical" => fs::write(root.join("AGENTS.md"), b"changed").unwrap(),
             "multiple" => {
@@ -61,6 +67,7 @@ fn committed_cleanup_rejects_hardlinks_symlinks_extras_and_identity_conflicts() 
             &transaction,
             &receipt,
             &receipt_bytes,
+            &original,
             &planned,
         );
         assert!(
@@ -160,6 +167,7 @@ fn repair_test_state(
     transaction: &std::path::Path,
     receipt: &std::path::Path,
     receipt_bytes: &[u8],
+    original: &[u8],
     planned: &[u8],
 ) {
     match state {
@@ -167,6 +175,11 @@ fn repair_test_state(
         "symlink" => {
             fs::remove_file(receipt).unwrap();
             fs::hard_link(transaction.join("completion"), receipt).unwrap();
+        }
+        "survivor-symlink" => {
+            fs::remove_file(transaction.join("original")).unwrap();
+            fs::write(transaction.join("original"), original).unwrap();
+            fs::remove_file(root.join("outside-original")).unwrap();
         }
         "extra" => fs::remove_file(transaction.join("unexpected")).unwrap(),
         "canonical" => fs::write(root.join("AGENTS.md"), planned).unwrap(),

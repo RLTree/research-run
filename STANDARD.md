@@ -89,17 +89,27 @@ exchange without weakening `unsafe_code = "forbid"`.
   content, and prospective bytes with SHA-256. Apply preserves existing
   instructions, is confined to `AGENTS.md` or `AGENTS.override.md`, rejects
   symlinks, drift, and conflicting managed content, and is idempotent on
-  identical retry. Append stages independently durable version, original `O`,
-  reviewed `P`, and exchange=`P` witnesses with the reviewed Unix mode. On
-  Linux and macOS it exchanges the transaction leaf and canonical instruction
-  leaf atomically through opened, identity-checked directory descriptors; the
+  identical retry. Fresh-Create pending instructions and append transaction
+  leaves are created no broader than `0600`; the append transaction directory
+  is created no broader than `0700`. Append writes version, original `O`,
+  reviewed `P`, and exchange=`P` witnesses through their held creation
+  descriptors while private, then sets `O`, `P`, and exchange=`P` to the exact
+  reviewed Unix mode through those descriptors before the first durability
+  sync. The private `0700` transaction directory contains any witness whose
+  reviewed mode is broader than `0600`. On Linux and macOS it exchanges the
+  transaction leaf and canonical instruction leaf atomically through opened,
+  identity-checked directory descriptors; the
   canonical pathname remains bound throughout the supported exchange. There is
   no non-atomic canonical-publication fallback. The canonical `P` and exchanged
   exact observed bytes are synced before verification. Before any witness is
   removed, a versioned plan-bound completion record is staged and synced in the
   transaction, published create-only as one fd-relative hard link, then synced
-  with the root directory. A valid durable completion record authorizes
-  resumable partial cleanup; without it recovery accepts only exact full
+  with the root directory. Completion leaves are born no broader than `0600`
+  and their mode is set through the held descriptor before bytes are written.
+  Recovery opens recognized leaves fd-relatively with no-follow and nonblocking
+  flags, then rejects every non-regular leaf before read or sync. A valid durable
+  completion record authorizes resumable partial cleanup; without it recovery
+  accepts only exact full
   versioned `canonical=O/exchange=P` or `canonical=P/exchange=O` states. Legacy,
   unsupported, unknown, malformed, impossible, and uncertain states fail closed
   and retain the applicable full transaction or completion authority.

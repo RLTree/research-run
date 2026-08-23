@@ -23,7 +23,7 @@ pub(super) fn read_leaf(directory: &File, name: &OsStr, maximum: u64, path: &Pat
     let descriptor = openat(
         directory,
         name,
-        OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        OFlags::RDONLY | OFlags::NONBLOCK | OFlags::NOFOLLOW | OFlags::CLOEXEC,
         Mode::empty(),
     )
     .map_err(|error| {
@@ -105,7 +105,7 @@ pub(super) fn sync_leaf(
     let descriptor = openat(
         directory,
         name,
-        OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        OFlags::RDONLY | OFlags::NONBLOCK | OFlags::NOFOLLOW | OFlags::CLOEXEC,
         Mode::empty(),
     )
     .map_err(|error| Error::io("open project instruction leaf for sync", path, error.into()))?;

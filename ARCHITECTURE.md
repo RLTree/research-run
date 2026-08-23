@@ -83,16 +83,25 @@ managed block, prospective digest, and plan digest. Apply rechecks the plan
 under the canonical workspace lock, confines the target to those two root
 filenames, rejects symlinks, drift, and conflicting markers, preserves existing
 instruction bytes, and publishes the resulting instruction file atomically.
-Append stages independently durable version, original `O`, reviewed `P`, and
-exchange=`P` files inside a unique same-directory transaction and preserves the
-reviewed Unix mode. On Linux and macOS, `rustix::fs::renameat_with` exchanges the
+Fresh-Create pending instructions and append transaction leaves are born no
+broader than `0600`, and the append transaction directory is born no broader
+than `0700`. Append writes version, original `O`, reviewed `P`, and exchange=`P`
+through their held creation descriptors while private. Before the first
+durability sync it sets `O`, `P`, and exchange=`P` through those descriptors to
+the exact reviewed Unix mode; the private `0700` transaction directory contains
+any witness whose reviewed mode is broader than `0600`. On Linux and macOS,
+`rustix::fs::renameat_with` exchanges the
 transaction and canonical leaves atomically relative to opened, identity-checked
 directory descriptors; the canonical pathname remains continuously bound and
 there is no ordinary-rename, link, or move fallback for canonical publication.
 The canonical `P`, exchanged exact observed bytes, transaction, and root are
 synced after exchange. Cleanup starts only after a bounded versioned completion
 record is staged and synced inside the transaction, published create-only as an
-fd-relative hard link, and synced with the root directory. That plan-, byte-,
+fd-relative hard link, and synced with the root directory. Completion leaves are
+born no broader than `0600` and receive that mode through their held descriptor
+before content is written. Recovery opens recognized leaves fd-relatively with
+no-follow and nonblocking flags and rejects every non-regular leaf before read
+or sync. That plan-, byte-,
 mode-, target-, and transaction-bound record is the sole authority for partial
 or empty transaction cleanup; recovery re-syncs it before the next unlink. With
 no completion record, recovery advances or finishes only exact full

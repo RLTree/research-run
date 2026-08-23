@@ -16,8 +16,8 @@ fn exchange_and_durability_faults_retain_exact_retryable_states_without_fallback
         "sync transaction witness before exchange#5",
         "sync project instruction transaction after exchange",
         "sync project instruction root after exchange",
-        "inspect project instruction directory anchor#4",
         "inspect project instruction directory anchor#5",
+        "inspect project instruction directory anchor#6",
     ] {
         let (root, plan, original, planned) = fixture(point);
         inject_storage_failure(point);

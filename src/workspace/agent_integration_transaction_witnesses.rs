@@ -3,12 +3,15 @@ use std::path::Path;
 
 use crate::{Error, Result};
 
+use super::super::agent_integration::private_staging::{
+    create_private_file, set_unix_mode, sync_private_file, write_private_bytes,
+};
 use super::super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::super::path_safety::reject_symlink_chain;
-use super::super::publication::write_pending;
 use super::super::storage::{map_io, read_bounded_with_limit};
 #[cfg(not(unix))]
 use super::atomic_exchange::ensure_exchange_platform;
+use super::directories::{open_directory, verify_anchor};
 use super::sync_named_directory;
 
 pub(in crate::workspace) const PREVIOUS_TRANSACTION_VERSION: &[u8] =
@@ -59,11 +62,33 @@ pub(in crate::workspace) fn stage_witnesses(
             format!("{} is not a regular file", target.display()),
         ));
     }
-    write_pending(&paths.version, TRANSACTION_VERSION)?;
-    write_pending(&paths.original, original)?;
-    write_pending(&paths.reviewed, reviewed)?;
-    write_pending(&paths.exchange, reviewed)?;
-    preserve_mode(&metadata, paths)?;
+    let directory = open_directory(transaction)?;
+    verify_anchor(transaction, &directory)?;
+    let mut version_file = create_private_file(&directory, &paths.version)?;
+    let mut original_file = create_private_file(&directory, &paths.original)?;
+    let mut reviewed_file = create_private_file(&directory, &paths.reviewed)?;
+    let mut exchange_file = create_private_file(&directory, &paths.exchange)?;
+    write_private_bytes(&mut version_file, &paths.version, TRANSACTION_VERSION)?;
+    write_private_bytes(&mut original_file, &paths.original, original)?;
+    write_private_bytes(&mut reviewed_file, &paths.reviewed, reviewed)?;
+    write_private_bytes(&mut exchange_file, &paths.exchange, reviewed)?;
+    set_unix_mode(&version_file, &paths.version, 0o600)?;
+    preserve_mode(
+        &metadata,
+        [
+            (&original_file, paths.original.as_path()),
+            (&reviewed_file, paths.reviewed.as_path()),
+            (&exchange_file, paths.exchange.as_path()),
+        ],
+    )?;
+    for (file, path) in [
+        (&version_file, paths.version.as_path()),
+        (&original_file, paths.original.as_path()),
+        (&reviewed_file, paths.reviewed.as_path()),
+        (&exchange_file, paths.exchange.as_path()),
+    ] {
+        sync_private_file(file, path)?;
+    }
     verify_witnesses(
         target,
         paths,
@@ -104,11 +129,10 @@ pub(in crate::workspace) fn sync_witnesses(
 }
 
 #[cfg(unix)]
-fn preserve_mode(metadata: &fs::Metadata, paths: &WitnessPaths) -> Result<()> {
-    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+fn preserve_mode(metadata: &fs::Metadata, files: [(&File, &Path); 3]) -> Result<()> {
+    use std::os::unix::fs::MetadataExt;
 
-    let permissions = fs::Permissions::from_mode(metadata.mode());
-    for path in [&paths.original, &paths.reviewed, &paths.exchange] {
+    for (file, path) in files {
         if super::super::injected_storage_failure("preserve project instruction Unix mode") {
             return Err(Error::io(
                 "preserve project instruction Unix mode",
@@ -116,19 +140,13 @@ fn preserve_mode(metadata: &fs::Metadata, paths: &WitnessPaths) -> Result<()> {
                 std::io::Error::other("injected storage failure"),
             ));
         }
-        map_io(
-            fs::set_permissions(path, permissions.clone()),
-            "preserve project instruction Unix mode",
-            path,
-        )?;
-        let file = map_io(File::open(path), "open project instruction witness", path)?;
-        map_io(file.sync_all(), "sync project instruction witness", path)?;
+        set_unix_mode(file, path, metadata.mode())?;
     }
     Ok(())
 }
 
 #[cfg(not(unix))]
-fn preserve_mode(_: &fs::Metadata, _: &WitnessPaths) -> Result<()> {
+fn preserve_mode(_: &fs::Metadata, _: [(&File, &Path); 3]) -> Result<()> {
     ensure_exchange_platform()
 }
 

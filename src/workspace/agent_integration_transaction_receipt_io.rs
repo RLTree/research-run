@@ -14,7 +14,7 @@ use super::receipt::MAX_COMPLETION_RECEIPT_BYTES;
 
 pub(super) const COMPLETION_WITNESS: &str = "completion";
 
-pub(super) fn stage_receipt(
+pub(in crate::workspace) fn stage_receipt(
     transaction: &File,
     transaction_path: &Path,
     bytes: &[u8],
@@ -83,6 +83,7 @@ fn open_staged_receipt(transaction: &File) -> std::result::Result<File, Errno> {
 }
 
 fn write_staged_receipt(mut file: File, path: &Path, bytes: &[u8]) -> Result<()> {
+    set_receipt_mode(&file, path)?;
     if super::super::injected_storage_failure("write project instruction completion receipt") {
         return Err(injected(
             "write project instruction completion receipt",
@@ -94,7 +95,6 @@ fn write_staged_receipt(mut file: File, path: &Path, bytes: &[u8]) -> Result<()>
         "write project instruction completion receipt",
         path,
     )?;
-    set_receipt_mode(&file, path)?;
     if super::super::injected_storage_failure("sync project instruction completion receipt") {
         return Err(injected(
             "sync project instruction completion receipt",

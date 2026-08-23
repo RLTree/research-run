@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::{Error, Result};
 
 use super::super::path_safety::reject_symlink_chain;
+use super::super::storage::sync_directory;
 use super::super::storage::{map_io, same_file_identity};
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 use super::atomic_exchange::ensure_exchange_platform;
@@ -11,6 +12,36 @@ use super::atomic_exchange::ensure_exchange_platform;
 pub(in crate::workspace) struct ExchangeHandles {
     pub(in crate::workspace) root: File,
     pub(in crate::workspace) transaction: File,
+}
+
+#[cfg(unix)]
+pub(in crate::workspace) fn create_transaction_directory(path: &Path) -> Result<()> {
+    use std::os::unix::fs::{DirBuilderExt, MetadataExt};
+
+    let mut builder = fs::DirBuilder::new();
+    builder.mode(0o700);
+    map_io(
+        builder.create(path),
+        "create project instruction transaction",
+        path,
+    )?;
+    let metadata = map_io(
+        fs::symlink_metadata(path),
+        "inspect project instruction transaction permissions",
+        path,
+    )?;
+    if !metadata.is_dir() || metadata.mode() & 0o7777 & !0o700 != 0 {
+        return Err(Error::Conflict(format!(
+            "project instruction transaction permissions are too broad: {}",
+            path.display()
+        )));
+    }
+    sync_directory(path.parent().expect("transaction has a parent"))
+}
+
+#[cfg(not(unix))]
+pub(in crate::workspace) fn create_transaction_directory(_: &Path) -> Result<()> {
+    ensure_exchange_platform()
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
