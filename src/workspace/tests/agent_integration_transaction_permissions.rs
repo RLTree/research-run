@@ -4,6 +4,7 @@ use std::process::Command;
 
 use crate::domain::AgentIntegrationOperation;
 
+use super::super::agent_integration::private_staging::create_private_file;
 use super::super::agent_integration_publication::publish_instruction;
 use super::super::agent_integration_transaction::create_transaction;
 use super::super::agent_integration_transaction::directories::open_directory;
@@ -58,6 +59,7 @@ fn exercise_permission_boundaries(root: &Path) {
     assert!(stage_witnesses(&target, &transaction, &paths, b"original", b"reviewed").is_err());
     let transaction_handle = open_directory(&transaction).unwrap();
     stage_receipt(&transaction_handle, &transaction, b"completion").unwrap();
+    assert_private_create_collision(&transaction_handle, &transaction);
 
     let create_target = root.join("AGENTS.override.md");
     fs::write(&create_target, b"conflict").unwrap();
@@ -120,6 +122,14 @@ fn exercise_permission_boundaries(root: &Path) {
     ] {
         assert_eq!(fs::metadata(path).unwrap().permissions().mode(), expected);
     }
+}
+
+#[cfg(unix)]
+fn assert_private_create_collision(transaction: &fs::File, path: &Path) {
+    assert!(
+        create_private_file(transaction, &path.join("completion")).is_err(),
+        "private staging must preserve create-only witness identity"
+    );
 }
 
 #[cfg(unix)]
