@@ -6,68 +6,109 @@ use crate::domain::AgentIntegrationOperation;
 use super::super::agent_integration_publication::publish_instruction;
 use super::{inject_storage_failure, temporary};
 
+const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+
 #[test]
 fn instruction_publication_covers_noop_races_and_atomic_failures() {
     let root = temporary();
     let target = root.join("AGENTS.md");
-    assert!(!publish_instruction(&target, b"same", AgentIntegrationOperation::NoOp, b"").unwrap());
+    assert_basic_publication(&target);
+    assert_publication_faults(&root, &target);
+    assert_create_failure(&root, &target);
+    fs::remove_dir_all(root).unwrap();
+}
 
-    fs::write(&target, b"same").unwrap();
+fn assert_basic_publication(target: &std::path::Path) {
     assert!(
-        !publish_instruction(&target, b"same", AgentIntegrationOperation::Create, b"").unwrap()
-    );
-    assert_eq!(fs::read(&target).unwrap(), b"same");
-    assert!(
-        publish_instruction(
-            &target,
-            b"different",
-            AgentIntegrationOperation::Create,
-            b""
-        )
-        .is_err()
-    );
-    assert_eq!(fs::read(&target).unwrap(), b"same");
-    assert!(
-        publish_instruction(
-            &target,
-            b"replacement",
-            AgentIntegrationOperation::Append,
+        !publish_instruction(
+            target,
             b"same",
+            AgentIntegrationOperation::NoOp,
+            b"",
+            TEST_PLAN_SHA256,
         )
         .unwrap()
     );
-    assert_eq!(fs::read(&target).unwrap(), b"replacement");
 
+    fs::write(target, b"same").unwrap();
+    assert!(
+        !publish_instruction(
+            target,
+            b"same",
+            AgentIntegrationOperation::Create,
+            b"",
+            TEST_PLAN_SHA256,
+        )
+        .unwrap()
+    );
+    assert_eq!(fs::read(target).unwrap(), b"same");
+    assert!(
+        publish_instruction(
+            target,
+            b"different",
+            AgentIntegrationOperation::Create,
+            b"",
+            TEST_PLAN_SHA256,
+        )
+        .is_err()
+    );
+    assert_eq!(fs::read(target).unwrap(), b"same");
+    assert!(
+        publish_instruction(
+            target,
+            b"replacement",
+            AgentIntegrationOperation::Append,
+            b"same",
+            TEST_PLAN_SHA256,
+        )
+        .unwrap()
+    );
+    assert_eq!(fs::read(target).unwrap(), b"replacement");
+}
+
+fn assert_publication_faults(root: &std::path::Path, target: &std::path::Path) {
     for point in [
         "create pending record",
         "inspect project instruction permissions",
         "replace project instructions",
         "sync project instruction root after exchange",
     ] {
-        fs::write(&target, b"before").unwrap();
+        fs::write(target, b"before").unwrap();
         inject_storage_failure(point);
         let error = publish_instruction(
-            &target,
+            target,
             b"after",
             AgentIntegrationOperation::Append,
             b"before",
+            TEST_PLAN_SHA256,
         )
         .expect_err(point);
         if point == "sync project instruction root after exchange" {
             assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
-            assert_eq!(fs::read(&target).unwrap(), b"after");
+            assert_eq!(fs::read(target).unwrap(), b"after");
         } else {
             assert!(!matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
-            assert_eq!(fs::read(&target).unwrap(), b"before");
+            assert_eq!(fs::read(target).unwrap(), b"before");
         }
-        remove_pending(&root);
+        remove_pending(root);
     }
-    fs::remove_file(&target).unwrap();
+}
+
+fn assert_create_failure(root: &std::path::Path, target: &std::path::Path) {
+    fs::remove_file(target).unwrap();
     inject_storage_failure("create project instructions");
-    assert!(publish_instruction(&target, b"new", AgentIntegrationOperation::Create, b"").is_err());
+    assert!(
+        publish_instruction(
+            target,
+            b"new",
+            AgentIntegrationOperation::Create,
+            b"",
+            TEST_PLAN_SHA256,
+        )
+        .is_err()
+    );
     assert!(!target.exists());
-    remove_pending(&root);
-    fs::remove_dir_all(root).unwrap();
+    remove_pending(root);
 }
 
 #[test]
@@ -81,6 +122,7 @@ fn append_publication_preserves_concurrently_observed_instruction_bytes() {
         b"reviewed source\nmanaged block",
         AgentIntegrationOperation::Append,
         b"reviewed source",
+        TEST_PLAN_SHA256,
     )
     .expect_err("concurrent source change must fail closed");
     assert!(matches!(
@@ -97,6 +139,7 @@ fn append_publication_preserves_concurrently_observed_instruction_bytes() {
         b"reviewed source\nmanaged block",
         AgentIntegrationOperation::Append,
         b"reviewed source",
+        TEST_PLAN_SHA256,
     )
     .expect_err("concurrent canonical claimant must fail closed");
     assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
@@ -147,8 +190,8 @@ fn post_publication_cleanup_failures_are_ambiguous_effects() {
     let root = temporary();
     let target = root.join("AGENTS.md");
     for point in [
-        "remove abandoned pending record",
-        "sync abandoned pending directory",
+        "remove project instruction completion receipt",
+        "sync project instruction root after receipt cleanup",
     ] {
         fs::write(&target, b"before").unwrap();
         inject_storage_failure(point);
@@ -157,6 +200,7 @@ fn post_publication_cleanup_failures_are_ambiguous_effects() {
             b"after",
             AgentIntegrationOperation::Append,
             b"before",
+            TEST_PLAN_SHA256,
         )
         .expect_err("post-publication cleanup failure");
         assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");

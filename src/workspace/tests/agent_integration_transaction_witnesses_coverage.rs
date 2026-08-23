@@ -33,6 +33,6 @@ fn witness_verification_rejects_a_missing_canonical_target() {
     stage_witnesses(&target, &transaction, &paths, b"o", b"p").unwrap();
     fs::remove_file(&target).unwrap();
 
-    assert!(verify_witnesses(&target, &paths, b"o", b"p", b"p").is_err());
+    assert!(verify_witnesses(&target, &paths, b"o", b"p", b"p", TRANSACTION_VERSION,).is_err());
     fs::remove_dir_all(root).unwrap();
 }

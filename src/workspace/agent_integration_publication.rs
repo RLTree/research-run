@@ -6,7 +6,7 @@ use crate::domain::{AgentIntegrationOperation, AgentIntegrationPlan, digest};
 use crate::{Error, Result};
 
 use super::agent_integration_recovery::plan_transition_matches;
-use super::agent_integration_transaction::publish_append;
+use super::agent_integration_transaction::{cleanup::recover_completion, publish_append};
 use super::agent_integration_transaction_recovery::recover_transaction;
 use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::path_safety::reject_symlink_chain;
@@ -19,6 +19,7 @@ pub(super) fn publish_instruction(
     content: &[u8],
     operation: AgentIntegrationOperation,
     expected_source: &[u8],
+    plan_sha256: &str,
 ) -> Result<bool> {
     ensure_instruction_budget(content)?;
     if operation == AgentIntegrationOperation::NoOp {
@@ -27,7 +28,7 @@ pub(super) fn publish_instruction(
     reject_symlink_chain(target)?;
     ensure_no_instruction_pending(target)?;
     if operation == AgentIntegrationOperation::Append {
-        return publish_append(target, content, expected_source);
+        return publish_append(target, content, expected_source, plan_sha256);
     }
     let temporary = pending_path(target);
     let mut cleanup = PendingCleanup::new(temporary.clone());
@@ -69,11 +70,38 @@ pub(super) fn recover_instruction_pending(
     target: &Path,
     plan: &AgentIntegrationPlan,
 ) -> Result<()> {
-    let pending = instruction_pending(target)?;
+    let pending = instruction_pending(target).map_err(|error| {
+        Error::AmbiguousEffect(format!(
+            "interrupted project instruction publication could not be inspected at {}: {error}",
+            target.display()
+        ))
+    })?;
     let Some(path) = pending.first() else {
         return Ok(());
     };
-    if pending.len() != 1 {
+    let completions: Vec<&PathBuf> = pending
+        .iter()
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "done")
+        })
+        .collect();
+    let transactions: Vec<&PathBuf> = pending
+        .iter()
+        .filter(|path| path.extension().is_some_and(|extension| extension == "txn"))
+        .collect();
+    if completions.len() == 1
+        && transactions.len() <= 1
+        && pending.len() == completions.len() + transactions.len()
+    {
+        return recover_completion(
+            completions[0],
+            transactions.first().map(|path| path.as_path()),
+            target,
+            plan,
+        );
+    }
+    if pending.len() != 1 || !completions.is_empty() {
         return Err(Error::AmbiguousEffect(format!(
             "multiple interrupted project instruction publications exist for {}",
             target.display()
@@ -137,6 +165,7 @@ fn instruction_pending(target: &Path) -> Result<Vec<PathBuf>> {
         let name = entry.file_name();
         if is_instruction_pending_name(&name, target_name)
             || is_instruction_transaction_name(&name, target_name)
+            || is_instruction_completion_name(&name, target_name)
         {
             let path = entry.path();
             reject_symlink_chain(&path)?;
@@ -145,10 +174,9 @@ fn instruction_pending(target: &Path) -> Result<Vec<PathBuf>> {
                 "inspect pending project instruction path",
                 &path,
             )?;
-            let expected_shape = if is_instruction_transaction_name(&name, target_name) {
-                metadata.is_dir()
-            } else {
-                metadata.is_file()
+            let expected_shape = match is_instruction_transaction_name(&name, target_name) {
+                true => metadata.is_dir(),
+                false => metadata.is_file(),
             };
             if !expected_shape {
                 return Err(Error::invalid(
@@ -168,6 +196,10 @@ fn is_instruction_pending_name(name: &OsStr, target_name: &str) -> bool {
 
 fn is_instruction_transaction_name(name: &OsStr, target_name: &str) -> bool {
     is_instruction_artifact_name(name, target_name, ".txn")
+}
+
+fn is_instruction_completion_name(name: &OsStr, target_name: &str) -> bool {
+    is_instruction_artifact_name(name, target_name, ".done")
 }
 
 fn is_instruction_artifact_name(name: &OsStr, target_name: &str, suffix: &str) -> bool {

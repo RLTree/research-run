@@ -88,12 +88,18 @@ exchange=`P` files inside a unique same-directory transaction and preserves the
 reviewed Unix mode. On Linux and macOS, `rustix::fs::renameat_with` exchanges the
 transaction and canonical leaves atomically relative to opened, identity-checked
 directory descriptors; the canonical pathname remains continuously bound and
-there is no ordinary-rename, link, or move fallback. The transaction and root
-directories are synced before and after exchange. Recovery advances or finishes
-only exact `canonical=O/exchange=P` and `canonical=P/exchange=O` states whose
-version, plan binding, bytes, identities, and modes agree. It classifies legacy
-layouts separately and retains unknown, malformed, impossible, unsupported, or
-uncertain state. Identical retry is a no-op. The preservation claim is exact
+there is no ordinary-rename, link, or move fallback for canonical publication.
+The canonical `P`, exchanged exact observed bytes, transaction, and root are
+synced after exchange. Cleanup starts only after a bounded versioned completion
+record is staged and synced inside the transaction, published create-only as an
+fd-relative hard link, and synced with the root directory. That plan-, byte-,
+mode-, target-, and transaction-bound record is the sole authority for partial
+or empty transaction cleanup; recovery re-syncs it before the next unlink. With
+no completion record, recovery advances or finishes only exact full
+`canonical=O/exchange=P` and `canonical=P/exchange=O` states whose version, plan
+binding, bytes, identities, and modes agree. It classifies legacy layouts
+separately and retains unknown, malformed, impossible, unsupported, or uncertain
+state. Identical retry is a no-op. The preservation claim is exact
 bytes plus Unix mode, not ownership, timestamps, xattrs, ACLs, universal safety
 against direct writers, or protection from writes through already-open file
 descriptors. The installed block requires bounded retrieval,

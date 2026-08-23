@@ -1,11 +1,13 @@
-use std::fs::{self, File};
+#[cfg(any(test, coverage))]
+use std::fs;
 use std::io;
 use std::path::{Component, Path};
 
 use crate::{Error, Result};
 
-use super::super::path_safety::reject_symlink_chain;
-use super::super::storage::{map_io, same_file_identity};
+use super::directories::{ExchangeHandles, open_exchange_handles, verify_anchor};
+#[cfg(all(coverage, test))]
+use super::directories::{ensure_same_device, open_directory};
 
 pub(super) fn ensure_exchange_platform() -> Result<()> {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -22,18 +24,11 @@ pub(super) fn ensure_exchange_platform() -> Result<()> {
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-pub(super) fn exchange(target: &Path, transaction: &Path) -> Result<()> {
+pub(super) fn exchange(target: &Path, transaction: &Path) -> Result<ExchangeHandles> {
     use rustix::fs::{RenameFlags, renameat_with};
 
-    let root = target.parent().expect("instructions have a parent");
     let target_name = validated_leaf(target)?;
-    reject_symlink_chain(root)?;
-    reject_symlink_chain(transaction)?;
-    let root_handle = open_directory(root)?;
-    let transaction_handle = open_directory(transaction)?;
-    verify_anchor(root, &root_handle)?;
-    verify_anchor(transaction, &transaction_handle)?;
-    ensure_same_device(root, &root_handle, transaction, &transaction_handle)?;
+    let handles = open_exchange_handles(target, transaction)?;
     inject_path_continuity_probe(target);
     inject_concurrent_target_change(target);
     if super::super::injected_storage_failure("replace project instructions") {
@@ -50,9 +45,9 @@ pub(super) fn exchange(target: &Path, transaction: &Path) -> Result<()> {
         ));
     }
     renameat_with(
-        &transaction_handle,
+        &handles.transaction,
         "exchange",
-        &root_handle,
+        &handles.root,
         target_name,
         RenameFlags::EXCHANGE,
     )
@@ -62,15 +57,17 @@ pub(super) fn exchange(target: &Path, transaction: &Path) -> Result<()> {
             &format!("operating-system exchange failed with {error}"),
         )
     })?;
-    verify_anchor(root, &root_handle)
+    let root = target.parent().expect("instructions have a parent");
+    verify_anchor(root, &handles.root)
         .map_err(|error| exchange_error(target, &format!("post-exchange root check: {error}")))?;
-    verify_anchor(transaction, &transaction_handle).map_err(|error| {
+    verify_anchor(transaction, &handles.transaction).map_err(|error| {
         exchange_error(target, &format!("post-exchange transaction check: {error}"))
-    })
+    })?;
+    Ok(handles)
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub(super) fn exchange(_target: &Path, _transaction: &Path) -> Result<()> {
+pub(super) fn exchange(_target: &Path, _transaction: &Path) -> Result<ExchangeHandles> {
     ensure_exchange_platform()
 }
 
@@ -95,92 +92,6 @@ fn validated_leaf(path: &Path) -> Result<&std::ffi::OsStr> {
         ));
     }
     Ok(name)
-}
-
-#[cfg(unix)]
-fn open_directory(path: &Path) -> Result<File> {
-    use rustix::fs::{Mode, OFlags, open};
-
-    let descriptor = open(
-        path,
-        OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
-        Mode::empty(),
-    )
-    .map_err(|error| {
-        Error::io(
-            "open project instruction directory without following symlinks",
-            path,
-            error.into(),
-        )
-    })?;
-    let file = File::from(descriptor);
-    let metadata = map_io(
-        file.metadata(),
-        "inspect project instruction directory",
-        path,
-    )?;
-    if !metadata.is_dir() {
-        return Err(Error::invalid(
-            "project instruction directory",
-            format!("{} is not a directory", path.display()),
-        ));
-    }
-    Ok(file)
-}
-
-#[cfg(not(unix))]
-fn open_directory(_: &Path) -> Result<File> {
-    ensure_exchange_platform()?;
-    unreachable!("unsupported platforms fail before opening directories")
-}
-
-fn verify_anchor(path: &Path, handle: &File) -> Result<()> {
-    let current = map_io(
-        fs::symlink_metadata(path),
-        "inspect project instruction directory anchor",
-        path,
-    )?;
-    let opened = map_io(
-        handle.metadata(),
-        "inspect opened project instruction directory",
-        path,
-    )?;
-    if !current.is_dir() || !same_file_identity(&current, &opened) {
-        return Err(Error::AmbiguousEffect(format!(
-            "project instruction directory identity changed at {}",
-            path.display()
-        )));
-    }
-    Ok(())
-}
-
-#[cfg(unix)]
-fn ensure_same_device(
-    root: &Path,
-    root_handle: &File,
-    transaction: &Path,
-    transaction_handle: &File,
-) -> Result<()> {
-    use std::os::unix::fs::MetadataExt;
-
-    let root_metadata = map_io(root_handle.metadata(), "inspect project directory", root)?;
-    let transaction_metadata = map_io(
-        transaction_handle.metadata(),
-        "inspect project instruction transaction",
-        transaction,
-    )?;
-    if root_metadata.dev() != transaction_metadata.dev() {
-        return Err(Error::invalid(
-            "project instruction atomic exchange",
-            "canonical and exchange entries are on different devices",
-        ));
-    }
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn ensure_same_device(_: &Path, _: &File, _: &Path, _: &File) -> Result<()> {
-    ensure_exchange_platform()
 }
 
 fn exchange_error(target: &Path, reason: &str) -> Error {
@@ -218,6 +129,10 @@ fn inject_concurrent_target_change(target: &Path) {
 
 #[cfg(not(any(test, coverage)))]
 fn inject_concurrent_target_change(_target: &Path) {}
+
+#[cfg(test)]
+#[path = "tests/agent_integration_atomic_exchange.rs"]
+mod tests;
 
 #[cfg(all(coverage, test))]
 #[path = "tests/agent_integration_atomic_exchange_coverage.rs"]

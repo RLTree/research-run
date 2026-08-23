@@ -11,8 +11,10 @@ use super::super::storage::{map_io, read_bounded_with_limit};
 use super::atomic_exchange::ensure_exchange_platform;
 use super::sync_named_directory;
 
-pub(in crate::workspace) const TRANSACTION_VERSION: &[u8] =
+pub(in crate::workspace) const PREVIOUS_TRANSACTION_VERSION: &[u8] =
     b"research-run-agent-integration-transaction-v2\n";
+pub(in crate::workspace) const TRANSACTION_VERSION: &[u8] =
+    b"research-run-agent-integration-transaction-v3\n";
 
 pub(in crate::workspace) struct WitnessPaths {
     pub(in crate::workspace) version: std::path::PathBuf,
@@ -62,7 +64,14 @@ pub(in crate::workspace) fn stage_witnesses(
     write_pending(&paths.reviewed, reviewed)?;
     write_pending(&paths.exchange, reviewed)?;
     preserve_mode(&metadata, paths)?;
-    verify_witnesses(target, paths, original, reviewed, reviewed)?;
+    verify_witnesses(
+        target,
+        paths,
+        original,
+        reviewed,
+        reviewed,
+        TRANSACTION_VERSION,
+    )?;
     sync_witnesses(target, transaction, paths)
 }
 
@@ -129,8 +138,9 @@ pub(in crate::workspace) fn verify_witnesses(
     original: &[u8],
     reviewed: &[u8],
     exchange_bytes: &[u8],
+    version: &[u8],
 ) -> Result<()> {
-    if read_bounded_with_limit(&paths.version, MAX_INSTRUCTION_BYTES)? != TRANSACTION_VERSION
+    if read_bounded_with_limit(&paths.version, MAX_INSTRUCTION_BYTES)? != version
         || read_bounded_with_limit(&paths.original, MAX_INSTRUCTION_BYTES)? != original
         || read_bounded_with_limit(&paths.reviewed, MAX_INSTRUCTION_BYTES)? != reviewed
         || read_bounded_with_limit(&paths.exchange, MAX_INSTRUCTION_BYTES)? != exchange_bytes

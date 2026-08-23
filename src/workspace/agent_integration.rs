@@ -73,6 +73,7 @@ impl Workspace {
                 &content,
                 plan.operation,
                 instruction.bytes(),
+                &plan.plan_sha256,
             )?;
             return Ok(apply_result(&plan, changed));
         }

@@ -8,16 +8,34 @@ use super::super::agent_integration_publication::publish_instruction;
 use super::super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::{Workspace, inject_storage_failure, temporary};
 
+const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+
 #[test]
 fn instruction_size_budget_accepts_the_boundary_and_rejects_one_byte_over() {
     let root = temporary();
     let target = root.join("AGENTS.md");
     let boundary = vec![b'a'; MAX_INSTRUCTION_BYTES as usize];
     assert!(
-        !publish_instruction(&target, &boundary, AgentIntegrationOperation::NoOp, b"").unwrap()
+        !publish_instruction(
+            &target,
+            &boundary,
+            AgentIntegrationOperation::NoOp,
+            b"",
+            TEST_PLAN_SHA256,
+        )
+        .unwrap()
     );
     let over = vec![b'a'; MAX_INSTRUCTION_BYTES as usize + 1];
-    assert!(publish_instruction(&target, &over, AgentIntegrationOperation::NoOp, b"").is_err());
+    assert!(
+        publish_instruction(
+            &target,
+            &over,
+            AgentIntegrationOperation::NoOp,
+            b"",
+            TEST_PLAN_SHA256,
+        )
+        .is_err()
+    );
 
     Workspace::initialize(&root, "Instruction budget").unwrap();
     let missing_plan = Workspace::plan_agent_integration(&root).unwrap();

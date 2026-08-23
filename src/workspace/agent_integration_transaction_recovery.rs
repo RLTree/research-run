@@ -7,17 +7,20 @@ use crate::domain::{AgentIntegrationPlan, digest};
 use crate::{Error, Result};
 
 use super::agent_integration_recovery::plan_transition_matches;
-use super::agent_integration_transaction::witnesses::{WitnessPaths, verify_witnesses};
+use super::agent_integration_transaction::witnesses::{
+    PREVIOUS_TRANSACTION_VERSION, TRANSACTION_VERSION, WitnessPaths, verify_witnesses,
+};
 use super::agent_integration_transaction::{exchange_and_finish, finish_verified_exchange};
 use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::path_safety::reject_symlink_chain;
 use super::storage::{map_io, read_bounded_with_limit};
 
 const VERSIONED_NAMES: [&str; 4] = ["exchange", "original", "reviewed", "version"];
+const COMPLETION_NAME: &str = "completion";
 const LEGACY_NAMES: [&str; 2] = ["planned", "source"];
 
 enum TransactionLayout {
-    Versioned,
+    Versioned { has_completion: bool },
     Legacy,
 }
 
@@ -31,7 +34,9 @@ pub(super) fn recover_transaction(
         error => retained_state(transaction, &error.to_string()),
     })?;
     match layout {
-        TransactionLayout::Versioned => recover_versioned(transaction, target, plan),
+        TransactionLayout::Versioned { has_completion } => {
+            recover_versioned(transaction, target, plan, has_completion)
+        }
         TransactionLayout::Legacy => Err(Error::AmbiguousEffect(format!(
             "legacy project instruction transaction requires explicit inspection and is retained at {}",
             transaction.display()
@@ -39,8 +44,20 @@ pub(super) fn recover_transaction(
     }
 }
 
-fn recover_versioned(transaction: &Path, target: &Path, plan: &AgentIntegrationPlan) -> Result<()> {
+fn recover_versioned(
+    transaction: &Path,
+    target: &Path,
+    plan: &AgentIntegrationPlan,
+    has_completion: bool,
+) -> Result<()> {
     let paths = WitnessPaths::new(transaction);
+    let version = read_witness(transaction, &paths.version)?;
+    if version != PREVIOUS_TRANSACTION_VERSION && version != TRANSACTION_VERSION {
+        return Err(retained_state(
+            transaction,
+            "project instruction transaction version is unknown",
+        ));
+    }
     let original = read_witness(transaction, &paths.original)?;
     let reviewed = read_witness(transaction, &paths.reviewed)?;
     let exchanged = read_witness(transaction, &paths.exchange)?;
@@ -61,14 +78,34 @@ fn recover_versioned(transaction: &Path, target: &Path, plan: &AgentIntegrationP
         ));
     };
     if current == original && exchanged == reviewed {
-        verify_witnesses(target, &paths, &original, &reviewed, &reviewed)
+        if has_completion {
+            return Err(retained_state(
+                transaction,
+                "a staged completion receipt cannot precede atomic exchange",
+            ));
+        }
+        verify_witnesses(target, &paths, &original, &reviewed, &reviewed, &version)
             .map_err(|error| retained_state(transaction, &error.to_string()))?;
-        return exchange_and_finish(target, transaction, &original, &reviewed);
+        return exchange_and_finish(
+            target,
+            transaction,
+            &original,
+            &reviewed,
+            &plan.plan_sha256,
+            &version,
+        );
     }
     if current == reviewed && exchanged == original {
-        verify_witnesses(target, &paths, &original, &reviewed, &original)
+        verify_witnesses(target, &paths, &original, &reviewed, &original, &version)
             .map_err(|error| retained_state(transaction, &error.to_string()))?;
-        return finish_verified_exchange(target, transaction, &original, &reviewed);
+        return finish_verified_exchange(
+            target,
+            transaction,
+            &original,
+            &reviewed,
+            &plan.plan_sha256,
+            &version,
+        );
     }
     Err(retained_state(
         transaction,
@@ -137,7 +174,16 @@ fn classify_names(transaction: &Path, names: &BTreeSet<String>) -> Result<Transa
     let versioned: BTreeSet<String> = VERSIONED_NAMES.iter().map(ToString::to_string).collect();
     let legacy: BTreeSet<String> = LEGACY_NAMES.iter().map(ToString::to_string).collect();
     if names == &versioned {
-        return Ok(TransactionLayout::Versioned);
+        return Ok(TransactionLayout::Versioned {
+            has_completion: false,
+        });
+    }
+    let mut completing = versioned.clone();
+    completing.insert(COMPLETION_NAME.to_owned());
+    if names == &completing {
+        return Ok(TransactionLayout::Versioned {
+            has_completion: true,
+        });
     }
     if !names.is_empty() && names.is_subset(&legacy) {
         return Ok(TransactionLayout::Legacy);

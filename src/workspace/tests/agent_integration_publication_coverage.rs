@@ -8,20 +8,34 @@ use super::*;
 use crate::workspace::tests::temporary;
 use crate::workspace::{Workspace, inject_storage_failure};
 
+const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+
 #[test]
 fn create_post_effect_failures_and_pending_discovery_are_explicit() {
     let root = temporary();
     let target = root.join("AGENTS.md");
     inject_storage_failure("open record directory for sync");
-    let error = publish_instruction(&target, b"created", AgentIntegrationOperation::Create, b"")
-        .expect_err("post-create sync failure");
+    let error = publish_instruction(
+        &target,
+        b"created",
+        AgentIntegrationOperation::Create,
+        b"",
+        TEST_PLAN_SHA256,
+    )
+    .expect_err("post-create sync failure");
     assert!(matches!(error, Error::AmbiguousEffect(_)));
     remove_artifacts(&root);
     fs::remove_file(&target).unwrap();
 
     inject_storage_failure("remove abandoned pending record");
-    let error = publish_instruction(&target, b"created", AgentIntegrationOperation::Create, b"")
-        .expect_err("post-create cleanup failure");
+    let error = publish_instruction(
+        &target,
+        b"created",
+        AgentIntegrationOperation::Create,
+        b"",
+        TEST_PLAN_SHA256,
+    )
+    .expect_err("post-create cleanup failure");
     assert!(matches!(error, Error::AmbiguousEffect(_)));
     remove_artifacts(&root);
     fs::remove_file(&target).unwrap();

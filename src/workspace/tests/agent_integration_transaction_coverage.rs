@@ -19,7 +19,7 @@ fn transaction_collision_and_malformed_cleanup_remain_explicit() {
         fs::write(transaction.join(name), name.as_bytes()).unwrap();
     }
     assert!(matches!(
-        cleanup_after_publication(&target, &transaction),
+        cleanup_staging_transaction(&target, &transaction),
         Err(Error::AmbiguousEffect(_))
     ));
     assert!(matches!(

@@ -9,6 +9,8 @@ use super::super::agent_integration_transaction::witnesses::TRANSACTION_VERSION;
 use super::super::agent_integration_transaction_recovery::recover_transaction;
 use super::{Workspace, inject_storage_failure, temporary};
 
+const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+
 #[test]
 fn append_publication_keeps_the_canonical_instruction_path_bound() {
     let root = temporary();
@@ -21,6 +23,7 @@ fn append_publication_keeps_the_canonical_instruction_path_bound() {
         b"after",
         AgentIntegrationOperation::Append,
         b"before",
+        TEST_PLAN_SHA256,
     )
     .expect("append must never expose an unbound canonical path");
 

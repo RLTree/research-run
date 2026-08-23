@@ -15,6 +15,29 @@ fi
 observation_root="$(mktemp -d "${TMPDIR:-/tmp}/research-run-artifacts.XXXXXX")"
 trap 'rm -rf "$observation_root"' EXIT
 
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
+file_mode() {
+  if [[ "$artifact_platform" == *-apple-darwin ]]; then
+    stat -f '%Lp' "$1"
+  else
+    stat -c '%a' "$1"
+  fi
+}
+
+workspace_fingerprint() {
+  local state="$1" path
+  while IFS= read -r path; do
+    printf '%s %s\n' "${path#"$state"/}" "$(sha256_file "$path")"
+  done < <(find "$state" -type f -print | LC_ALL=C sort)
+}
+
 target_before_kib="$(du -sk target 2>/dev/null | awk '{print $1}' || printf '0')"
 cargo build --locked --release
 cargo package --locked
@@ -136,18 +159,50 @@ installed_command() {
   (cd "$workspace" && "$binary" "$@")
 }
 
+printf '%s' '# Existing project law
+
+Preserve these installed-package journey bytes exactly.
+' >"$workspace/AGENTS.md"
+cp "$workspace/AGENTS.md" "$observation_root/existing-agents.md"
+chmod 0640 "$workspace/AGENTS.md"
+existing_instruction_sha256="$(sha256_file "$workspace/AGENTS.md")"
+existing_instruction_bytes="$(wc -c < "$workspace/AGENTS.md" | tr -d ' ')"
+existing_instruction_mode="$(file_mode "$workspace/AGENTS.md")"
+[[ "$existing_instruction_mode" == "640" ]]
+"$binary" agent-integration status "$workspace" --json | jq -e \
+  '.protocol_installed == true and .instruction_contract_installed == false and .agent_integration_ready == false' \
+  >/dev/null
+
 "$binary" agent-integration plan "$workspace" >"$observation_root/agent-plan.json"
+jq -e \
+  --arg instruction_sha256 "$existing_instruction_sha256" \
+  --argjson instruction_bytes "$existing_instruction_bytes" '
+    .operation == "append" and
+    .instruction_path == "AGENTS.md" and
+    .instruction_sha256 == $instruction_sha256 and
+    .instruction_bytes == $instruction_bytes
+  ' "$observation_root/agent-plan.json" >/dev/null
 "$binary" agent-integration apply "$workspace" \
   --input "$observation_root/agent-plan.json" --json | jq -e \
   '.changed == true and .ready_for_new_agent_run == true and .current_session_loaded == "unverified"' \
   >/dev/null
+dd if="$workspace/AGENTS.md" bs=1 count="$existing_instruction_bytes" 2>/dev/null | \
+  cmp - "$observation_root/existing-agents.md"
+[[ "$(file_mode "$workspace/AGENTS.md")" == "$existing_instruction_mode" ]]
+[[ "$(wc -c < "$workspace/AGENTS.md" | tr -d ' ')" -gt "$existing_instruction_bytes" ]]
+grep -Fq '<!-- research-run:agent-integration:v1:start -->' "$workspace/AGENTS.md"
 "$binary" agent-integration apply "$workspace" \
   --input "$observation_root/agent-plan.json" --json | jq -e '.changed == false' >/dev/null
 "$binary" agent-integration status "$workspace" --json | jq -e \
   '.agent_integration_ready == true and .ready_scope == "new-agent-run" and .fresh_session_required == true' \
   >/dev/null
-installed_command context --query buffer | jq -e \
-  '.contribution_protocol.sequence == ["retrieve-bounded-context", "classify-new-material", "append-typed-records", "validate-workspace", "answer-or-handoff"]' \
+workspace_fingerprint "$workspace/.research-run" >"$observation_root/state-before-context"
+installed_command context --query buffer >"$observation_root/context.json"
+workspace_fingerprint "$workspace/.research-run" >"$observation_root/state-after-context"
+cmp "$observation_root/state-before-context" "$observation_root/state-after-context"
+jq -e \
+  '.matches == [] and .contribution_protocol.sequence == ["retrieve-bounded-context", "classify-new-material", "append-typed-records", "validate-workspace", "answer-or-handoff"]' \
+  "$observation_root/context.json" \
   >/dev/null
 jq -n '{schema_version:1,kind:"knowledge",id:"decision-buffer",record_type:"decision",title:"Use the selected buffer",body:"The researcher selected the recorded buffer condition.",occurred_at:"2026-08-20T18:00:00Z",state:"active",authorship:"human"}' \
   >"$observation_root/decision.json"
@@ -175,13 +230,20 @@ ssh-keygen -Y sign -f "$observation_root/review-key" \
   -n research-run-review-v1 "$observation_root/review-request.json" >/dev/null
 installed_command review add --request "$observation_root/review-request.json" \
   --signature "$observation_root/review-request.json.sig" >/dev/null
-installed_command validate --json | jq -e \
+installed_command validate --json >"$observation_root/validation-receipt.json"
+jq -e \
   '.schema_version == 2 and .valid == true and .authority.project_id == "installed-researcher-journey" and .agent_integration.agent_integration_ready == true' \
+  "$observation_root/validation-receipt.json" \
   >/dev/null
+validation_receipt_sha256="$(sha256_file "$observation_root/validation-receipt.json")"
 installed_command handoff create --id handoff-installed-agent \
-  --generated-at 2026-08-20T20:00:00Z --query buffer | jq -e \
+  --generated-at 2026-08-20T20:00:00Z --query buffer \
+  >"$observation_root/handoff-receipt.json"
+jq -e \
   '.schema_version == 2 and .validation.result.valid == true and .validation.result.authority.project_id == .context.project_id and (.context.matches | any(.id == "decision-buffer"))' \
+  "$observation_root/handoff-receipt.json" \
   >/dev/null
+handoff_receipt_sha256="$(sha256_file "$observation_root/handoff-receipt.json")"
 installed_command status --json | jq -e \
   '.claims[0].assessment == "limited" and .experiments[0].outcome == "negative"' >/dev/null
 
@@ -249,6 +311,8 @@ jq -n \
   --argjson installed_binary_signature_profile "$signature_profile" \
   --arg installed_binary_normalization "$normalization" \
   --arg installed_binary_normalized_sha256 "$normalized_sha256" \
+  --arg validation_receipt_sha256 "$validation_receipt_sha256" \
+  --arg handoff_receipt_sha256 "$handoff_receipt_sha256" \
   --argjson archive_bytes "$archive_bytes" \
   --argjson binary_bytes "$binary_bytes" \
   --argjson normalized_binary_bytes "$normalized_bytes" \
@@ -263,4 +327,4 @@ jq -n \
   --argjson status_warm_seconds "$status_warm_seconds" \
   --argjson recovery_cold_seconds "$recovery_cold_seconds" \
   --argjson recovery_warm_seconds "$recovery_warm_seconds" \
-  '{candidate:$candidate, cache_state:$cache_state, installed_binary_platform:$installed_binary_platform, installed_binary_raw_sha256:$installed_binary_raw_sha256, installed_binary_signature_profile:$installed_binary_signature_profile, installed_binary_signature_profile_sha256:$installed_binary_signature_profile_sha256, installed_binary_normalization:$installed_binary_normalization, installed_binary_normalized_sha256:$installed_binary_normalized_sha256, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,normalized_binary:$normalized_binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine, platform-qualified reproducible observation only; the raw Mach-O signature is verified as empty-entitlement ad-hoc linker signing and its canonical profile is bound before normalization; the ephemeral raw hash is reported but content binding then removes only that verified signature and zeroes LC_UUID; cold values below timer resolution are reported as zero; no cross-machine or regression promise"}'
+  '{candidate:$candidate, cache_state:$cache_state, installed_binary_platform:$installed_binary_platform, installed_binary_raw_sha256:$installed_binary_raw_sha256, installed_binary_signature_profile:$installed_binary_signature_profile, installed_binary_signature_profile_sha256:$installed_binary_signature_profile_sha256, installed_binary_normalization:$installed_binary_normalization, installed_binary_normalized_sha256:$installed_binary_normalized_sha256, journey:{agent_integration_operation:"append",validation_receipt_sha256:$validation_receipt_sha256,handoff_receipt_sha256:$handoff_receipt_sha256,preserved_existing_instruction_bytes:true,preserved_unix_mode:true,ready_scope:"new-agent-run",current_session_loaded:"unverified"}, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,normalized_binary:$normalized_binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine, platform-qualified installed Append journey only; exact existing bytes and Unix mode are preserved, bounded retrieval is observed read-only before typed contribution, and validation plus v2 handoff receipts are retained; no universal agent compliance, actual session loading, crash durability, xattr or ACL preservation, scientific truth, cross-machine result, or regression promise"}'

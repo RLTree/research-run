@@ -94,10 +94,15 @@ exchange without weakening `unsafe_code = "forbid"`.
   Linux and macOS it exchanges the transaction leaf and canonical instruction
   leaf atomically through opened, identity-checked directory descriptors; the
   canonical pathname remains bound throughout the supported exchange. There is
-  no non-atomic fallback. Pre- and post-exchange directories are synced and
-  recovery accepts only exact versioned `canonical=O/exchange=P` or
-  `canonical=P/exchange=O` states. Legacy, unsupported, unknown, malformed,
-  impossible, and uncertain states fail closed and retain transaction evidence.
+  no non-atomic canonical-publication fallback. The canonical `P` and exchanged
+  exact observed bytes are synced before verification. Before any witness is
+  removed, a versioned plan-bound completion record is staged and synced in the
+  transaction, published create-only as one fd-relative hard link, then synced
+  with the root directory. A valid durable completion record authorizes
+  resumable partial cleanup; without it recovery accepts only exact full
+  versioned `canonical=O/exchange=P` or `canonical=P/exchange=O` states. Legacy,
+  unsupported, unknown, malformed, impossible, and uncertain states fail closed
+  and retain the applicable full transaction or completion authority.
   The preservation claim covers exact bytes and Unix mode only, not owner,
   timestamps, xattrs, ACLs, writes through already-open descriptors, or every
   uncooperative filesystem writer. Readiness is only for a fresh agent

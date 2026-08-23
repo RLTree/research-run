@@ -5,7 +5,21 @@ use std::path::{Path, PathBuf};
 use crate::{Error, Result};
 
 #[path = "agent_integration_atomic_exchange.rs"]
-mod atomic_exchange;
+pub(super) mod atomic_exchange;
+#[path = "agent_integration_transaction_cleanup.rs"]
+pub(super) mod cleanup;
+#[path = "agent_integration_transaction_cleanup_effects.rs"]
+mod cleanup_effects;
+#[path = "agent_integration_transaction_completion_io.rs"]
+mod completion_io;
+#[path = "agent_integration_transaction_completion_validation.rs"]
+mod completion_validation;
+#[path = "agent_integration_exchange_directories.rs"]
+pub(super) mod directories;
+#[path = "agent_integration_transaction_receipt.rs"]
+mod receipt;
+#[path = "agent_integration_transaction_receipt_io.rs"]
+mod receipt_io;
 #[path = "agent_integration_transaction_witnesses.rs"]
 pub(super) mod witnesses;
 
@@ -13,9 +27,18 @@ use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::publication::pending_path;
 use super::storage::{map_io, read_bounded_with_limit, sync_directory};
 use atomic_exchange::{ensure_exchange_platform, exchange};
-use witnesses::{WitnessPaths, stage_witnesses, sync_witnesses, verify_witnesses};
+use cleanup::{complete_publication, sync_exchanged_state};
+use cleanup_effects::{ambiguous, open_recovered_handles};
+use witnesses::{
+    TRANSACTION_VERSION, WitnessPaths, stage_witnesses, sync_witnesses, verify_witnesses,
+};
 
-pub(super) fn publish_append(target: &Path, content: &[u8], expected: &[u8]) -> Result<bool> {
+pub(super) fn publish_append(
+    target: &Path,
+    content: &[u8],
+    expected: &[u8],
+    plan_sha256: &str,
+) -> Result<bool> {
     ensure_exchange_platform()?;
     let transaction = transaction_path(target);
     create_transaction(&transaction)?;
@@ -38,7 +61,14 @@ pub(super) fn publish_append(target: &Path, content: &[u8], expected: &[u8]) -> 
             )),
         ));
     }
-    exchange_and_finish(target, &transaction, expected, content)?;
+    exchange_and_finish(
+        target,
+        &transaction,
+        expected,
+        content,
+        plan_sha256,
+        TRANSACTION_VERSION,
+    )?;
     Ok(true)
 }
 
@@ -47,17 +77,27 @@ pub(super) fn exchange_and_finish(
     transaction: &Path,
     original: &[u8],
     reviewed: &[u8],
+    plan_sha256: &str,
+    transaction_version: &[u8],
 ) -> Result<()> {
     let paths = WitnessPaths::new(transaction);
     sync_witnesses(target, transaction, &paths).map_err(|error| ambiguous(target, error))?;
-    match exchange(target, transaction) {
-        Ok(()) => {}
+    let handles = match exchange(target, transaction) {
+        Ok(handles) => handles,
         Err(error @ Error::AmbiguousEffect(_)) => return Err(error),
         Err(error) => return Err(abort_transaction(target, transaction, error)),
-    }
-    sync_after_exchange(target, transaction)?;
-    verify_post_exchange(target, transaction, original, reviewed)?;
-    cleanup_after_publication(target, transaction)
+    };
+    sync_after_exchange(target, transaction, &handles)?;
+    verify_post_exchange(target, transaction, original, reviewed, transaction_version)?;
+    complete_publication(
+        target,
+        transaction,
+        &handles,
+        plan_sha256,
+        original,
+        reviewed,
+        transaction_version,
+    )
 }
 
 pub(super) fn finish_verified_exchange(
@@ -65,10 +105,22 @@ pub(super) fn finish_verified_exchange(
     transaction: &Path,
     original: &[u8],
     reviewed: &[u8],
+    plan_sha256: &str,
+    transaction_version: &[u8],
 ) -> Result<()> {
-    sync_after_exchange(target, transaction)?;
-    verify_post_exchange(target, transaction, original, reviewed)?;
-    cleanup_after_publication(target, transaction)
+    let handles =
+        open_recovered_handles(target, transaction).map_err(|error| ambiguous(target, error))?;
+    sync_after_exchange(target, transaction, &handles)?;
+    verify_post_exchange(target, transaction, original, reviewed, transaction_version)?;
+    complete_publication(
+        target,
+        transaction,
+        &handles,
+        plan_sha256,
+        original,
+        reviewed,
+        transaction_version,
+    )
 }
 
 fn create_transaction(transaction: &Path) -> Result<()> {
@@ -91,17 +143,12 @@ fn transaction_path(target: &Path) -> PathBuf {
     pending.with_file_name(format!("{name}.txn"))
 }
 
-fn sync_after_exchange(target: &Path, transaction: &Path) -> Result<()> {
-    sync_named_directory(
-        transaction,
-        "sync project instruction transaction after exchange",
-    )
-    .map_err(|error| ambiguous(target, error))?;
-    sync_named_directory(
-        target.parent().expect("instructions have a parent"),
-        "sync project instruction root after exchange",
-    )
-    .map_err(|error| ambiguous(target, error))
+fn sync_after_exchange(
+    target: &Path,
+    transaction: &Path,
+    handles: &directories::ExchangeHandles,
+) -> Result<()> {
+    sync_exchanged_state(target, transaction, handles).map_err(|error| ambiguous(target, error))
 }
 
 fn verify_post_exchange(
@@ -109,6 +156,7 @@ fn verify_post_exchange(
     transaction: &Path,
     original: &[u8],
     reviewed: &[u8],
+    transaction_version: &[u8],
 ) -> Result<()> {
     let paths = WitnessPaths::new(transaction);
     inject_post_exchange_change(target);
@@ -120,11 +168,18 @@ fn verify_post_exchange(
             target.display()
         )));
     }
-    verify_witnesses(target, &paths, original, reviewed, original)
-        .map_err(|error| ambiguous(target, error))
+    verify_witnesses(
+        target,
+        &paths,
+        original,
+        reviewed,
+        original,
+        transaction_version,
+    )
+    .map_err(|error| ambiguous(target, error))
 }
 
-pub(super) fn cleanup_after_publication(target: &Path, transaction: &Path) -> Result<()> {
+pub(super) fn cleanup_staging_transaction(target: &Path, transaction: &Path) -> Result<()> {
     if super::injected_storage_failure("remove abandoned pending record")
         || super::injected_storage_failure("sync abandoned pending directory")
     {
@@ -167,7 +222,7 @@ pub(super) fn cleanup_after_publication(target: &Path, transaction: &Path) -> Re
 }
 
 fn abort_transaction(target: &Path, transaction: &Path, original: Error) -> Error {
-    match cleanup_after_publication(target, transaction) {
+    match cleanup_staging_transaction(target, transaction) {
         Ok(()) => original,
         Err(cleanup) => Error::AmbiguousEffect(format!(
             "project instruction staging failed and cleanup was not durable: {original}; {cleanup}"
@@ -184,13 +239,6 @@ fn sync_named_directory(path: &Path, point: &'static str) -> Result<()> {
         ));
     }
     sync_directory(path)
-}
-
-pub(super) fn ambiguous(target: &Path, error: Error) -> Error {
-    Error::AmbiguousEffect(format!(
-        "project instruction publication may have changed {}; retained transaction evidence: {error}",
-        target.display()
-    ))
 }
 
 #[cfg(any(test, coverage))]
@@ -214,10 +262,6 @@ fn inject_post_exchange_change(target: &Path) {
 
 #[cfg(not(any(test, coverage)))]
 fn inject_post_exchange_change(_target: &Path) {}
-
-#[cfg(test)]
-#[path = "tests/agent_integration_atomic_exchange.rs"]
-mod tests;
 
 #[cfg(all(coverage, test))]
 #[path = "tests/agent_integration_transaction_coverage.rs"]

@@ -13,7 +13,9 @@ fn actual_exchange_failure_has_no_non_atomic_fallback() {
     fs::write(&target, b"original").unwrap();
     fs::create_dir(&transaction).unwrap();
 
-    let error = exchange(&target, &transaction).unwrap_err();
+    let error = exchange(&target, &transaction)
+        .err()
+        .expect("directory cannot be exchanged with a regular file");
 
     assert!(matches!(error, Error::AmbiguousEffect(_)));
     assert_eq!(fs::read(&target).unwrap(), b"original");

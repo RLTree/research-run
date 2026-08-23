@@ -3,23 +3,21 @@ use std::fs;
 use crate::domain::{AgentIntegrationOperation, AgentIntegrationPlan};
 use crate::{Error, workspace::Workspace};
 
-use super::super::agent_integration_content::compose_planned_instruction;
-use super::super::agent_integration_publication::publish_instruction;
-use super::super::agent_integration_transaction::witnesses::TRANSACTION_VERSION;
-use super::super::agent_integration_transaction_recovery::recover_transaction;
-use super::super::{inject_storage_failure, tests::temporary};
+use super::super::super::agent_integration_content::compose_planned_instruction;
+use super::super::super::agent_integration_publication::publish_instruction;
+use super::super::super::agent_integration_transaction_recovery::recover_transaction;
+use super::super::super::{inject_storage_failure, tests::temporary};
+use super::super::witnesses::TRANSACTION_VERSION;
 
 #[test]
-fn exchange_and_cleanup_faults_retain_exact_retryable_states_without_fallback() {
+fn exchange_and_durability_faults_retain_exact_retryable_states_without_fallback() {
     for point in [
         "atomic exchange project instructions",
         "sync transaction witness before exchange#5",
         "sync project instruction transaction after exchange",
         "sync project instruction root after exchange",
-        "inspect project instruction directory anchor#3",
         "inspect project instruction directory anchor#4",
-        "remove abandoned pending record",
-        "sync abandoned pending directory",
+        "inspect project instruction directory anchor#5",
     ] {
         let (root, plan, original, planned) = fixture(point);
         inject_storage_failure(point);
@@ -28,9 +26,13 @@ fn exchange_and_cleanup_faults_retain_exact_retryable_states_without_fallback() 
             &planned,
             AgentIntegrationOperation::Append,
             &original,
+            &plan.plan_sha256,
         )
         .expect_err(point);
-        assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
+        assert!(
+            matches!(error, Error::AmbiguousEffect(_)),
+            "{point}: {error:?}"
+        );
         let transaction = find_transaction(&root);
         assert_eq!(fs::read(transaction.join("original")).unwrap(), original);
         assert_eq!(fs::read(transaction.join("reviewed")).unwrap(), planned);
@@ -57,6 +59,7 @@ fn post_exchange_canonical_mutation_is_retained_as_an_impossible_state() {
         &planned,
         AgentIntegrationOperation::Append,
         &original,
+        &plan.plan_sha256,
     )
     .expect_err("post-exchange mutation must be ambiguous");
 
@@ -90,7 +93,7 @@ fn staged_file_and_pre_exchange_sync_failures_leave_the_original_canonical() {
         "inspect project instruction directory anchor",
         "replace project instructions",
     ] {
-        let (root, _, original, planned) = fixture(point);
+        let (root, plan, original, planned) = fixture(point);
         inject_storage_failure(point);
         assert!(
             publish_instruction(
@@ -98,6 +101,7 @@ fn staged_file_and_pre_exchange_sync_failures_leave_the_original_canonical() {
                 &planned,
                 AgentIntegrationOperation::Append,
                 &original,
+                &plan.plan_sha256,
             )
             .is_err()
         );
