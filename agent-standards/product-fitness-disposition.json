@@ -11,7 +11,7 @@
     "required_identity": "clean Git HEAD plus platform-qualified normalized installed binary digest and raw size",
     "installed_binary": {
       "platform": "aarch64-apple-darwin",
-      "raw_bytes": 2788448,
+      "raw_bytes": 2805296,
       "signature_profile": {
         "verification": "codesign --verify --strict",
         "format": "Mach-O thin (arm64)",
@@ -28,8 +28,8 @@
       },
       "signature_profile_sha256": "a21345461360d035ba5e371bd1d91c5ea98f60cfd8850a2bc157e3d4f01219bd",
       "normalization": "removed ad-hoc code signature and zeroed Mach-O LC_UUID",
-      "normalized_sha256": "c0c619c083d4da44264c4688624679d96fa896a61bb0b91d87cff490a361f143",
-      "normalized_bytes": 2766664,
+      "normalized_sha256": "7b6fca0a134f94804afefb9df25630b7289f1bdec9cefa645e8174053522309a",
+      "normalized_bytes": 2783392,
       "receipt": "scripts/check-product-artifacts (clean HEAD package/install journey with exact digest and byte verification)"
     },
     "reason": "The expected platform-qualified installed identity is declared but is not evidence until scripts/check-product-artifacts succeeds from a clean exact HEAD; Product Fitness remains withheld because deterministic mechanics are not human-use evidence."
