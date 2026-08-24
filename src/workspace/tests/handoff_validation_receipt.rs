@@ -1,7 +1,7 @@
 use std::fs;
 
+use crate::Error;
 use crate::domain::digest;
-use crate::{Error, domain::MAX_TEXT_BYTES};
 
 use super::{Workspace, temporary};
 
@@ -59,7 +59,7 @@ fn handoff_receipt_rejects_invalid_error_text() {
     let root = temporary();
     let workspace = Workspace::initialize(&root, "Receipt error text").unwrap();
 
-    for invalid in [String::new(), "x".repeat(MAX_TEXT_BYTES + 1)] {
+    for invalid in [String::new(), "x".repeat(65_537), "é".repeat(65_537)] {
         let mut bundle = workspace
             .handoff("handoff-error-text", "2026-08-20T20:00:40Z", None, 10)
             .unwrap();
@@ -70,6 +70,65 @@ fn handoff_receipt_rejects_invalid_error_text() {
         assert!(bundle.validate().is_err());
     }
     fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn handoff_receipt_diagnostic_uses_the_validation_schema_character_boundaries() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Receipt diagnostic schema parity").unwrap();
+    let baseline = workspace
+        .handoff(
+            "handoff-diagnostic-schema-text",
+            "2026-08-20T20:00:45Z",
+            None,
+            10,
+        )
+        .unwrap();
+    for (name, text, expected) in validation_schema_text_cases() {
+        let mut bundle = baseline.clone();
+        let receipt = bundle.validation.as_mut().unwrap();
+        receipt.result.agent_integration.diagnostic = text;
+        receipt.result_sha256 = digest(&serde_json::to_vec(&receipt.result).unwrap());
+        assert_eq!(bundle.validate().is_ok(), expected, "diagnostic: {name}");
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn handoff_receipt_errors_use_the_validation_schema_character_boundaries() {
+    let root = temporary();
+    let workspace = Workspace::initialize(&root, "Receipt error schema parity").unwrap();
+    let baseline = workspace
+        .handoff(
+            "handoff-error-schema-text",
+            "2026-08-20T20:00:46Z",
+            None,
+            10,
+        )
+        .unwrap();
+    for (name, text, expected) in validation_schema_text_cases() {
+        let mut bundle = baseline.clone();
+        let receipt = bundle.validation.as_mut().unwrap();
+        receipt.result.valid = false;
+        receipt.result.errors = vec![text];
+        receipt.result_sha256 = digest(&serde_json::to_vec(&receipt.result).unwrap());
+        assert_eq!(bundle.validate().is_ok(), expected, "error: {name}");
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
+fn validation_schema_text_cases() -> [(&'static str, String, bool); 9] {
+    [
+        ("empty", String::new(), false),
+        ("whitespace", " \n".to_owned(), true),
+        ("control", "\0".to_owned(), true),
+        ("ascii maximum", "x".repeat(65_536), true),
+        ("ascii overflow", "x".repeat(65_537), false),
+        ("multibyte maximum", "é".repeat(65_536), true),
+        ("multibyte overflow", "é".repeat(65_537), false),
+        ("supplementary maximum", "🛡".repeat(65_536), true),
+        ("supplementary overflow", "🛡".repeat(65_537), false),
+    ]
 }
 
 #[test]

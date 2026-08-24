@@ -2,11 +2,12 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{
-    ContributionProtocol, MAX_LIST_ITEMS, digest, is_lowercase_sha256, required_text,
-};
+use crate::domain::{ContributionProtocol, MAX_LIST_ITEMS, digest, is_lowercase_sha256};
 
-use super::{AgentIntegrationStatus, publication::canonical_json_bytes};
+use super::{
+    AgentIntegrationStatus, agent_integration_types::validation_receipt_text_matches_schema,
+    publication::canonical_json_bytes,
+};
 
 pub(super) const MAX_VALIDATION_ERRORS: usize = MAX_LIST_ITEMS;
 
@@ -74,7 +75,7 @@ impl ValidationResult {
             && self
                 .errors
                 .iter()
-                .all(|error| required_text(error, "handoff validation error").is_ok())
+                .all(|error| validation_receipt_text_matches_schema(error))
             && authority.project_id == project_id
             && workspace_id == Some(authority.workspace_id.as_str())
             && (authority.workspace_id.is_empty() || is_lowercase_sha256(&authority.workspace_id))

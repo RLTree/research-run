@@ -114,18 +114,24 @@ fn public_agent_integration_status_validator_rejects_cross_field_drift() {
         diagnostic: "Plan and apply integration.".to_owned(),
     };
     assert!(status.is_consistent());
-    let mut inconsistent = status;
+    let mut inconsistent = status.clone();
     inconsistent.agent_integration_ready = true;
     assert!(!inconsistent.is_consistent());
 
-    let mut empty_diagnostic = inconsistent;
-    empty_diagnostic.agent_integration_ready = false;
-    empty_diagnostic.diagnostic.clear();
-    assert!(!empty_diagnostic.is_consistent());
-    empty_diagnostic.diagnostic = "  \n".to_owned();
-    assert!(!empty_diagnostic.is_consistent());
-    empty_diagnostic.diagnostic = "x".repeat(65_536);
-    assert!(empty_diagnostic.is_consistent());
-    empty_diagnostic.diagnostic.push('x');
-    assert!(!empty_diagnostic.is_consistent());
+    let cases = [
+        ("empty", String::new(), false),
+        ("whitespace", "  \n".to_owned(), true),
+        ("control", "\0".to_owned(), true),
+        ("ascii maximum", "x".repeat(65_536), true),
+        ("ascii overflow", "x".repeat(65_537), false),
+        ("multibyte maximum", "é".repeat(65_536), true),
+        ("multibyte overflow", "é".repeat(65_537), false),
+        ("supplementary maximum", "🛡".repeat(65_536), true),
+        ("supplementary overflow", "🛡".repeat(65_537), false),
+    ];
+    for (name, diagnostic, expected) in cases {
+        let mut candidate = status.clone();
+        candidate.diagnostic = diagnostic;
+        assert_eq!(candidate.is_consistent(), expected, "{name}");
+    }
 }

@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use jsonschema::Resource;
+use research_run::workspace::AgentIntegrationStatus;
 use serde_json::{Value, json};
 
 #[test]
@@ -78,6 +79,57 @@ fn validation_v2_schema_rejects_contradictory_readiness_receipt() {
         .expect("errors array")
         .push(Value::String("overflow".to_owned()));
     assert!(!validator.is_valid(&bounded_errors));
+}
+
+#[test]
+fn validation_v2_receipt_text_schema_uses_character_boundaries() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let schema = read_json(&root.join("schemas/v2/validation.schema.json"));
+    let types = read_json(&root.join("schemas/v1/types.schema.json"));
+    let validator = jsonschema::draft202012::options()
+        .with_resource(
+            "https://research-run.local/schemas/v1/types.schema.json",
+            Resource::from_contents(types).expect("v1 types resource"),
+        )
+        .build(&schema)
+        .expect("validation v2 schema");
+    let mut receipt =
+        read_json(&root.join("fixtures/schemas/red/validation-v2-contradictory-readiness.json"));
+    receipt["agent_integration"]["protocol_installed"] = Value::Bool(true);
+    receipt["agent_integration"]["instruction_contract_installed"] = Value::Bool(false);
+    receipt["agent_integration"]["fresh_session_required"] = Value::Bool(false);
+
+    let cases = [
+        ("empty", String::new(), false),
+        ("whitespace", " \n".to_owned(), true),
+        ("control", "\0".to_owned(), true),
+        ("ascii maximum", "x".repeat(65_536), true),
+        ("ascii overflow", "x".repeat(65_537), false),
+        ("multibyte maximum", "é".repeat(65_536), true),
+        ("multibyte overflow", "é".repeat(65_537), false),
+        ("supplementary maximum", "🛡".repeat(65_536), true),
+        ("supplementary overflow", "🛡".repeat(65_537), false),
+    ];
+
+    for (name, text, expected) in cases {
+        let mut diagnostic_receipt = receipt.clone();
+        diagnostic_receipt["agent_integration"]["diagnostic"] = Value::String(text.clone());
+        let schema_accepts = validator.is_valid(&diagnostic_receipt);
+        let status: AgentIntegrationStatus =
+            serde_json::from_value(diagnostic_receipt["agent_integration"].clone())
+                .expect("agent integration status");
+        assert_eq!(schema_accepts, expected, "diagnostic schema: {name}");
+        assert_eq!(status.is_consistent(), schema_accepts, "status: {name}");
+
+        let mut error_receipt = receipt.clone();
+        error_receipt["valid"] = Value::Bool(false);
+        error_receipt["errors"] = json!([text]);
+        assert_eq!(
+            validator.is_valid(&error_receipt),
+            expected,
+            "error schema: {name}"
+        );
+    }
 }
 
 fn assert_authority_contract(validator: &jsonschema::Validator, valid: &Value) {

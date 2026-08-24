@@ -1,8 +1,19 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::required_text;
-
 pub(super) const MAX_INSTRUCTION_BYTES: u64 = 1_048_576;
+const MAX_VALIDATION_RECEIPT_TEXT_CHARACTERS: usize = 65_536;
+
+// Draft 2020-12 string lengths count decoded characters. For serde-decoded
+// strings, a bounded Rust scalar-value count matches the executable schema.
+pub(super) fn validation_receipt_text_matches_schema(value: &str) -> bool {
+    matches!(
+        value
+            .chars()
+            .take(MAX_VALIDATION_RECEIPT_TEXT_CHARACTERS + 1)
+            .count(),
+        1..=MAX_VALIDATION_RECEIPT_TEXT_CHARACTERS
+    )
+}
 
 pub(super) enum InstructionFile {
     Missing,
@@ -51,7 +62,7 @@ impl AgentIntegrationStatus {
 
     pub fn is_consistent(&self) -> bool {
         if self.current_session_loaded != "unverified"
-            || required_text(&self.diagnostic, "agent integration diagnostic").is_err()
+            || !validation_receipt_text_matches_schema(&self.diagnostic)
         {
             return false;
         }
