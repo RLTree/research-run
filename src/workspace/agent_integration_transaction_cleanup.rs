@@ -206,5 +206,9 @@ mod recovery_tests;
 mod security_tests;
 
 #[cfg(test)]
+#[path = "tests/agent_integration_cleanup_enumeration.rs"]
+mod enumeration_tests;
+
+#[cfg(test)]
 #[path = "tests/agent_integration_cleanup_special_files.rs"]
 mod special_file_tests;

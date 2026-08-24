@@ -96,25 +96,31 @@ pub(super) fn list_names(directory: &File, path: &Path, allowed: &[&str]) -> Res
             continue;
         }
         let name = OsStr::from_bytes(bytes);
-        let Some(name_text) = name.to_str() else {
-            return Err(Error::Conflict(
-                "completion transaction contains a non-UTF-8 name".to_owned(),
-            ));
-        };
-        if names.len() >= allowed.len() {
-            return Err(Error::Budget(format!(
-                "completion transaction exceeds its closed {}-child budget",
-                allowed.len()
-            )));
-        }
-        if !allowed.contains(&name_text) {
-            return Err(Error::Conflict(format!(
-                "unexpected completion transaction child: {name_text}"
-            )));
-        }
+        validate_name(name, names.len(), allowed)?;
         names.push(name.to_os_string());
     }
     Ok(names)
+}
+
+#[cfg(unix)]
+pub(super) fn validate_name(name: &OsStr, retained: usize, allowed: &[&str]) -> Result<()> {
+    let Some(name_text) = name.to_str() else {
+        return Err(Error::Conflict(
+            "completion transaction contains a non-UTF-8 name".to_owned(),
+        ));
+    };
+    if retained >= allowed.len() {
+        return Err(Error::Budget(format!(
+            "completion transaction exceeds its closed {}-child budget",
+            allowed.len()
+        )));
+    }
+    if !allowed.contains(&name_text) {
+        return Err(Error::Conflict(format!(
+            "unexpected completion transaction child: {name_text}"
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(not(unix))]
