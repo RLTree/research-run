@@ -83,6 +83,26 @@ fn policy_preserves_review_and_proof_claim_ceilings() {
     assert!(!review.contains("Every material round uses all four"));
 }
 
+#[test]
+fn active_execplan_scopes_the_pr12_merge_exception_without_waiving_coverage() {
+    let plan = read("docs/exec-plans/active/2026-07-20-v0.1-release-readiness.md");
+    let plan = plan.split_whitespace().collect::<Vec<_>>().join(" ");
+    for required in [
+        "supersedes every earlier PR #12-specific no-merge prohibition in this ExecPlan and the generic no-merge rule in `AGENTS.md`",
+        "The inherited repository-wide 100% coverage threshold remains red and continues to withhold exact source coverage",
+        "does not block this one PR #12 merge",
+        "Complete patch-local coverage remains required",
+        "Any new missed production coordinate introduced or materially changed by PR #12 returns the candidate to HOLD",
+        "Before the final candidate is frozen, every repair change requires refreshed exact-head proof",
+        "After the final candidate is frozen, any head drift requires fresh authority",
+    ] {
+        assert!(
+            plan.contains(required),
+            "active ExecPlan leaves the PR #12 merge exception ambiguous: {required}"
+        );
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn repository_check_entrypoints_are_executable() {

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub(super) const MAX_INSTRUCTION_BYTES: u64 = 1_048_576;
 const MAX_VALIDATION_RECEIPT_TEXT_CHARACTERS: usize = 65_536;
+const INSPECTION_UNAVAILABLE_DIAGNOSTIC: &str = "Agent integration inspection is unavailable. Run 'research-run agent-integration status' locally for details and preserve any pending publication evidence.";
 
 // Draft 2020-12 string lengths count decoded characters. For serde-decoded
 // strings, a bounded Rust scalar-value count matches the executable schema.
@@ -47,7 +48,7 @@ pub struct AgentIntegrationStatus {
 }
 
 impl AgentIntegrationStatus {
-    pub(super) fn unavailable(diagnostic: String, protocol_installed: bool) -> Self {
+    pub(super) fn inspection_unavailable(protocol_installed: bool) -> Self {
         Self {
             protocol_installed,
             instruction_contract_installed: false,
@@ -56,7 +57,7 @@ impl AgentIntegrationStatus {
             instruction_path: "unavailable".to_owned(),
             current_session_loaded: "unverified".to_owned(),
             fresh_session_required: false,
-            diagnostic,
+            diagnostic: INSPECTION_UNAVAILABLE_DIAGNOSTIC.to_owned(),
         }
     }
 

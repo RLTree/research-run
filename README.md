@@ -42,10 +42,11 @@ protocol into the active root project instructions with an explicit reviewed
 plan kept outside the target workspace:
 
 ```console
-research-run agent-integration plan my-study > research-run-agent-plan.json
-research-run agent-integration apply my-study \
-  --input research-run-agent-plan.json --json
-research-run agent-integration status my-study --json
+mkdir -p ../research-run-plans
+research-run agent-integration plan . > ../research-run-plans/agent-integration.json
+research-run agent-integration apply . \
+  --input ../research-run-plans/agent-integration.json --json
+research-run agent-integration status . --json
 ```
 
 The plan binds the manifest, contribution protocol, active `AGENTS.md` or
@@ -182,7 +183,10 @@ canonical ledger. The complete synthetic example is in
   paths, and current authority before completing or reconciling the publication.
   An explicit path also recovers an `init` interrupted before its manifest was
   published. Recovery never silently chooses conflicting content.
-- Diagnostics identify a path and invariant, not record bodies or secret values.
+- Local failing commands identify a path and invariant, not record bodies or
+  secret values. Portable validation-v2 and handoff agent-integration
+  diagnostics are stable and path-free; run `research-run agent-integration
+  status` locally for recovery detail.
 
 Reviewer text is metadata, not authority. A review affects assessment only when
 its detached SSH signature verifies against the workspace's one enrolled

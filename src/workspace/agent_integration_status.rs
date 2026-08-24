@@ -25,21 +25,10 @@ impl Workspace {
                         &manifest_sha,
                         &protocol_sha,
                     )
-                    .unwrap_or_else(|error| {
-                        AgentIntegrationStatus::unavailable(
-                            format!("Agent integration inspection failed: {error}"),
-                            true,
-                        )
-                    }),
-                Err(error) => AgentIntegrationStatus::unavailable(
-                    format!("Agent integration inspection failed: {error}"),
-                    false,
-                ),
+                    .unwrap_or_else(|_| AgentIntegrationStatus::inspection_unavailable(true)),
+                Err(_) => AgentIntegrationStatus::inspection_unavailable(false),
             },
-            Err(error) => AgentIntegrationStatus::unavailable(
-                format!("Agent integration inspection failed: {error}"),
-                false,
-            ),
+            Err(_) => AgentIntegrationStatus::inspection_unavailable(false),
         }
     }
 

@@ -148,7 +148,7 @@ impl Workspace {
                     valid: false,
                     errors: vec![diagnostic.clone()],
                     counts: BTreeMap::new(),
-                    agent_integration: AgentIntegrationStatus::unavailable(diagnostic, false),
+                    agent_integration: AgentIntegrationStatus::inspection_unavailable(false),
                 }
             }
         }
@@ -162,7 +162,7 @@ impl Workspace {
         let errors = bound_validation_errors(errors);
         let agent_integration = self
             .agent_integration_status_from_snapshot(snapshot)
-            .unwrap_or_else(|error| AgentIntegrationStatus::unavailable(error.to_string(), true));
+            .unwrap_or_else(|_| AgentIntegrationStatus::inspection_unavailable(true));
         ValidationResult {
             schema_version: 2,
             authority: self.validation_authority(snapshot).ok(),
