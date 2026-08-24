@@ -7,6 +7,7 @@ cd "$repo_root"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
 export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
 export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
+export RUST_TEST_THREADS="${RUST_TEST_THREADS:-1}"
 coverage_jobs="${RESEARCH_RUN_COVERAGE_JOBS:-1}"
 
 if ! cargo llvm-cov --version >/dev/null 2>&1; then

@@ -127,7 +127,7 @@ fn coverage_recovery_error_types_and_legacy_classifier_are_explicit() {
     let error = retained_state(std::path::Path::new("transaction"), "reason");
     assert!(matches!(error, Error::AmbiguousEffect(_)));
     assert!(source_matches_plan(&plan, b"existing instructions\n"));
-    let missing_root = super::temporary();
+    let missing_root = temporary();
     let missing = read_optional(&missing_root.join("missing-target")).unwrap();
     assert!(missing.is_none());
     fs::remove_dir_all(missing_root).unwrap();

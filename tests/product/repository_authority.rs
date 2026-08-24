@@ -129,6 +129,12 @@ fn repository_check_entrypoints_are_executable() {
             .mode();
         assert_ne!(mode & 0o111, 0, "{path} must be executable");
     }
+
+    let coverage = read("scripts/check-coverage");
+    assert!(
+        coverage.contains("export RUST_TEST_THREADS=\"${RUST_TEST_THREADS:-1}\""),
+        "coverage must serialize tests that share process-global fault state"
+    );
 }
 
 #[test]
