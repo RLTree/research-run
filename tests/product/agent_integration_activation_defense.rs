@@ -1,5 +1,7 @@
 use std::fs;
+use std::path::{Path, PathBuf};
 
+use research_run::workspace::Workspace;
 use serde_json::Value;
 
 use super::researcher_journey::{TempDir, cli, succeeds};
@@ -46,4 +48,96 @@ fn direct_managed_block_write_cannot_satisfy_agent_readiness() {
     );
     assert!(!plan.status.success());
     assert!(String::from_utf8_lossy(&plan.stderr).contains("installation transition"));
+}
+
+#[test]
+fn pending_recovery_paths_stay_out_of_portable_receipts() {
+    let temporary = TempDir::new("agent-integration-private-diagnostic");
+    let (project, pending) = initialize_with_pending_transaction(&temporary);
+    assert_local_status_retains_recovery_path(&temporary, &project, &pending);
+
+    let workspace = Workspace::discover(&project).expect("discover pending workspace");
+    let onboarding = workspace.agent_integration_onboarding_status();
+    assert!(!onboarding.agent_integration_ready);
+    assert_eq!(onboarding.ready_scope, "unavailable");
+    assert_private_diagnostic(&onboarding.diagnostic, &project);
+
+    let validation = succeeds(&project, &["validate", "--json"]);
+    let validation_json: Value = serde_json::from_slice(&validation.stdout).unwrap();
+    assert_eq!(validation_json["valid"], true);
+    assert_unavailable(&validation_json["agent_integration"], &project);
+    assert_portable(&validation.stdout, &project);
+
+    let handoff = succeeds(
+        &project,
+        &[
+            "handoff",
+            "create",
+            "--id",
+            "handoff-private-integration-diagnostic",
+            "--generated-at",
+            "2026-08-23T20:00:00Z",
+        ],
+    );
+    let handoff_json: Value = serde_json::from_slice(&handoff.stdout).unwrap();
+    assert_eq!(handoff_json["schema_version"], 2);
+    assert_unavailable(
+        &handoff_json["validation"]["result"]["agent_integration"],
+        &project,
+    );
+    assert_portable(&handoff.stdout, &project);
+    assert!(pending.is_dir(), "recovery evidence must remain intact");
+}
+
+fn initialize_with_pending_transaction(temporary: &TempDir) -> (PathBuf, PathBuf) {
+    let project = temporary.0.join("project");
+    succeeds(
+        &temporary.0,
+        &[
+            "init",
+            project.to_str().unwrap(),
+            "--name",
+            "Private integration diagnostic",
+            "--without-review-authority",
+        ],
+    );
+    let pending = project.join(".AGENTS.md.1.1.txn");
+    fs::create_dir(&pending).expect("create pending transaction evidence");
+    (project, pending)
+}
+
+fn assert_local_status_retains_recovery_path(temporary: &TempDir, project: &Path, pending: &Path) {
+    let explicit = cli(
+        &temporary.0,
+        &[
+            "agent-integration",
+            "status",
+            project.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert_eq!(explicit.status.code(), Some(4));
+    assert!(String::from_utf8_lossy(&explicit.stderr).contains(&*pending.to_string_lossy()));
+}
+
+fn assert_unavailable(status: &Value, project: &Path) {
+    assert_eq!(status["agent_integration_ready"], false);
+    assert_eq!(status["ready_scope"], "unavailable");
+    assert_private_diagnostic(status["diagnostic"].as_str().unwrap(), project);
+}
+
+fn assert_private_diagnostic(diagnostic: &str, project: &Path) {
+    assert_eq!(
+        diagnostic,
+        "Agent integration inspection is unavailable. Run 'research-run agent-integration status' locally for details and preserve any pending publication evidence."
+    );
+    assert!(!diagnostic.contains(&*project.to_string_lossy()));
+}
+
+fn assert_portable(output: &[u8], project: &Path) {
+    let output = String::from_utf8_lossy(output);
+    assert!(!output.contains(&*project.to_string_lossy()));
+    if let Some(home) = std::env::var_os("HOME") {
+        assert!(!output.contains(&*home.to_string_lossy()));
+    }
 }

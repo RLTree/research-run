@@ -3,7 +3,6 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use research_run::workspace::Workspace;
 use serde_json::{Value, json};
 
 use super::researcher_journey::{TempDir, cli, succeeds};
@@ -156,100 +155,6 @@ fn instruction_inspection_failure_does_not_invalidate_the_canonical_ledger() {
     assert!(!explicit.status.success());
     assert!(String::from_utf8_lossy(&explicit.stderr).contains("symlink is forbidden"));
     assert!(String::from_utf8_lossy(&explicit.stderr).contains(&*project.to_string_lossy()));
-}
-
-#[test]
-fn pending_instruction_recovery_paths_stay_out_of_portable_receipts() {
-    let temporary = TempDir::new("validation-private-integration-diagnostic");
-    let project = temporary.0.join("project");
-    succeeds(
-        &temporary.0,
-        &[
-            "init",
-            project.to_str().unwrap(),
-            "--name",
-            "Private integration diagnostic",
-            "--without-review-authority",
-        ],
-    );
-    let pending = project.join(".AGENTS.md.1.1.txn");
-    fs::create_dir(&pending).expect("create pending transaction evidence");
-
-    let explicit = cli(
-        &temporary.0,
-        &[
-            "agent-integration",
-            "status",
-            project.to_str().unwrap(),
-            "--json",
-        ],
-    );
-    assert!(!explicit.status.success());
-    assert_eq!(explicit.status.code(), Some(4));
-    assert!(
-        String::from_utf8_lossy(&explicit.stderr).contains(&*pending.to_string_lossy()),
-        "local failing status must retain the recovery path"
-    );
-
-    let workspace = Workspace::discover(&project).expect("discover pending workspace");
-    let onboarding = workspace.agent_integration_onboarding_status();
-    assert_private_integration_diagnostic(&onboarding.diagnostic, &project);
-    assert!(!onboarding.agent_integration_ready);
-    assert_eq!(onboarding.ready_scope, "unavailable");
-
-    let validation = succeeds(&project, &["validate", "--json"]);
-    let validation_json: Value =
-        serde_json::from_slice(&validation.stdout).expect("validation JSON");
-    assert_eq!(validation_json["valid"], true);
-    assert_eq!(
-        validation_json["agent_integration"]["agent_integration_ready"],
-        false
-    );
-    assert_eq!(
-        validation_json["agent_integration"]["ready_scope"],
-        "unavailable"
-    );
-    assert_private_integration_diagnostic(
-        validation_json["agent_integration"]["diagnostic"]
-            .as_str()
-            .expect("diagnostic text"),
-        &project,
-    );
-    assert_portable_output_omits_local_roots(&validation.stdout, &project);
-
-    let handoff = succeeds(
-        &project,
-        &[
-            "handoff",
-            "create",
-            "--id",
-            "handoff-private-integration-diagnostic",
-            "--generated-at",
-            "2026-08-23T20:00:00Z",
-        ],
-    );
-    let handoff_json: Value = serde_json::from_slice(&handoff.stdout).expect("handoff JSON");
-    assert_eq!(handoff_json["schema_version"], 2);
-    assert_eq!(
-        handoff_json["validation"]["result"]["agent_integration"]["agent_integration_ready"],
-        false
-    );
-    assert_private_integration_diagnostic(
-        handoff_json["validation"]["result"]["agent_integration"]["diagnostic"]
-            .as_str()
-            .expect("handoff diagnostic text"),
-        &project,
-    );
-    assert_portable_output_omits_local_roots(&handoff.stdout, &project);
-    assert!(pending.is_dir(), "recovery evidence must remain intact");
-}
-
-fn assert_private_integration_diagnostic(diagnostic: &str, project: &Path) {
-    assert_eq!(
-        diagnostic,
-        "Agent integration inspection is unavailable. Run 'research-run agent-integration status' locally for details and preserve any pending publication evidence."
-    );
-    assert!(!diagnostic.contains(&*project.to_string_lossy()));
 }
 
 fn assert_portable_output_omits_local_roots(output: &[u8], project: &Path) {

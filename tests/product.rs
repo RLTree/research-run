@@ -4,6 +4,8 @@ mod agent_integration_activation_defense;
 mod agent_integration_defense;
 #[path = "product/agent_integration_journey.rs"]
 mod agent_integration_journey;
+#[path = "product/agent_integration_quickstart.rs"]
+mod agent_integration_quickstart;
 #[cfg(target_os = "linux")]
 #[path = "product/agent_integration_setgid.rs"]
 mod agent_integration_setgid;
