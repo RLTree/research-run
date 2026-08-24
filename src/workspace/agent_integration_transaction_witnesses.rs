@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::path::Path;
 
@@ -7,12 +8,13 @@ use super::super::agent_integration::private_staging::{
     create_private_file, set_unix_mode, sync_private_file, write_private_bytes,
 };
 use super::super::agent_integration_types::MAX_INSTRUCTION_BYTES;
+#[cfg(unix)]
 use super::super::path_safety::reject_symlink_chain;
 use super::super::storage::{map_io, read_bounded_with_limit};
 #[cfg(not(unix))]
 use super::atomic_exchange::ensure_exchange_platform;
-use super::directories::verify_anchor;
-use super::sync_named_directory;
+use super::completion_io::{sync_handle, sync_leaf};
+use super::directories::{ExchangeHandles, verify_anchor, verify_relative_directory_anchor};
 
 pub(in crate::workspace) const PREVIOUS_TRANSACTION_VERSION: &[u8] =
     b"research-run-agent-integration-transaction-v2\n";
@@ -75,17 +77,17 @@ pub(in crate::workspace) fn inspect_independent_append_source(
 pub(in crate::workspace) fn stage_witnesses(
     target: &Path,
     transaction: &Path,
-    directory: &File,
+    handles: &ExchangeHandles,
     paths: &WitnessPaths,
     metadata: &fs::Metadata,
     original: &[u8],
     reviewed: &[u8],
 ) -> Result<()> {
-    verify_anchor(transaction, directory)?;
-    let mut version_file = create_private_file(directory, &paths.version)?;
-    let mut original_file = create_private_file(directory, &paths.original)?;
-    let mut reviewed_file = create_private_file(directory, &paths.reviewed)?;
-    let mut exchange_file = create_private_file(directory, &paths.exchange)?;
+    verify_anchor(transaction, &handles.transaction)?;
+    let mut version_file = create_private_file(&handles.transaction, &paths.version)?;
+    let mut original_file = create_private_file(&handles.transaction, &paths.original)?;
+    let mut reviewed_file = create_private_file(&handles.transaction, &paths.reviewed)?;
+    let mut exchange_file = create_private_file(&handles.transaction, &paths.exchange)?;
     write_private_bytes(&mut version_file, &paths.version, TRANSACTION_VERSION)?;
     write_private_bytes(&mut original_file, &paths.original, original)?;
     write_private_bytes(&mut reviewed_file, &paths.reviewed, reviewed)?;
@@ -115,34 +117,39 @@ pub(in crate::workspace) fn stage_witnesses(
         reviewed,
         TRANSACTION_VERSION,
     )?;
-    sync_witnesses(target, transaction, paths)
+    sync_witnesses(target, transaction, handles, paths)
 }
 
 pub(in crate::workspace) fn sync_witnesses(
     target: &Path,
     transaction: &Path,
+    handles: &ExchangeHandles,
     paths: &WitnessPaths,
 ) -> Result<()> {
-    for path in [
-        &paths.version,
-        &paths.original,
-        &paths.reviewed,
-        &paths.exchange,
+    verify_relative_directory_anchor(&handles.root, transaction, &handles.transaction)?;
+    for (name, path) in [
+        ("version", &paths.version),
+        ("original", &paths.original),
+        ("reviewed", &paths.reviewed),
+        ("exchange", &paths.exchange),
     ] {
-        let file = map_io(File::open(path), "open project instruction witness", path)?;
-        map_io(
-            file.sync_all(),
+        sync_leaf(
+            &handles.transaction,
+            OsStr::new(name),
             "sync transaction witness before exchange",
             path,
         )?;
     }
-    sync_named_directory(
-        transaction,
+    sync_handle(
+        &handles.transaction,
         "sync project instruction transaction before exchange",
+        transaction,
     )?;
-    sync_named_directory(
-        target.parent().expect("instructions have a parent"),
+    verify_relative_directory_anchor(&handles.root, transaction, &handles.transaction)?;
+    sync_handle(
+        &handles.root,
         "sync project instruction root before exchange",
+        target,
     )
 }
 

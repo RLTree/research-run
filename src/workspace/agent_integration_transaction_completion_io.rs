@@ -1,14 +1,17 @@
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
+#[cfg(unix)]
 use std::io::Read;
 use std::path::Path;
 
 #[cfg(unix)]
 use rustix::fs::Dir;
+#[cfg(unix)]
 use rustix::fs::{AtFlags, Mode, OFlags, openat, unlinkat};
 
 use crate::{Error, Result};
 
+#[cfg(unix)]
 use super::super::storage::map_io;
 
 pub(super) struct Leaf {
@@ -19,6 +22,7 @@ pub(super) struct Leaf {
     pub(super) inode: u64,
 }
 
+#[cfg(unix)]
 pub(super) fn read_leaf(directory: &File, name: &OsStr, maximum: u64, path: &Path) -> Result<Leaf> {
     let descriptor = openat(
         directory,
@@ -68,6 +72,14 @@ pub(super) fn read_leaf(directory: &File, name: &OsStr, maximum: u64, path: &Pat
     })
 }
 
+#[cfg(not(unix))]
+pub(super) fn read_leaf(_: &File, _: &OsStr, _: u64, _: &Path) -> Result<Leaf> {
+    Err(Error::invalid(
+        "project instruction transaction leaf",
+        "instruction transaction I/O requires Unix descriptor-relative filesystem support",
+    ))
+}
+
 #[cfg(unix)]
 pub(super) fn list_names(directory: &File, path: &Path) -> Result<Vec<OsString>> {
     use std::os::unix::ffi::OsStrExt;
@@ -96,6 +108,7 @@ pub(super) fn list_names(_: &File, _: &Path) -> Result<Vec<OsString>> {
     ))
 }
 
+#[cfg(unix)]
 pub(super) fn sync_leaf(
     directory: &File,
     name: &OsStr,
@@ -119,18 +132,37 @@ pub(super) fn sync_leaf(
     sync_handle(&file, point, path)
 }
 
+#[cfg(not(unix))]
+pub(super) fn sync_leaf(_: &File, _: &OsStr, _: &'static str, _: &Path) -> Result<()> {
+    Err(Error::invalid(
+        "project instruction leaf",
+        "instruction durability requires Unix descriptor-relative filesystem support",
+    ))
+}
+
 pub(super) fn sync_handle(file: &File, point: &'static str, path: &Path) -> Result<()> {
     if super::super::injected_storage_failure(point) {
         return Err(injected(point, path));
     }
-    map_io(file.sync_all(), point, path)
+    file.sync_all()
+        .map_err(|error| Error::io(point, path, error))
 }
 
+#[cfg(unix)]
 pub(super) fn unlink_file(directory: &File, name: &OsStr, action: &'static str) -> Result<()> {
     unlinkat(directory, name, AtFlags::empty())
         .map_err(|error| Error::io(action, Path::new(name), error.into()))
 }
 
+#[cfg(not(unix))]
+pub(super) fn unlink_file(_: &File, _: &OsStr, _: &'static str) -> Result<()> {
+    Err(Error::invalid(
+        "project instruction cleanup",
+        "instruction cleanup requires Unix descriptor-relative filesystem support",
+    ))
+}
+
+#[cfg(unix)]
 pub(super) fn unlink_directory(
     root: &File,
     name: &OsStr,
@@ -138,6 +170,14 @@ pub(super) fn unlink_directory(
     action: &'static str,
 ) -> Result<()> {
     unlinkat(root, name, AtFlags::REMOVEDIR).map_err(|error| Error::io(action, path, error.into()))
+}
+
+#[cfg(not(unix))]
+pub(super) fn unlink_directory(_: &File, _: &OsStr, _: &Path, _: &'static str) -> Result<()> {
+    Err(Error::invalid(
+        "project instruction cleanup",
+        "instruction cleanup requires Unix descriptor-relative filesystem support",
+    ))
 }
 
 pub(super) fn leaf<'a>(path: &'a Path, context: &str) -> Result<&'a OsStr> {
@@ -154,14 +194,6 @@ fn unix_identity(metadata: &std::fs::Metadata) -> Result<(u32, u64, u64, u64)> {
         metadata.nlink(),
         metadata.dev(),
         metadata.ino(),
-    ))
-}
-
-#[cfg(not(unix))]
-fn unix_identity(_: &std::fs::Metadata) -> Result<(u32, u64, u64, u64)> {
-    Err(Error::invalid(
-        "instruction file identity",
-        "instruction completion requires Unix file identity",
     ))
 }
 

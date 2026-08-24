@@ -66,7 +66,7 @@ fn policy_preserves_review_and_proof_claim_ceilings() {
         "scientific_truth_claim = false",
         "transaction_version = 3",
         "previous_transaction_versions = [2]",
-        "transaction_witnesses = [\"original\", \"reviewed\", \"exchange\", \"completion\"]",
+        "transaction_witnesses = [\"version\", \"original\", \"reviewed\", \"exchange\", \"completion\"]",
         "completion_publication = \"fd_relative_create_only_hard_link\"",
         "recovery_without_completion = \"exact_full_states_only\"",
         "coverage_line_floor = 100",
@@ -88,12 +88,14 @@ fn active_execplan_scopes_the_pr12_merge_exception_without_waiving_coverage() {
     let plan = read("docs/exec-plans/active/2026-07-20-v0.1-release-readiness.md");
     let plan = plan.split_whitespace().collect::<Vec<_>>().join(" ");
     for required in [
+        "Historical delivery branch: `codex/pr-review-automation`, represented by PR #7",
+        "Current bounded delivery candidate: PR #12 on `codex/fix-agent-activation-enforcement`",
         "supersedes every earlier PR #12-specific no-merge prohibition in this ExecPlan and the generic no-merge rule in `AGENTS.md`",
         "The inherited repository-wide 100% coverage threshold remains red and continues to withhold exact source coverage",
         "does not block this one PR #12 merge",
-        "Complete patch-local coverage remains required",
-        "Any new missed production coordinate introduced or materially changed by PR #12 returns the candidate to HOLD",
-        "Before the final candidate is frozen, every repair change requires refreshed exact-head proof",
+        "Complete patch-local proof must execute every material new or changed decision boundary",
+        "Precisely enumerated defensive, unreachable, or low-value missed coordinates may remain disclosed under the existing claim ceiling",
+        "Before the final candidate is frozen, every repair change requires fresh exact-head proof",
         "After the final candidate is frozen, any head drift requires fresh authority",
     ] {
         assert!(

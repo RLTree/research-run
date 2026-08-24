@@ -18,13 +18,13 @@ fn witness_staging_rejects_non_files_and_mode_persistence_failure() {
     fs::remove_dir(&target).unwrap();
     fs::write(&target, b"o").unwrap();
     let metadata = inspect_independent_append_source(&target).unwrap();
-    let directory = super::super::directories::open_directory(&transaction).unwrap();
+    let handles = super::super::directories::open_exchange_handles(&target, &transaction).unwrap();
     inject_storage_failure("preserve project instruction Unix mode");
     assert!(
         stage_witnesses(
             &target,
             &transaction,
-            &directory,
+            &handles,
             &paths,
             &metadata,
             b"o",
@@ -44,11 +44,11 @@ fn witness_verification_rejects_a_missing_canonical_target() {
     fs::create_dir(&transaction).unwrap();
     let paths = WitnessPaths::new(&transaction);
     let metadata = inspect_independent_append_source(&target).unwrap();
-    let directory = super::super::directories::open_directory(&transaction).unwrap();
+    let handles = super::super::directories::open_exchange_handles(&target, &transaction).unwrap();
     stage_witnesses(
         &target,
         &transaction,
-        &directory,
+        &handles,
         &paths,
         &metadata,
         b"o",

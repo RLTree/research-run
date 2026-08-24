@@ -3,6 +3,7 @@ use std::path::Path;
 
 use crate::{Error, Result};
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use super::super::path_safety::reject_symlink_chain;
 use super::super::storage::{map_io, same_file_identity};
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
@@ -31,7 +32,8 @@ pub(in crate::workspace) fn open_exchange_handles(
     _target: &Path,
     _transaction: &Path,
 ) -> Result<ExchangeHandles> {
-    ensure_exchange_platform()
+    ensure_exchange_platform()?;
+    unreachable!("unsupported platforms fail before opening exchange handles")
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -57,7 +59,8 @@ pub(in crate::workspace) fn open_exchange_handles_from_root(
     _transaction: &Path,
     _root_handle: File,
 ) -> Result<ExchangeHandles> {
-    ensure_exchange_platform()
+    ensure_exchange_platform()?;
+    unreachable!("unsupported platforms fail before opening exchange handles")
 }
 
 #[cfg(unix)]
@@ -191,12 +194,6 @@ fn open_directory_at(root: &File, path: &Path) -> Result<File> {
     Ok(file)
 }
 
-#[cfg(not(unix))]
-fn open_directory_at(_: &File, _: &Path) -> Result<File> {
-    ensure_exchange_platform()?;
-    unreachable!("unsupported platforms fail before opening directories")
-}
-
 #[cfg(unix)]
 pub(in crate::workspace) fn ensure_same_device(
     root: &Path,
@@ -219,14 +216,4 @@ pub(in crate::workspace) fn ensure_same_device(
         ));
     }
     Ok(())
-}
-
-#[cfg(not(unix))]
-pub(in crate::workspace) fn ensure_same_device(
-    _: &Path,
-    _: &File,
-    _: &Path,
-    _: &File,
-) -> Result<()> {
-    ensure_exchange_platform()
 }

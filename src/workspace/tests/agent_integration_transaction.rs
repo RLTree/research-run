@@ -133,7 +133,11 @@ fn append_transaction_symlink_content_fails_closed_without_path_escape() {
     fs::write(transaction.join("reviewed"), &planned).unwrap();
     symlink(&outside, transaction.join("exchange")).unwrap();
 
-    assert!(Workspace::apply_agent_integration(&root, plan).is_err());
+    let error = Workspace::apply_agent_integration(&root, plan).unwrap_err();
+    let Error::AmbiguousEffect(message) = error else {
+        panic!("expected retained symlink ambiguity, observed {error:?}");
+    };
+    assert!(message.contains("symlink is forbidden"), "{message}");
     assert_eq!(fs::read(&outside).unwrap(), planned);
     assert!(transaction.exists());
     assert_eq!(fs::read(root.join("AGENTS.md")).unwrap(), original);

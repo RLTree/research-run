@@ -124,6 +124,7 @@ fn verify_private_file(file: &File, path: &Path, _: u32) -> Result<()> {
     Ok(())
 }
 
+#[cfg(unix)]
 fn leaf(path: &Path) -> Result<&std::ffi::OsStr> {
     path.file_name()
         .ok_or_else(|| Error::invalid("private pending record", "missing leaf name"))

@@ -110,8 +110,12 @@ exchange without weakening `unsafe_code = "forbid"`.
   transaction leaf and canonical instruction leaf atomically through opened,
   identity-checked directory descriptors; the
   canonical pathname remains bound throughout the supported exchange. There is
-  no non-atomic canonical-publication fallback. The canonical `P` and exchanged
-  exact observed bytes are synced before verification. Before any witness is
+  no non-atomic canonical-publication fallback. Immediately before exchange,
+  every recognized witness is reopened no-follow and nonblocking relative to
+  the held transaction descriptor, then the held transaction and root
+  descriptors are synced; no pathname-based durability fallback exists. The
+  canonical `P` and exchanged exact observed bytes are synced before
+  verification. Before any witness is
   removed, a versioned plan-bound completion record is staged and synced in the
   transaction, published create-only as one fd-relative hard link, then synced
   with the root directory. Completion leaves are born no broader than `0600`

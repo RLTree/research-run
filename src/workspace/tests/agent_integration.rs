@@ -102,6 +102,79 @@ fn agent_status_and_apply_propagate_owned_boundary_failures() {
 }
 
 #[test]
+fn concurrent_agent_integration_applies_share_one_workspace_authority() {
+    use std::sync::{Arc, Barrier};
+    use std::thread;
+
+    let root = temporary();
+    Workspace::initialize(&root, "Concurrent integration").unwrap();
+    let plan = Workspace::plan_agent_integration(&root).unwrap();
+    let barrier = Arc::new(Barrier::new(3));
+    let mut workers = Vec::new();
+    for _ in 0..2 {
+        let root = root.clone();
+        let plan = plan.clone();
+        let barrier = Arc::clone(&barrier);
+        workers.push(thread::spawn(move || {
+            barrier.wait();
+            Workspace::apply_agent_integration(&root, plan)
+        }));
+    }
+    barrier.wait();
+
+    let mut changed = 0;
+    let mut no_op = 0;
+    let mut lock_conflict = 0;
+    for result in workers.into_iter().map(|worker| worker.join().unwrap()) {
+        match result {
+            Ok(result) if result.changed => changed += 1,
+            Ok(_) => no_op += 1,
+            Err(crate::Error::Io {
+                action: "acquire workspace write lock",
+                ..
+            }) => {
+                lock_conflict += 1;
+            }
+            other => panic!("unexpected concurrent integration result: {other:?}"),
+        }
+    }
+    assert_eq!(
+        changed, 1,
+        "exactly one apply may publish the reviewed plan"
+    );
+    assert_eq!(
+        no_op + lock_conflict,
+        1,
+        "the other apply must observe the installed state or the held write lock"
+    );
+    assert!(
+        !Workspace::apply_agent_integration(&root, plan)
+            .unwrap()
+            .changed,
+        "the exact reviewed retry must converge to no-op"
+    );
+    assert!(
+        Workspace::for_recovery(&root)
+            .unwrap()
+            .agent_integration_status()
+            .unwrap()
+            .agent_integration_ready
+    );
+    let residues = fs::read_dir(&root)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|name| {
+            name.starts_with(".AGENTS.md.") && (name.ends_with(".txn") || name.ends_with(".done"))
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        residues.is_empty(),
+        "publication residue remains: {residues:?}"
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn public_agent_integration_status_validator_rejects_cross_field_drift() {
     let status = AgentIntegrationStatus {
         protocol_installed: true,

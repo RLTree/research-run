@@ -104,8 +104,11 @@ pathname replacement cannot redirect cleanup. On Linux and macOS,
 transaction and canonical leaves atomically relative to opened, identity-checked
 directory descriptors; the canonical pathname remains continuously bound and
 there is no ordinary-rename, link, or move fallback for canonical publication.
-The canonical `P`, exchanged exact observed bytes, transaction, and root are
-synced after exchange. Cleanup starts only after a bounded versioned completion
+Pre-exchange durability reopens the closed witness set no-follow and nonblocking
+relative to the held transaction descriptor, verifies the relative transaction
+anchor, and syncs only the held transaction and root descriptors. The canonical
+`P`, exchanged exact observed bytes, transaction, and root are synced after
+exchange. Cleanup starts only after a bounded versioned completion
 record is staged and synced inside the transaction, published create-only as an
 fd-relative hard link, and synced with the root directory. Completion leaves are
 born no broader than `0600` and receive that mode through their held descriptor

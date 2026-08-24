@@ -6,15 +6,6 @@ cd "$repo_root"
 
 artifact_platform="$(rustc -vV | sed -n 's/^host: //p')"
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "artifact proof requires a clean commit candidate" >&2
-  echo "withheld: package, install, journey, performance_baseline, and compactness_baseline" >&2
-  exit 1
-fi
-
-observation_root="$(mktemp -d "${TMPDIR:-/tmp}/research-run-artifacts.XXXXXX")"
-trap 'rm -rf "$observation_root"' EXIT
-
 sha256_file() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | awk '{print $1}'
@@ -32,11 +23,138 @@ file_mode() {
 }
 
 workspace_fingerprint() {
-  local state="$1" path
-  while IFS= read -r path; do
-    printf '%s %s\n' "${path#"$state"/}" "$(sha256_file "$path")"
-  done < <(find "$state" -type f -print | LC_ALL=C sort)
+  printf '. directory %s -\n' "$(file_mode "$1")"
+  workspace_fingerprint_walk "$1" "$1"
 }
+
+workspace_fingerprint_walk() {
+  local state="$1" directory="$2" path relative type payload mode
+  local LC_ALL=C
+  local entries=()
+  shopt -s dotglob nullglob
+  entries=("$directory"/*)
+  shopt -u dotglob nullglob
+  for path in "${entries[@]}"; do
+    relative="${path#"$state"/}"
+    mode="$(file_mode "$path")"
+    if [[ -L "$path" ]]; then
+      type="symlink"
+      payload="$(readlink "$path")"
+    elif [[ -f "$path" ]]; then
+      type="file"
+      payload="$(sha256_file "$path")"
+    elif [[ -d "$path" ]]; then
+      type="directory"
+      payload="-"
+    elif [[ -p "$path" ]]; then
+      type="fifo"
+      payload="-"
+    elif [[ -S "$path" ]]; then
+      type="socket"
+      payload="-"
+    elif [[ -b "$path" ]]; then
+      type="block-device"
+      payload="-"
+    elif [[ -c "$path" ]]; then
+      type="character-device"
+      payload="-"
+    else
+      type="other"
+      payload="-"
+    fi
+    printf '%q %s %s %q\n' "$relative" "$type" "$mode" "$payload"
+    if [[ "$type" == "directory" ]]; then
+      workspace_fingerprint_walk "$state" "$path"
+    fi
+  done
+}
+
+workspace_fingerprint_self_test() (
+  set -euo pipefail
+  local fixture state baseline changed
+  fixture="$(mktemp -d "${TMPDIR:-/tmp}/research-run-fingerprint.XXXXXX")"
+  trap 'rm -rf "$fixture"' EXIT
+  state="$fixture/state"
+  mkdir "$state"
+  chmod 700 "$state"
+  printf 'record\n' >"$state/record"
+  chmod 600 "$state/record"
+  baseline="$(workspace_fingerprint "$state")"
+
+  chmod 750 "$state"
+  changed="$(workspace_fingerprint "$state")"
+  [[ "$baseline" != "$changed" ]] || {
+    echo "workspace fingerprint missed a root-directory mode change" >&2
+    return 1
+  }
+  chmod 700 "$state"
+
+  chmod 640 "$state/record"
+  changed="$(workspace_fingerprint "$state")"
+  [[ "$baseline" != "$changed" ]] || {
+    echo "workspace fingerprint missed a mode change" >&2
+    return 1
+  }
+  chmod 600 "$state/record"
+
+  mkdir "$state/empty"
+  chmod 700 "$state/empty"
+  changed="$(workspace_fingerprint "$state")"
+  [[ "$baseline" != "$changed" ]] || {
+    echo "workspace fingerprint missed an empty directory" >&2
+    return 1
+  }
+  local directory_baseline="$changed"
+  chmod 750 "$state/empty"
+  changed="$(workspace_fingerprint "$state")"
+  [[ "$directory_baseline" != "$changed" ]] || {
+    echo "workspace fingerprint missed a directory mode change" >&2
+    return 1
+  }
+  rmdir "$state/empty"
+
+  ln -s record "$state/link"
+  changed="$(workspace_fingerprint "$state")"
+  [[ "$baseline" != "$changed" ]] || {
+    echo "workspace fingerprint missed a symlink" >&2
+    return 1
+  }
+  local link_baseline="$changed"
+  ln -snf missing "$state/link"
+  changed="$(workspace_fingerprint "$state")"
+  [[ "$link_baseline" != "$changed" ]] || {
+    echo "workspace fingerprint missed a symlink retarget" >&2
+    return 1
+  }
+  rm "$state/link"
+
+  mv "$state/record" "$state/retained"
+  ln -s retained "$state/record"
+  changed="$(workspace_fingerprint "$state")"
+  [[ "$baseline" != "$changed" ]] || {
+    echo "workspace fingerprint missed a file-to-symlink replacement" >&2
+    return 1
+  }
+)
+
+if [[ "${1:-}" == "--fingerprint-self-test" ]]; then
+  workspace_fingerprint_self_test
+  exit 0
+fi
+if (( $# != 0 )); then
+  echo "usage: scripts/check-product-artifacts [--fingerprint-self-test]" >&2
+  exit 2
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "artifact proof requires a clean commit candidate" >&2
+  echo "withheld: package, install, journey, performance_baseline, and compactness_baseline" >&2
+  exit 1
+fi
+
+observation_root="$(mktemp -d "${TMPDIR:-/tmp}/research-run-artifacts.XXXXXX")"
+trap 'rm -rf "$observation_root"' EXIT
+workspace_fingerprint_self_test
 
 target_before_kib="$(du -sk target 2>/dev/null | awk '{print $1}' || printf '0')"
 cargo build --locked --release
@@ -239,8 +357,47 @@ validation_receipt_sha256="$(sha256_file "$observation_root/validation-receipt.j
 installed_command handoff create --id handoff-installed-agent \
   --generated-at 2026-08-20T20:00:00Z --query buffer \
   >"$observation_root/handoff-receipt.json"
+installed_command handoff inspect --input "$observation_root/handoff-receipt.json" \
+  >"$observation_root/handoff-inspected.json"
+jq -S . "$observation_root/handoff-receipt.json" >"$observation_root/handoff-created.sorted.json"
+jq -S . "$observation_root/handoff-inspected.json" >"$observation_root/handoff-inspected.sorted.json"
+cmp "$observation_root/handoff-created.sorted.json" "$observation_root/handoff-inspected.sorted.json"
+jq -S . "$observation_root/validation-receipt.json" >"$observation_root/validation-result.sorted.json"
+jq -S '.validation.result' "$observation_root/handoff-receipt.json" \
+  >"$observation_root/handoff-validation-result.sorted.json"
+cmp "$observation_root/validation-result.sorted.json" \
+  "$observation_root/handoff-validation-result.sorted.json"
+project_id="$(jq -er '.project_id' "$observation_root/agent-plan.json")"
+workspace_id="$(jq -er '.workspace_id' "$observation_root/agent-plan.json")"
+manifest_sha256="$(jq -er '.manifest_sha256' "$observation_root/agent-plan.json")"
+protocol_sha256="$(jq -er '.protocol_sha256' "$observation_root/agent-plan.json")"
+instruction_sha256="$(sha256_file "$workspace/AGENTS.md")"
+printf '%s' "$(jq -c '.validation.result' "$observation_root/handoff-receipt.json")" \
+  >"$observation_root/handoff-result.compact.json"
+printf '%s' "$(jq -c '.context' "$observation_root/handoff-receipt.json")" \
+  >"$observation_root/handoff-context.compact.json"
+result_sha256="$(sha256_file "$observation_root/handoff-result.compact.json")"
+context_sha256="$(sha256_file "$observation_root/handoff-context.compact.json")"
 jq -e \
-  '.schema_version == 2 and .validation.result.valid == true and .validation.result.authority.project_id == .context.project_id and (.context.matches | any(.id == "decision-buffer"))' \
+  --arg project_id "$project_id" \
+  --arg workspace_id "$workspace_id" \
+  --arg manifest_sha256 "$manifest_sha256" \
+  --arg protocol_sha256 "$protocol_sha256" \
+  --arg instruction_sha256 "$instruction_sha256" \
+  --arg result_sha256 "$result_sha256" \
+  --arg context_sha256 "$context_sha256" \
+  '.schema_version == 2 and
+   .validation.result.valid == true and
+   .context.project_id == $project_id and
+   .context.workspace_id == $workspace_id and
+   .validation.result.authority.project_id == $project_id and
+   .validation.result.authority.workspace_id == $workspace_id and
+   .validation.result.authority.manifest_sha256 == $manifest_sha256 and
+   .validation.result.authority.protocol_sha256 == $protocol_sha256 and
+   .validation.result.authority.instruction_sha256 == $instruction_sha256 and
+   .validation.result_sha256 == $result_sha256 and
+   .validation.context_sha256 == $context_sha256 and
+   (.context.matches | any(.id == "decision-buffer"))' \
   "$observation_root/handoff-receipt.json" \
   >/dev/null
 handoff_receipt_sha256="$(sha256_file "$observation_root/handoff-receipt.json")"

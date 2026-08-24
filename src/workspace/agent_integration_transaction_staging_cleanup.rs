@@ -1,16 +1,25 @@
-use std::ffi::{OsStr, OsString};
+#[cfg(unix)]
+use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fs::File;
 use std::path::Path;
 
+#[cfg(unix)]
 use rustix::fs::Dir;
 
 use crate::{Error, Result};
 
+#[cfg(unix)]
 use super::super::agent_integration_types::MAX_INSTRUCTION_BYTES;
+#[cfg(not(unix))]
+use super::atomic_exchange::ensure_exchange_platform;
 use super::cleanup_effects::{ambiguous, remove_transaction};
-use super::completion_io::{read_leaf, sync_handle, unlink_file};
+#[cfg(unix)]
+use super::completion_io::read_leaf;
+use super::completion_io::{sync_handle, unlink_file};
 use super::directories::{ExchangeHandles, verify_relative_directory_anchor};
 
+#[cfg(unix)]
 const STAGING_WITNESSES: [&str; 4] = ["exchange", "original", "reviewed", "version"];
 
 pub(in crate::workspace) fn cleanup_staging_transaction(
@@ -63,6 +72,7 @@ pub(super) fn abort_transaction(
     }
 }
 
+#[cfg(unix)]
 fn inspect_staging_witnesses(transaction: &Path, directory: &File) -> Result<Vec<OsString>> {
     use std::os::unix::ffi::OsStrExt;
 
@@ -108,6 +118,12 @@ fn inspect_staging_witnesses(transaction: &Path, directory: &File) -> Result<Vec
     }
     names.sort();
     Ok(names)
+}
+
+#[cfg(not(unix))]
+fn inspect_staging_witnesses(_: &Path, _: &File) -> Result<Vec<OsString>> {
+    ensure_exchange_platform()?;
+    unreachable!("unsupported platforms fail before staging cleanup")
 }
 
 fn injected(action: &'static str, path: &Path) -> Error {

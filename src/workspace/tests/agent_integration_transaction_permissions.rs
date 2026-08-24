@@ -7,7 +7,7 @@ use crate::domain::AgentIntegrationOperation;
 use super::super::agent_integration::private_staging::create_private_file;
 use super::super::agent_integration_publication::publish_instruction;
 use super::super::agent_integration_transaction::create_transaction;
-use super::super::agent_integration_transaction::directories::open_directory;
+use super::super::agent_integration_transaction::directories::open_exchange_handles;
 use super::super::agent_integration_transaction::receipt_io::stage_receipt;
 use super::super::agent_integration_transaction::witnesses::{
     WitnessPaths, inspect_independent_append_source, stage_witnesses,
@@ -15,7 +15,7 @@ use super::super::agent_integration_transaction::witnesses::{
 use super::super::inject_storage_failure;
 
 const CHILD_ROOT: &str = "RESEARCH_RUN_PERMISSION_CHILD_ROOT";
-const TEST_FILTER: &str = "private_agent_integration_staging_respects_permission_ceilings";
+const CHILD_COMPLETE: &str = ".permission-child-complete";
 const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 #[path = "agent_integration_transaction_creation.rs"]
@@ -29,22 +29,30 @@ fn private_agent_integration_staging_respects_permission_ceilings() {
         return;
     }
     let mut failed = Vec::new();
+    let module = module_path!()
+        .strip_prefix(concat!(env!("CARGO_CRATE_NAME"), "::"))
+        .unwrap_or(module_path!());
+    let filter = format!(
+        "{}::{}",
+        module,
+        stringify!(private_agent_integration_staging_respects_permission_ceilings)
+    );
     for mask in ["022", "000"] {
         let root = child_root(mask);
         let status = Command::new("sh")
             .arg("-c")
-            .arg("umask \"$1\"; exec \"$2\" \"$3\" --nocapture --test-threads=1")
+            .arg("umask \"$1\"; exec \"$2\" \"$3\" --exact --nocapture --test-threads=1")
             .arg("research-run-permission-test")
             .arg(mask)
             .arg(std::env::current_exe().unwrap())
-            .arg(TEST_FILTER)
+            .arg(&filter)
             .env(CHILD_ROOT, &root)
             .status()
             .unwrap();
-        let _ = fs::remove_dir_all(&root);
-        if !status.success() {
+        if !status.success() || !root.join(CHILD_COMPLETE).is_file() {
             failed.push(mask);
         }
+        let _ = fs::remove_dir_all(&root);
     }
     assert!(failed.is_empty(), "permission children failed: {failed:?}");
 }
@@ -60,6 +68,7 @@ fn exercise_permission_boundaries(root: &Path) {
     let (transaction, paths, pending) = stage_private_intermediates(root, &target);
     assert_permission_ceilings(&transaction, &paths, &pending);
     assert_exact_witness_modes(root, &target);
+    fs::write(root.join(CHILD_COMPLETE), b"complete").unwrap();
 }
 
 #[cfg(unix)]
@@ -67,14 +76,14 @@ fn stage_private_intermediates(root: &Path, target: &Path) -> (PathBuf, WitnessP
     let transaction = root.join(".AGENTS.md.991.1.txn");
     create_transaction(&transaction).unwrap();
     let paths = WitnessPaths::new(&transaction);
-    let transaction_handle = open_directory(&transaction).unwrap();
+    let handles = open_exchange_handles(target, &transaction).unwrap();
     let source_metadata = inspect_independent_append_source(target).unwrap();
     inject_storage_failure("preserve project instruction Unix mode");
     assert!(
         stage_witnesses(
             target,
             &transaction,
-            &transaction_handle,
+            &handles,
             &paths,
             &source_metadata,
             b"original",
@@ -82,8 +91,8 @@ fn stage_private_intermediates(root: &Path, target: &Path) -> (PathBuf, WitnessP
         )
         .is_err()
     );
-    stage_receipt(&transaction_handle, &transaction, b"completion").unwrap();
-    assert_private_create_collision(&transaction_handle, &transaction);
+    stage_receipt(&handles.transaction, &transaction, b"completion").unwrap();
+    assert_private_create_collision(&handles.transaction, &transaction);
 
     let create_target = root.join("AGENTS.override.md");
     fs::write(&create_target, b"conflict").unwrap();
@@ -139,12 +148,12 @@ fn assert_exact_witness_modes(root: &Path, target: &Path) {
     let exact_transaction = root.join(".AGENTS.md.992.1.txn");
     create_transaction(&exact_transaction).unwrap();
     let exact_paths = WitnessPaths::new(&exact_transaction);
-    let exact_handle = open_directory(&exact_transaction).unwrap();
+    let exact_handles = open_exchange_handles(target, &exact_transaction).unwrap();
     let source_metadata = inspect_independent_append_source(target).unwrap();
     stage_witnesses(
         target,
         &exact_transaction,
-        &exact_handle,
+        &exact_handles,
         &exact_paths,
         &source_metadata,
         b"original",

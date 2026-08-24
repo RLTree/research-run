@@ -3,8 +3,11 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use serde_json::{Value, json};
+use serde_json::Value;
+#[cfg(unix)]
+use serde_json::json;
 
+#[cfg(unix)]
 use super::researcher_journey::{TempDir, cli, succeeds};
 
 #[test]
@@ -157,6 +160,7 @@ fn instruction_inspection_failure_does_not_invalidate_the_canonical_ledger() {
     assert!(String::from_utf8_lossy(&explicit.stderr).contains(&*project.to_string_lossy()));
 }
 
+#[cfg(unix)]
 fn assert_portable_output_omits_local_roots(output: &[u8], project: &Path) {
     let output = String::from_utf8_lossy(output);
     assert!(!output.contains(&*project.to_string_lossy()));

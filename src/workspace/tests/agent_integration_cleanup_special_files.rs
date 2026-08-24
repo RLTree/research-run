@@ -8,6 +8,7 @@ use super::super::super::agent_integration_publication::publish_instruction;
 use super::super::super::{inject_storage_failure, tests::temporary};
 
 const CHILD_ROOT: &str = "RESEARCH_RUN_FIFO_RECOVERY_CHILD_ROOT";
+const CHILD_COMPLETE: &str = ".fifo-recovery-child-complete";
 
 #[cfg(unix)]
 #[test]
@@ -18,8 +19,16 @@ fn completion_recovery_rejects_fifo_survivor_without_blocking() {
     }
 
     let root = temporary();
+    let module = module_path!()
+        .strip_prefix(concat!(env!("CARGO_CRATE_NAME"), "::"))
+        .unwrap_or(module_path!());
     let mut child = std::process::Command::new(std::env::current_exe().unwrap())
-        .arg("completion_recovery_rejects_fifo_survivor_without_blocking")
+        .arg(format!(
+            "{}::{}",
+            module,
+            stringify!(completion_recovery_rejects_fifo_survivor_without_blocking)
+        ))
+        .arg("--exact")
         .arg("--nocapture")
         .arg("--test-threads=1")
         .env(CHILD_ROOT, &root)
@@ -37,9 +46,13 @@ fn completion_recovery_rejects_fifo_survivor_without_blocking() {
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
     };
-    fs::remove_dir_all(&root).unwrap();
     let status = status.expect("completion recovery blocked on a FIFO survivor for over 5 seconds");
     assert!(status.success(), "FIFO recovery child failed: {status}");
+    assert!(
+        root.join(CHILD_COMPLETE).is_file(),
+        "FIFO recovery child did not execute the exact regression"
+    );
+    fs::remove_dir_all(&root).unwrap();
 }
 
 #[cfg(unix)]
@@ -75,6 +88,7 @@ fn exercise_fifo_recovery(root: &std::path::Path) {
     assert!(transaction.exists());
     assert!(receipt.exists());
     assert!(fs::symlink_metadata(fifo).unwrap().file_type().is_fifo());
+    fs::write(root.join(CHILD_COMPLETE), b"complete").unwrap();
 }
 
 fn fixture(root: &std::path::Path) -> (AgentIntegrationPlan, Vec<u8>, Vec<u8>) {

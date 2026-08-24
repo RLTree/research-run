@@ -1,19 +1,31 @@
+#[cfg(unix)]
 use std::ffi::OsStr;
 use std::fs::File;
+#[cfg(unix)]
 use std::io::Write;
 use std::path::Path;
 
+#[cfg(unix)]
 use rustix::fs::{AtFlags, Mode, OFlags, linkat, openat};
+#[cfg(unix)]
 use rustix::io::Errno;
 
-use crate::{Error, Result};
+#[cfg(unix)]
+use crate::Error;
+use crate::Result;
 
+#[cfg(unix)]
 use super::super::storage::map_io;
+#[cfg(not(unix))]
+use super::atomic_exchange::ensure_exchange_platform;
+#[cfg(unix)]
 use super::completion_io::{leaf, read_leaf, sync_handle, sync_leaf, unlink_file};
+#[cfg(unix)]
 use super::receipt::MAX_COMPLETION_RECEIPT_BYTES;
 
 pub(super) const COMPLETION_WITNESS: &str = "completion";
 
+#[cfg(unix)]
 pub(in crate::workspace) fn stage_receipt(
     transaction: &File,
     transaction_path: &Path,
@@ -40,6 +52,12 @@ pub(in crate::workspace) fn stage_receipt(
     )
 }
 
+#[cfg(not(unix))]
+pub(in crate::workspace) fn stage_receipt(_: &File, _: &Path, _: &[u8]) -> Result<()> {
+    ensure_exchange_platform()
+}
+
+#[cfg(unix)]
 pub(super) fn publish_receipt(transaction: &File, root: &File, receipt_path: &Path) -> Result<()> {
     if super::super::injected_storage_failure("publish project instruction completion receipt") {
         return Err(injected(
@@ -69,6 +87,12 @@ pub(super) fn publish_receipt(transaction: &File, root: &File, receipt_path: &Pa
     )
 }
 
+#[cfg(not(unix))]
+pub(super) fn publish_receipt(_: &File, _: &File, _: &Path) -> Result<()> {
+    ensure_exchange_platform()
+}
+
+#[cfg(unix)]
 fn open_staged_receipt(transaction: &File) -> std::result::Result<File, Errno> {
     if super::super::injected_storage_failure("create project instruction completion receipt") {
         return Err(Errno::IO);
@@ -82,6 +106,7 @@ fn open_staged_receipt(transaction: &File) -> std::result::Result<File, Errno> {
     .map(File::from)
 }
 
+#[cfg(unix)]
 fn write_staged_receipt(mut file: File, path: &Path, bytes: &[u8]) -> Result<()> {
     set_receipt_mode(&file, path)?;
     if super::super::injected_storage_failure("write project instruction completion receipt") {
@@ -108,6 +133,7 @@ fn write_staged_receipt(mut file: File, path: &Path, bytes: &[u8]) -> Result<()>
     )
 }
 
+#[cfg(unix)]
 fn repair_or_reuse_staged_receipt(
     transaction: &File,
     transaction_path: &Path,
@@ -164,14 +190,7 @@ fn set_receipt_mode(file: &File, path: &Path) -> Result<()> {
     )
 }
 
-#[cfg(not(unix))]
-fn set_receipt_mode(_: &File, _: &Path) -> Result<()> {
-    Err(Error::invalid(
-        "completion receipt mode",
-        "instruction completion requires Unix mode metadata",
-    ))
-}
-
+#[cfg(unix)]
 fn injected(action: &'static str, path: &Path) -> Error {
     Error::io(
         action,

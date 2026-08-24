@@ -1,8 +1,12 @@
+#[cfg(unix)]
 use std::fs;
 use std::path::Path;
 
-use crate::{Error, Result};
+#[cfg(unix)]
+use crate::Error;
+use crate::Result;
 
+#[cfg(unix)]
 use super::super::storage::{map_io, sync_directory};
 #[cfg(not(unix))]
 use super::atomic_exchange::ensure_exchange_platform;

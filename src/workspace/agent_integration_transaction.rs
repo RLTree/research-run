@@ -1,6 +1,5 @@
 #[cfg(any(test, coverage))]
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::{Error, Result};
@@ -30,7 +29,7 @@ pub(super) mod witnesses;
 
 use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::publication::pending_path;
-use super::storage::{read_bounded_with_limit, sync_directory};
+use super::storage::read_bounded_with_limit;
 use atomic_exchange::{ensure_exchange_platform, exchange_with_handles};
 use cleanup::{complete_publication, sync_exchanged_state};
 use cleanup_effects::{ambiguous, open_recovered_handles};
@@ -60,7 +59,7 @@ pub(super) fn publish_append(
     if let Err(error) = stage_witnesses(
         target,
         &transaction,
-        &handles.transaction,
+        &handles,
         &paths,
         &source_metadata,
         expected,
@@ -127,7 +126,8 @@ fn exchange_and_finish_with_handles(
     transaction_version: &[u8],
 ) -> Result<()> {
     let paths = WitnessPaths::new(transaction);
-    sync_witnesses(target, transaction, &paths).map_err(|error| ambiguous(target, error))?;
+    sync_witnesses(target, transaction, &handles, &paths)
+        .map_err(|error| ambiguous(target, error))?;
     match exchange_with_handles(target, transaction, &handles) {
         Ok(()) => {}
         Err(error @ Error::AmbiguousEffect(_)) => return Err(error),
@@ -218,17 +218,6 @@ fn verify_post_exchange(
         transaction_version,
     )
     .map_err(|error| ambiguous(target, error))
-}
-
-fn sync_named_directory(path: &Path, point: &'static str) -> Result<()> {
-    if super::injected_storage_failure(point) {
-        return Err(Error::io(
-            "sync project instruction directory",
-            path,
-            io::Error::other("injected storage failure"),
-        ));
-    }
-    sync_directory(path)
 }
 
 #[cfg(any(test, coverage))]

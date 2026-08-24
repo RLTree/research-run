@@ -1,4 +1,5 @@
 const FIFO_CHILD_ROOT: &str = "RESEARCH_RUN_STAGING_FIFO_CHILD_ROOT";
+const FIFO_CHILD_COMPLETE: &str = ".staging-fifo-child-complete";
 
 #[cfg(unix)]
 #[test]
@@ -73,8 +74,16 @@ fn staging_cleanup_rejects_a_fifo_before_any_deletion_without_blocking() {
         return;
     }
     let root = super::temporary();
+    let module = module_path!()
+        .strip_prefix(concat!(env!("CARGO_CRATE_NAME"), "::"))
+        .unwrap_or(module_path!());
     let mut child = std::process::Command::new(std::env::current_exe().unwrap())
-        .arg("staging_cleanup_rejects_a_fifo_before_any_deletion_without_blocking")
+        .arg(format!(
+            "{}::{}",
+            module,
+            stringify!(staging_cleanup_rejects_a_fifo_before_any_deletion_without_blocking)
+        ))
+        .arg("--exact")
         .arg("--nocapture")
         .arg("--test-threads=1")
         .env(FIFO_CHILD_ROOT, &root)
@@ -92,9 +101,13 @@ fn staging_cleanup_rejects_a_fifo_before_any_deletion_without_blocking() {
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
     };
-    std::fs::remove_dir_all(&root).unwrap();
     let status = status.expect("staging cleanup blocked on a FIFO for over 5 seconds");
     assert!(status.success(), "FIFO staging child failed: {status}");
+    assert!(
+        root.join(FIFO_CHILD_COMPLETE).is_file(),
+        "FIFO staging child did not execute the exact regression"
+    );
+    std::fs::remove_dir_all(&root).unwrap();
 }
 
 #[cfg(unix)]
@@ -138,4 +151,5 @@ fn exercise_fifo_staging_cleanup(root: &std::path::Path) {
             .file_type()
             .is_fifo()
     );
+    std::fs::write(root.join(FIFO_CHILD_COMPLETE), b"complete").unwrap();
 }

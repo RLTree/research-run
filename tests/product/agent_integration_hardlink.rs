@@ -1,6 +1,9 @@
+#[cfg(unix)]
 use std::fs;
 
+#[cfg(unix)]
 use super::agent_integration_defense::{apply, initialize, plan};
+#[cfg(unix)]
 use super::researcher_journey::{TempDir, cli};
 
 #[cfg(unix)]

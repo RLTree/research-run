@@ -1,11 +1,16 @@
-#[cfg(any(test, coverage))]
+#[cfg(all(any(test, coverage), any(target_os = "linux", target_os = "macos")))]
 use std::fs;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::io;
-use std::path::{Component, Path};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::path::Component;
+use std::path::Path;
 
 use crate::{Error, Result};
 
-use super::directories::{ExchangeHandles, verify_anchor};
+use super::directories::ExchangeHandles;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use super::directories::verify_anchor;
 #[cfg(all(coverage, test))]
 use super::directories::{ensure_same_device, open_directory};
 
@@ -84,6 +89,7 @@ pub(super) fn exchange_with_handles(
     ensure_exchange_platform()
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn validated_leaf(path: &Path) -> Result<&std::ffi::OsStr> {
     let name = path.file_name().ok_or_else(|| {
         Error::invalid(
@@ -107,6 +113,7 @@ fn validated_leaf(path: &Path) -> Result<&std::ffi::OsStr> {
     Ok(name)
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn exchange_error(target: &Path, reason: &str) -> Error {
     Error::AmbiguousEffect(format!(
         "atomic project instruction exchange at {} is unsupported or has an uncertain effect; retained transaction evidence: {reason}",
@@ -114,7 +121,7 @@ fn exchange_error(target: &Path, reason: &str) -> Error {
     ))
 }
 
-#[cfg(any(test, coverage))]
+#[cfg(all(any(test, coverage), any(target_os = "linux", target_os = "macos")))]
 fn inject_path_continuity_probe(target: &Path) {
     if super::super::take_storage_failure("probe continuous agent instruction path") {
         match fs::OpenOptions::new()
@@ -129,10 +136,13 @@ fn inject_path_continuity_probe(target: &Path) {
     }
 }
 
-#[cfg(not(any(test, coverage)))]
+#[cfg(all(
+    not(any(test, coverage)),
+    any(target_os = "linux", target_os = "macos")
+))]
 fn inject_path_continuity_probe(_target: &Path) {}
 
-#[cfg(any(test, coverage))]
+#[cfg(all(any(test, coverage), any(target_os = "linux", target_os = "macos")))]
 fn inject_concurrent_target_change(target: &Path) {
     if super::super::take_storage_failure("agent instruction appeared during append publication") {
         fs::write(target, b"concurrent target claimant")
@@ -140,7 +150,10 @@ fn inject_concurrent_target_change(target: &Path) {
     }
 }
 
-#[cfg(not(any(test, coverage)))]
+#[cfg(all(
+    not(any(test, coverage)),
+    any(target_os = "linux", target_os = "macos")
+))]
 fn inject_concurrent_target_change(_target: &Path) {}
 
 #[cfg(test)]
