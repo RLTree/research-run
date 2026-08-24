@@ -8,6 +8,8 @@ use super::super::agent_integration::private_staging::create_private_file;
 use super::super::agent_integration_publication::publish_instruction;
 use super::super::agent_integration_transaction::create_transaction;
 use super::super::agent_integration_transaction::directories::open_directory;
+#[cfg(unix)]
+use super::super::agent_integration_transaction::directories::transaction_directory_permissions_are_private;
 use super::super::agent_integration_transaction::receipt_io::stage_receipt;
 use super::super::agent_integration_transaction::witnesses::{WitnessPaths, stage_witnesses};
 use super::super::inject_storage_failure;
@@ -15,6 +17,60 @@ use super::super::inject_storage_failure;
 const CHILD_ROOT: &str = "RESEARCH_RUN_PERMISSION_CHILD_ROOT";
 const TEST_FILTER: &str = "private_agent_integration_staging_respects_permission_ceilings";
 const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+
+#[cfg(target_os = "linux")]
+#[test]
+fn setgid_project_root_keeps_transaction_access_private() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let root = child_root("setgid");
+    fs::create_dir_all(&root).unwrap();
+    fs::set_permissions(&root, fs::Permissions::from_mode(0o2770)).unwrap();
+    let root_mode = fs::metadata(&root).unwrap().permissions().mode() & 0o7777;
+    assert_eq!(root_mode & 0o2000, 0o2000, "setgid precondition missing");
+
+    let transaction = root.join(".AGENTS.md.990.1.txn");
+    create_transaction(&transaction).unwrap();
+    let mode = fs::metadata(&transaction).unwrap().permissions().mode() & 0o7777;
+    assert_eq!(mode & 0o2000, 0o2000, "setgid inheritance missing");
+    assert_eq!(mode & 0o077, 0, "group/other transaction access: {mode:o}");
+    assert_eq!(
+        mode & 0o5000,
+        0,
+        "unexpected transaction special bits: {mode:o}"
+    );
+
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn transaction_directory_permission_predicate_is_strict() {
+    let private = |parent_mode, parent_gid, transaction_mode, transaction_gid, is_directory| {
+        transaction_directory_permissions_are_private(
+            parent_mode,
+            parent_gid,
+            transaction_mode,
+            transaction_gid,
+            is_directory,
+        )
+    };
+    assert!(private(0o700, 10, 0o700, 10, true));
+    assert!(private(0o700, 10, 0o500, 10, true));
+    for mode in [0o740, 0o704, 0o4700, 0o1700, 0o6700] {
+        assert!(!private(0o2700, 10, mode, 10, true), "mode {mode:o}");
+    }
+    assert!(!private(0o700, 10, 0o700, 10, false));
+
+    #[cfg(target_os = "linux")]
+    {
+        assert!(private(0o2700, 10, 0o2700, 10, true));
+        assert!(!private(0o700, 10, 0o2700, 10, true));
+        assert!(!private(0o2700, 10, 0o2700, 11, true));
+    }
+    #[cfg(not(target_os = "linux"))]
+    assert!(!private(0o2700, 10, 0o2700, 10, true));
+}
 
 #[cfg(unix)]
 #[test]

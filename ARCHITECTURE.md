@@ -85,11 +85,15 @@ filenames, rejects symlinks, drift, and conflicting markers, preserves existing
 instruction bytes, and publishes the resulting instruction file atomically.
 Fresh-Create pending instructions and append transaction leaves are born no
 broader than `0600`, and the append transaction directory is born no broader
-than `0700`. Append writes version, original `O`, reviewed `P`, and exchange=`P`
-through their held creation descriptors while private. Before the first
-durability sync it sets `O`, `P`, and exchange=`P` through those descriptors to
-the exact reviewed Unix mode; the private `0700` transaction directory contains
-any witness whose reviewed mode is broader than `0600`. On Linux and macOS,
+than `0700` in its access permission bits. On Linux only, the kernel-inherited
+`S_ISGID` bit is accepted when a setgid parent snapshot and matching child group
+make that inheritance internally consistent; it grants no group/other access.
+Other special bits and all group/other access fail closed. Append writes version,
+original `O`, reviewed `P`, and exchange=`P` through their held creation
+descriptors while private. Before the first durability sync it sets `O`, `P`,
+and exchange=`P` through those descriptors to the exact reviewed Unix mode; the
+owner-only-access transaction directory contains any witness whose reviewed
+mode is broader than `0600`. On Linux and macOS,
 `rustix::fs::renameat_with` exchanges the
 transaction and canonical leaves atomically relative to opened, identity-checked
 directory descriptors; the canonical pathname remains continuously bound and

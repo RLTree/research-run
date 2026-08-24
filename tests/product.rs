@@ -4,6 +4,9 @@ mod agent_integration_activation_defense;
 mod agent_integration_defense;
 #[path = "product/agent_integration_journey.rs"]
 mod agent_integration_journey;
+#[cfg(target_os = "linux")]
+#[path = "product/agent_integration_setgid.rs"]
+mod agent_integration_setgid;
 #[path = "product/contribution_protocol_journey.rs"]
 mod contribution_protocol_journey;
 #[path = "product/data_contracts.rs"]

@@ -91,12 +91,15 @@ exchange without weakening `unsafe_code = "forbid"`.
   symlinks, drift, and conflicting managed content, and is idempotent on
   identical retry. Fresh-Create pending instructions and append transaction
   leaves are created no broader than `0600`; the append transaction directory
-  is created no broader than `0700`. Append writes version, original `O`,
-  reviewed `P`, and exchange=`P` witnesses through their held creation
-  descriptors while private, then sets `O`, `P`, and exchange=`P` to the exact
-  reviewed Unix mode through those descriptors before the first durability
-  sync. The private `0700` transaction directory contains any witness whose
-  reviewed mode is broader than `0600`. On Linux and macOS it exchanges the
+  has access permission bits no broader than `0700`. Linux may add the inherited
+  `S_ISGID` bit only when the inspected parent is setgid and the child retains
+  its numeric group; setuid, sticky, unexplained setgid, and all group/other
+  access remain forbidden. Append writes version, original `O`, reviewed `P`,
+  and exchange=`P` witnesses through their held creation descriptors while
+  private, then sets `O`, `P`, and exchange=`P` to the exact reviewed Unix mode
+  through those descriptors before the first durability sync. The owner-only-
+  access transaction directory contains any witness whose reviewed mode is
+  broader than `0600`. On Linux and macOS it exchanges the
   transaction leaf and canonical instruction leaf atomically through opened,
   identity-checked directory descriptors; the
   canonical pathname remains bound throughout the supported exchange. There is
