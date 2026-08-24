@@ -66,7 +66,7 @@ pub(super) fn validate_survivors(
     receipt_leaf: &Leaf,
 ) -> Result<Vec<String>> {
     let mut survivors = BTreeSet::new();
-    for name in list_names(directory, transaction)? {
+    for name in list_names(directory, transaction, &WITNESS_NAMES)? {
         let Some(name) = name.to_str() else {
             return Err(Error::Conflict(
                 "completion transaction contains a non-UTF-8 name".to_owned(),

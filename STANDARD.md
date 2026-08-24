@@ -101,9 +101,12 @@ exchange without weakening `unsafe_code = "forbid"`.
   access transaction directory contains any witness whose reviewed mode is
   broader than `0600`. Before transaction creation, Append requires the active
   instruction source to be one regular file with exactly one hard link; a
-  multiply linked source conflicts before any effect. Any failure after private
-  transaction-directory creation is ambiguous and retains that directory as
-  evidence. Pre-exchange abort cleanup retains the opened root and transaction
+  multiply linked source conflicts before any effect. Metadata, permission,
+  parent-sync, or handle-acquisition failure after private transaction-directory
+  creation is ambiguous and retains that directory as evidence. A later staging
+  failure may return its original error only after closed-set descriptor-relative
+  cleanup and directory durability succeed. Pre-exchange abort cleanup retains
+  the opened root and transaction
   descriptors, preflights only the closed four-leaf staging set, and unlinks
   leaves and the directory fd-relatively; it never follows or falls back to a
   replaced transaction pathname. On Linux and macOS it exchanges the
@@ -111,9 +114,10 @@ exchange without weakening `unsafe_code = "forbid"`.
   identity-checked directory descriptors; the
   canonical pathname remains bound throughout the supported exchange. There is
   no non-atomic canonical-publication fallback. Immediately before exchange,
-  every recognized witness is reopened no-follow and nonblocking relative to
-  the held transaction descriptor, then the held transaction and root
-  descriptors are synced; no pathname-based durability fallback exists. The
+  the current project-root identity and relative transaction anchor are
+  reverified, every recognized witness is reopened no-follow and nonblocking
+  relative to the held transaction descriptor, then the held transaction and
+  root descriptors are synced; no pathname-based durability fallback exists. The
   canonical `P` and exchanged exact observed bytes are synced before
   verification. Before any witness is
   removed, a versioned plan-bound completion record is staged and synced in the
@@ -121,9 +125,12 @@ exchange without weakening `unsafe_code = "forbid"`.
   with the root directory. Completion leaves are born no broader than `0600`
   and their mode is set through the held descriptor before bytes are written.
   Recovery opens recognized leaves fd-relatively with no-follow and nonblocking
-  flags, then rejects every non-regular leaf before read or sync. A valid durable
-  completion record authorizes resumable partial cleanup; without it recovery
-  accepts only exact full
+  flags, then rejects every non-regular leaf before read or sync. Both ordinary
+  and completion recovery stream transaction-directory enumeration, reject an
+  unknown or non-UTF-8 child immediately, retain at most the five lifecycle
+  names admitted by the closed layout, and reject the next entry as a retained
+  ambiguous effect. A valid durable completion record authorizes resumable partial
+  cleanup; without it recovery accepts only exact full
   versioned `canonical=O/exchange=P` or `canonical=P/exchange=O` states. Legacy,
   unsupported, unknown, malformed, impossible, and uncertain states fail closed
   and retain the applicable full transaction or completion authority.

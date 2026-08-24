@@ -81,7 +81,7 @@ pub(super) fn read_leaf(_: &File, _: &OsStr, _: u64, _: &Path) -> Result<Leaf> {
 }
 
 #[cfg(unix)]
-pub(super) fn list_names(directory: &File, path: &Path) -> Result<Vec<OsString>> {
+pub(super) fn list_names(directory: &File, path: &Path, allowed: &[&str]) -> Result<Vec<OsString>> {
     use std::os::unix::ffi::OsStrExt;
 
     let entries = Dir::read_from(directory)
@@ -95,13 +95,30 @@ pub(super) fn list_names(directory: &File, path: &Path) -> Result<Vec<OsString>>
         if matches!(bytes, b"." | b"..") {
             continue;
         }
-        names.push(OsStr::from_bytes(bytes).to_os_string());
+        let name = OsStr::from_bytes(bytes);
+        let Some(name_text) = name.to_str() else {
+            return Err(Error::Conflict(
+                "completion transaction contains a non-UTF-8 name".to_owned(),
+            ));
+        };
+        if names.len() >= allowed.len() {
+            return Err(Error::Budget(format!(
+                "completion transaction exceeds its closed {}-child budget",
+                allowed.len()
+            )));
+        }
+        if !allowed.contains(&name_text) {
+            return Err(Error::Conflict(format!(
+                "unexpected completion transaction child: {name_text}"
+            )));
+        }
+        names.push(name.to_os_string());
     }
     Ok(names)
 }
 
 #[cfg(not(unix))]
-pub(super) fn list_names(_: &File, _: &Path) -> Result<Vec<OsString>> {
+pub(super) fn list_names(_: &File, _: &Path, _: &[&str]) -> Result<Vec<OsString>> {
     Err(Error::invalid(
         "instruction completion directory",
         "instruction completion requires Unix directory enumeration",

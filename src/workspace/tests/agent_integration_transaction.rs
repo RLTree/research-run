@@ -108,6 +108,39 @@ fn versioned_append_recovery_completes_exact_states_and_retains_unknown_bytes() 
     fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+fn recovery_stops_at_the_closed_transaction_child_budget() {
+    let root = temporary();
+    Workspace::initialize(&root, "Transaction child budget").unwrap();
+    let original = b"# Existing\n";
+    fs::write(root.join("AGENTS.md"), original).unwrap();
+    let plan = Workspace::plan_agent_integration(&root).unwrap();
+    let planned = compose_planned_instruction(
+        original,
+        &plan.managed_block,
+        AgentIntegrationOperation::Append,
+    )
+    .unwrap();
+    let transaction = root.join(".AGENTS.md.900.2.txn");
+    fs::create_dir(&transaction).unwrap();
+    write_transaction(&transaction, original, &planned, &planned);
+    fs::write(transaction.join("completion"), b"completion").unwrap();
+    fs::write(transaction.join("planned"), b"legacy planned").unwrap();
+
+    let result = recover_transaction(&transaction, &root.join("AGENTS.md"), &plan);
+    assert!(
+        matches!(
+            result,
+            Err(Error::AmbiguousEffect(ref message))
+                if message.contains("closed five-child budget")
+        ),
+        "{result:?}"
+    );
+    assert!(transaction.exists());
+    assert_eq!(fs::read(root.join("AGENTS.md")).unwrap(), original);
+    fs::remove_dir_all(root).unwrap();
+}
+
 #[cfg(unix)]
 #[test]
 fn append_transaction_symlink_content_fails_closed_without_path_escape() {

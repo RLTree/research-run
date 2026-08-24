@@ -18,6 +18,16 @@ use super::storage::{map_io, read_bounded_with_limit};
 const VERSIONED_NAMES: [&str; 4] = ["exchange", "original", "reviewed", "version"];
 const COMPLETION_NAME: &str = "completion";
 const LEGACY_NAMES: [&str; 2] = ["planned", "source"];
+const ALL_TRANSACTION_NAMES: [&str; 7] = [
+    "exchange",
+    "original",
+    "reviewed",
+    "version",
+    COMPLETION_NAME,
+    "planned",
+    "source",
+];
+const MAX_TRANSACTION_CHILDREN: usize = VERSIONED_NAMES.len() + 1;
 
 enum TransactionLayout {
     Versioned { has_completion: bool },
@@ -142,11 +152,24 @@ fn inspect_layout(transaction: &Path) -> Result<TransactionLayout> {
             "inspect project instruction transaction",
             transaction,
         )?;
-        inspect_child(transaction, &entry.path())?;
-        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
             return Err(retained_state(transaction, "non-UTF-8 transaction child"));
         };
-        names.insert(name);
+        if !ALL_TRANSACTION_NAMES.contains(&name) {
+            return Err(retained_state(
+                transaction,
+                &format!("unexpected transaction child: {name}"),
+            ));
+        }
+        if names.len() >= MAX_TRANSACTION_CHILDREN {
+            return Err(retained_state(
+                transaction,
+                "transaction exceeds its closed five-child budget",
+            ));
+        }
+        inspect_child(transaction, &entry.path())?;
+        names.insert(name.to_owned());
     }
     classify_names(transaction, &names)
 }

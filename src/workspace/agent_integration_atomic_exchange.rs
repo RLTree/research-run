@@ -37,6 +37,7 @@ pub(super) fn exchange_with_handles(
     use rustix::fs::{RenameFlags, renameat_with};
 
     let target_name = validated_leaf(target)?;
+    let root = target.parent().expect("instructions have a parent");
     super::directories::verify_relative_directory_anchor(
         &handles.root,
         transaction,
@@ -58,6 +59,8 @@ pub(super) fn exchange_with_handles(
             "injected atomic exchange failure with uncertain effect",
         ));
     }
+    verify_anchor(root, &handles.root)
+        .map_err(|error| exchange_error(target, &format!("pre-exchange root check: {error}")))?;
     renameat_with(
         &handles.transaction,
         "exchange",
@@ -71,7 +74,6 @@ pub(super) fn exchange_with_handles(
             &format!("operating-system exchange failed with {error}"),
         )
     })?;
-    let root = target.parent().expect("instructions have a parent");
     verify_anchor(root, &handles.root)
         .map_err(|error| exchange_error(target, &format!("post-exchange root check: {error}")))?;
     verify_anchor(transaction, &handles.transaction).map_err(|error| {

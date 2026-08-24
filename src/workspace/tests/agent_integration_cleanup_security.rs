@@ -6,6 +6,47 @@ use crate::{Error, workspace::Workspace};
 use super::super::super::agent_integration_content::compose_planned_instruction;
 use super::super::super::agent_integration_publication::publish_instruction;
 use super::super::super::{inject_storage_failure, tests::temporary};
+#[cfg(unix)]
+use super::super::completion_io::list_names;
+#[cfg(unix)]
+use super::super::directories::open_directory;
+
+#[cfg(unix)]
+#[test]
+fn completion_scan_rejects_children_outside_its_closed_set() {
+    let root = temporary();
+    let transaction = root.join(".AGENTS.md.87.1.txn");
+    fs::create_dir(&transaction).unwrap();
+    for name in [
+        "version",
+        "exchange",
+        "original",
+        "reviewed",
+        "completion",
+        "unexpected",
+    ] {
+        fs::write(transaction.join(name), b"witness").unwrap();
+    }
+    let directory = open_directory(&transaction).unwrap();
+
+    let result = list_names(
+        &directory,
+        &transaction,
+        &["version", "exchange", "original", "reviewed", "completion"],
+    );
+    let message = result.expect_err("a sixth completion child must fail closed");
+    assert!(
+        message
+            .to_string()
+            .contains("completion transaction exceeds its closed 5-child budget")
+            || message
+                .to_string()
+                .contains("unexpected completion transaction child"),
+        "{message:?}"
+    );
+    assert!(transaction.join("unexpected").exists());
+    fs::remove_dir_all(root).unwrap();
+}
 
 #[cfg(unix)]
 #[test]

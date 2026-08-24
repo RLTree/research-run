@@ -9,6 +9,44 @@ use super::super::super::agent_integration_transaction_recovery::recover_transac
 use super::super::super::{inject_storage_failure, tests::temporary};
 use super::super::witnesses::TRANSACTION_VERSION;
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn exchange_rejects_a_rebound_project_root_before_mutation() {
+    use super::super::directories::open_exchange_handles;
+    use super::exchange_with_handles;
+
+    let root = temporary();
+    let moved = root.with_extension("held-root");
+    let target = root.join("AGENTS.md");
+    let transaction = root.join(".AGENTS.md.776.1.txn");
+    fs::write(&target, b"original").unwrap();
+    fs::create_dir(&transaction).unwrap();
+    fs::write(transaction.join("exchange"), b"reviewed").unwrap();
+    let handles = open_exchange_handles(&target, &transaction).unwrap();
+
+    fs::rename(&root, &moved).unwrap();
+    fs::create_dir(&root).unwrap();
+    fs::write(&target, b"replacement-root").unwrap();
+
+    let result = exchange_with_handles(&target, &transaction, &handles);
+    assert!(
+        matches!(
+            result,
+            Err(Error::AmbiguousEffect(ref message))
+                if message.contains("pre-exchange root check")
+        ),
+        "{result:?}"
+    );
+    assert_eq!(fs::read(&target).unwrap(), b"replacement-root");
+    assert_eq!(fs::read(moved.join("AGENTS.md")).unwrap(), b"original");
+    assert_eq!(
+        fs::read(moved.join(".AGENTS.md.776.1.txn/exchange")).unwrap(),
+        b"reviewed"
+    );
+    fs::remove_dir_all(root).unwrap();
+    fs::remove_dir_all(moved).unwrap();
+}
+
 #[test]
 fn exchange_and_durability_faults_retain_exact_retryable_states_without_fallback() {
     for point in [

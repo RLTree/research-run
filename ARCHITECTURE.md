@@ -106,7 +106,9 @@ directory descriptors; the canonical pathname remains continuously bound and
 there is no ordinary-rename, link, or move fallback for canonical publication.
 Pre-exchange durability reopens the closed witness set no-follow and nonblocking
 relative to the held transaction descriptor, verifies the relative transaction
-anchor, and syncs only the held transaction and root descriptors. The canonical
+anchor, and syncs only the held transaction and root descriptors. Immediately
+before the exchange syscall, the project-root pathname is revalidated against
+the held root descriptor; a rebound root fails before mutation. The canonical
 `P`, exchanged exact observed bytes, transaction, and root are synced after
 exchange. Cleanup starts only after a bounded versioned completion
 record is staged and synced inside the transaction, published create-only as an
@@ -114,7 +116,10 @@ fd-relative hard link, and synced with the root directory. Completion leaves are
 born no broader than `0600` and receive that mode through their held descriptor
 before content is written. Recovery opens recognized leaves fd-relatively with
 no-follow and nonblocking flags and rejects every non-regular leaf before read
-or sync. That plan-, byte-,
+or sync. Transaction-directory enumeration is streamed through one closed
+five-child ceiling; unknown and non-UTF-8 names stop the scan before retention,
+and overflow retains the transaction or completion authority as ambiguous.
+That plan-, byte-,
 mode-, target-, and transaction-bound record is the sole authority for partial
 or empty transaction cleanup; recovery re-syncs it before the next unlink. With
 no completion record, recovery advances or finishes only exact full
