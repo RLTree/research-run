@@ -7,6 +7,8 @@ use crate::domain::AgentIntegrationOperation;
 use super::super::agent_integration::private_staging::create_private_file;
 use super::super::agent_integration_publication::publish_instruction;
 use super::super::agent_integration_transaction::create_transaction;
+#[cfg(unix)]
+use super::super::agent_integration_transaction::directories::create_transaction_directory;
 use super::super::agent_integration_transaction::directories::open_directory;
 #[cfg(unix)]
 use super::super::agent_integration_transaction::directories::transaction_directory_permissions_are_private;
@@ -17,6 +19,33 @@ use super::super::inject_storage_failure;
 const CHILD_ROOT: &str = "RESEARCH_RUN_PERMISSION_CHILD_ROOT";
 const TEST_FILTER: &str = "private_agent_integration_staging_respects_permission_ceilings";
 const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+
+#[cfg(unix)]
+#[test]
+fn transaction_creation_fails_before_effect_when_parent_cannot_be_observed() {
+    let root = child_root("parent-observation-failure");
+    fs::create_dir_all(&root).unwrap();
+    let transaction = root.join(".AGENTS.md.989.1.txn");
+
+    inject_storage_failure("inspect project instruction transaction parent");
+    let error = create_transaction_directory(&transaction).unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            crate::Error::Io {
+                action: "inspect project instruction transaction parent",
+                ..
+            }
+        ),
+        "unexpected error: {error}"
+    );
+    assert!(
+        !transaction.exists(),
+        "transaction directory was created before parent observation"
+    );
+    fs::remove_dir_all(root).unwrap();
+}
 
 #[cfg(target_os = "linux")]
 #[test]
