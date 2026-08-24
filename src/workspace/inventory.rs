@@ -23,6 +23,11 @@ pub enum ReviewBootstrap {
     WithoutReviewAuthority,
 }
 
+pub struct InventoryApplyResult {
+    pub created: bool,
+    pub review_authority: super::ReviewAuthorityStatus,
+}
+
 impl Workspace {
     pub fn plan_retrofit(
         root: &Path,

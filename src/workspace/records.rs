@@ -7,8 +7,9 @@ use crate::{Error, Result};
 
 use super::publication::canonical_json_bytes;
 use super::references::claim_evidence_ids;
+use super::validation_types::bound_validation_errors;
 use super::write_lock::WorkspaceWriteLock;
-use super::{MAX_RECORDS_PER_KIND, ValidationResult, Workspace};
+use super::{AgentIntegrationStatus, MAX_RECORDS_PER_KIND, ValidationResult, Workspace};
 
 impl Workspace {
     pub fn add_source(&self, record: &SourceRecord) -> Result<bool> {
@@ -138,22 +139,37 @@ impl Workspace {
 
     pub fn validate(&self) -> ValidationResult {
         match self.load_snapshot() {
-            Ok(snapshot) => {
-                let counts = snapshot.counts();
-                let mut errors = self.reference_errors(&snapshot);
-                errors.extend(self.review_binding_errors(&snapshot));
-                errors.extend(self.review_authorization_errors(&snapshot));
+            Ok(snapshot) => self.validation_from_snapshot(&snapshot),
+            Err(error) => {
+                let diagnostic = error.to_string();
                 ValidationResult {
-                    valid: errors.is_empty(),
-                    errors,
-                    counts,
+                    schema_version: 2,
+                    authority: None,
+                    valid: false,
+                    errors: vec![diagnostic.clone()],
+                    counts: BTreeMap::new(),
+                    agent_integration: AgentIntegrationStatus::inspection_unavailable(false),
                 }
             }
-            Err(error) => ValidationResult {
-                valid: false,
-                errors: vec![error.to_string()],
-                counts: BTreeMap::new(),
-            },
+        }
+    }
+
+    pub(super) fn validation_from_snapshot(&self, snapshot: &super::Snapshot) -> ValidationResult {
+        let counts = snapshot.counts();
+        let mut errors = self.reference_errors(snapshot);
+        errors.extend(self.review_binding_errors(snapshot));
+        errors.extend(self.review_authorization_errors(snapshot));
+        let errors = bound_validation_errors(errors);
+        let agent_integration = self
+            .agent_integration_status_from_snapshot(snapshot)
+            .unwrap_or_else(|_| AgentIntegrationStatus::inspection_unavailable(true));
+        ValidationResult {
+            schema_version: 2,
+            authority: self.validation_authority(snapshot).ok(),
+            valid: errors.is_empty(),
+            errors,
+            counts,
+            agent_integration,
         }
     }
 

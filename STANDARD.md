@@ -27,7 +27,7 @@ runtime dependency budget is deliberately small:
 
 - `clap`: typed public CLI parsing and generated help;
 - `serde`: typed domain serialization and deserialization;
-- `serde_json`: deterministic, human-readable canonical JSON.
+- `serde_json`: deterministic, human-readable canonical JSON;
 - `sha2`: portable SHA-256 material identity for byte-preserving retrofit and
   reconciliation plans; fingerprints detect exact content identity but do not
   infer scientific meaning.
@@ -36,11 +36,14 @@ runtime dependency budget is deliberately small:
   stores a review private key.
 - `getrandom`: generate an immutable 256-bit workspace authorization-domain ID
   during initialization.
+- `rustix` 1.1.4 with `fs`: safe, descriptor-anchored atomic exchange for
+  supported Linux and macOS project-instruction append publication.
 
-No async runtime, database, network client, logging/telemetry stack, temporary
-file crate, schema framework, or UI dependency is justified by the v0.1 job.
-Standard-library filesystem primitives provide bounded reads and atomic same-
-directory publication.
+No async runtime, database, network client, logging/telemetry stack, production
+schema framework, or UI dependency is justified by the v0.1 job. Standard-
+library filesystem primitives provide bounded reads and ordinary no-clobber
+publication; the narrowly pinned `rustix` surface owns atomic instruction-file
+exchange without weakening `unsafe_code = "forbid"`.
 
 ## Product and security invariants
 
@@ -80,6 +83,69 @@ directory publication.
   state root. The lock releases on process exit and serializes supported CLI
   writers; uncooperative concurrent filesystem mutation is not a supported
   product mode and every read still rechecks opened-file identity.
+- Installing the canonical contribution protocol does not make agent integration
+  ready. Project-instruction integration is an explicit plan/apply boundary that
+  binds the current manifest, protocol, active root instruction file, managed
+  content, and prospective bytes with SHA-256. Apply preserves existing
+  instructions, is confined to `AGENTS.md` or `AGENTS.override.md`, rejects
+  symlinks, drift, and conflicting managed content, and is idempotent on
+  identical retry. Fresh-Create pending instructions and append transaction
+  leaves are created no broader than `0600`; the append transaction directory
+  has access permission bits no broader than `0700`. Linux may add the inherited
+  `S_ISGID` bit only when the inspected parent is setgid and the child retains
+  its numeric group; setuid, sticky, unexplained setgid, and all group/other
+  access remain forbidden. Append writes version, original `O`, reviewed `P`,
+  and exchange=`P` witnesses through their held creation descriptors while
+  private, then sets `O`, `P`, and exchange=`P` to the exact reviewed Unix mode
+  through those descriptors before the first durability sync. The owner-only-
+  access transaction directory contains any witness whose reviewed mode is
+  broader than `0600`. Before transaction creation, Append requires the active
+  instruction source to be one regular file with exactly one hard link; a
+  multiply linked source conflicts before any effect. Metadata, permission,
+  parent-sync, or handle-acquisition failure after private transaction-directory
+  creation is ambiguous and retains that directory as evidence. A later staging
+  failure may return its original error only after closed-set descriptor-relative
+  cleanup and directory durability succeed. Pre-exchange abort cleanup retains
+  the opened root and transaction
+  descriptors, preflights only the closed four-leaf staging set, and unlinks
+  leaves and the directory fd-relatively; it never follows or falls back to a
+  replaced transaction pathname. On Linux and macOS it exchanges the
+  transaction leaf and canonical instruction leaf atomically through opened,
+  identity-checked directory descriptors; the
+  canonical pathname remains bound throughout the supported exchange. There is
+  no non-atomic canonical-publication fallback. Immediately before exchange,
+  the current project-root identity and relative transaction anchor are
+  reverified, every recognized witness is reopened no-follow and nonblocking
+  relative to the held transaction descriptor, then the held transaction and
+  root descriptors are synced; no pathname-based durability fallback exists. The
+  canonical `P` and exchanged exact observed bytes are synced before
+  verification. Before any witness is
+  removed, a versioned plan-bound completion record is staged and synced in the
+  transaction, published create-only as one fd-relative hard link, then synced
+  with the root directory. Completion leaves are born no broader than `0600`
+  and their mode is set through the held descriptor before bytes are written.
+  Recovery opens recognized leaves fd-relatively with no-follow and nonblocking
+  flags, then rejects every non-regular leaf before read or sync. Both ordinary
+  and completion recovery stream transaction-directory enumeration, reject an
+  unknown or non-UTF-8 child immediately, retain at most the five lifecycle
+  names admitted by the closed layout, and reject the next entry as a retained
+  ambiguous effect. A valid durable completion record authorizes resumable partial
+  cleanup; without it recovery accepts only exact full
+  versioned `canonical=O/exchange=P` or `canonical=P/exchange=O` states. Legacy,
+  unsupported, unknown, malformed, impossible, and uncertain states fail closed
+  and retain the applicable full transaction or completion authority.
+  Instruction-pending discovery visits at most the greater of the default
+  20,000-entry inventory allowance or the latest accepted inventory policy's
+  `max_entries`, plus 256 root-authority entries. It retains at most two matching
+  paths and rejects a third as ambiguous. Budget exhaustion performs no write
+  and directs the operator to reduce root fan-out or review a larger inventory
+  policy; this bounds userspace entry visits and retained-match memory, not
+  filesystem response time.
+  The preservation claim covers exact bytes and Unix mode only, not owner,
+  timestamps, xattrs, ACLs, writes through already-open descriptors, or every
+  uncooperative filesystem writer. Readiness is only for a fresh agent
+  run/session; the current session remains unverified. This proves no universal
+  compliance.
 - Diagnostics name record paths and invariant failures but never echo record
   bodies, environment variables, or secrets.
 - Review preparation is read-only. The repository owner anchors the one Ed25519

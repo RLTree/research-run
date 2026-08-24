@@ -1,5 +1,7 @@
 use clap::Parser;
 
+mod agent_integration_arguments;
+mod agent_integration_commands;
 mod arguments;
 mod commands;
 mod current_directory;

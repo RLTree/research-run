@@ -36,16 +36,52 @@ claim promotion for that workspace.
 
 Every initialized or retrofitted workspace contains the versioned canonical
 protocol at
-`.research-run/contribution-protocols/agent-contribution.json`. A fresh agent
+`.research-run/contribution-protocols/agent-contribution.json`. That proves the
+protocol is installed, not that an agent will receive it before work. Bind the
+protocol into the active root project instructions with an explicit reviewed
+plan kept outside the target workspace:
+
+```console
+mkdir -p ../research-run-plans
+research-run agent-integration plan . > ../research-run-plans/agent-integration.json
+research-run agent-integration apply . \
+  --input ../research-run-plans/agent-integration.json --json
+research-run agent-integration status . --json
+```
+
+The plan binds the manifest, contribution protocol, active `AGENTS.md` or
+`AGENTS.override.md`, managed block, prospective bytes, and plan itself with
+SHA-256. Apply rechecks the binding under the workspace lock, rejects symlinks,
+drift, path escape, and conflicting managed content, and atomically creates or
+appends without replacing existing instructions. An identical retry is a
+no-op. Init, retrofit, and migration report onboarding as incomplete until this
+separate step succeeds.
+
+Codex discovers project instructions once when a run starts, so after apply,
+start a fresh run/session before claiming that the instruction contract was
+loaded ([Codex `AGENTS.md` guidance](https://learn.chatgpt.com/docs/agent-configuration/agents-md)).
+Project hooks may be an optional trusted guardrail, but they require trust and
+do not cover every tool path; they are not this product invariant
+([Codex hooks guidance](https://learn.chatgpt.com/docs/hooks)). The supported
+readiness claim is limited to deterministic instruction generation,
+installation, and verification for a new agent run. It does not prove universal
+agent compliance or prevent every out-of-band filesystem write.
+
+A fresh agent that received the installed contract
 must retrieve bounded context before work. Before answering or handing off, it
 must classify new material and append supported typed records for new human
 observations, corrections, decisions, negative or ambiguous results, blockers,
-and next actions, then run `research-run validate`. Human input keeps `human`
+and next actions, then run `research-run validate --json` and retain that actual
+CLI result as the validation receipt. Human input keeps `human`
 authorship; agent analysis uses `ai`. No new material means no write, an
 identical retry is a no-op, and only a signed human review may promote a claim.
 `context` and `handoff create` surface this protocol without writing.
-New handoffs use schema version 2 to carry the protocol; existing version 1
-handoffs remain inspectable without it.
+New handoffs use schema version 2 to carry the protocol plus the exact current
+validation result, its workspace/authority identity, and SHA-256 bindings to
+both that result and the bounded context. Handoff creation validates one locked
+snapshot and carries a successful or failed result without converting handoff
+validity into a scientific or ledger-validity claim. Existing version 1
+handoffs remain inspectable without this receipt.
 
 Add a source and a scoped claim:
 
@@ -126,8 +162,14 @@ control and owner-run initialization establish who may choose the key. v0.1
 provides neither post-initialization enrollment nor key rotation.
 
 Canonical records live under `.research-run/` as deterministic, versioned JSON.
-The machine-readable v1 contracts are in [`schemas/v1`](schemas/v1). The complete
-synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
+Their machine-readable v1 contracts remain in [`schemas/v1`](schemas/v1).
+Current `validate --json` output is the explicitly versioned validation v2
+projection in [`schemas/v2`](schemas/v2); the unchanged v1 validation schema is
+retained only for legacy projections and does not describe v2 output. Ledger
+validity and agent-integration readiness are separate fields in v2, so an
+unavailable instruction inspection does not invalidate an otherwise valid
+canonical ledger. The complete synthetic example is in
+[`examples/synthetic-assay`](examples/synthetic-assay).
 
 ## Failure and recovery behavior
 
@@ -141,7 +183,10 @@ synthetic example is in [`examples/synthetic-assay`](examples/synthetic-assay).
   paths, and current authority before completing or reconciling the publication.
   An explicit path also recovers an `init` interrupted before its manifest was
   published. Recovery never silently chooses conflicting content.
-- Diagnostics identify a path and invariant, not record bodies or secret values.
+- Local failing commands identify a path and invariant, not record bodies or
+  secret values. Portable validation-v2 and handoff agent-integration
+  diagnostics are stable and path-free; run `research-run agent-integration
+  status` locally for recovery detail.
 
 Reviewer text is metadata, not authority. A review affects assessment only when
 its detached SSH signature verifies against the workspace's one enrolled
@@ -188,6 +233,9 @@ Ambiguous identity conflicts cannot be applied.
 If initialization commits but inventory publication does not, apply reports an
 ambiguous effect and retains a plan-digest marker; reapply that exact accepted
 plan to finish the combined bootstrap transaction.
+Retrofit does not edit an existing project instruction file. Run the separate
+`agent-integration plan` and reviewed `apply` flow afterward, then start a fresh
+agent run/session.
 
 ### Large datasets and nested projects
 
@@ -326,6 +374,8 @@ and appends a migration record without rewriting existing canonical records.
 Repeating the same accepted plan is a no-op. Until migrated, validation and
 mutation fail closed with a workspace-activation diagnostic; migration planning
 remains available so the workspace can be upgraded losslessly.
+Migration likewise preserves project instructions and reports agent integration
+as incomplete until the separate plan/apply flow is accepted.
 
 ## Development and proof surfaces
 

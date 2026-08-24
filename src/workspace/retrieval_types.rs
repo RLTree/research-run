@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{
-    ContributionProtocol, MAX_LIST_ITEMS, required_text, validate_id, validate_timestamp,
-    validate_workspace_locator,
+    ContributionProtocol, MAX_LIST_ITEMS, is_lowercase_sha256, required_text, validate_id,
+    validate_timestamp, validate_workspace_locator,
 };
 use crate::{Error, Result};
 
@@ -152,6 +152,8 @@ impl RelationshipProjection {
 pub struct ContextBundle {
     pub kind: String,
     pub project_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_id: Option<String>,
     pub project_name: String,
     pub claim_ceiling: String,
     pub scope: String,
@@ -170,6 +172,14 @@ impl ContextBundle {
             return Err(Error::invalid("handoff context", "unknown record kind"));
         }
         validate_id(&self.project_id, "handoff project_id")?;
+        if self.workspace_id.as_deref().is_some_and(|workspace_id| {
+            !workspace_id.is_empty() && !is_lowercase_sha256(workspace_id)
+        }) {
+            return Err(Error::invalid(
+                "handoff workspace_id",
+                "must be an immutable lowercase SHA-256 identity",
+            ));
+        }
         bounded_text(&self.project_name, "handoff project_name")?;
         if self.claim_ceiling != super::CLAIM_CEILING {
             return Err(Error::invalid(
@@ -205,33 +215,6 @@ impl ContextBundle {
             relationship.validate()?;
         }
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct HandoffBundle {
-    pub schema_version: u32,
-    pub kind: String,
-    pub id: String,
-    pub generated_at: String,
-    pub context: ContextBundle,
-}
-
-impl HandoffBundle {
-    pub fn validate(&self) -> Result<()> {
-        if !matches!(self.schema_version, 1 | 2) || self.kind != "handoff" {
-            return Err(Error::invalid("handoff", "unknown version or record kind"));
-        }
-        if self.schema_version == 2 && self.context.contribution_protocol.is_none() {
-            return Err(Error::invalid(
-                "handoff",
-                "version 2 requires the contribution protocol",
-            ));
-        }
-        validate_id(&self.id, "handoff id")?;
-        validate_timestamp(&self.generated_at)?;
-        self.context.validate()
     }
 }
 

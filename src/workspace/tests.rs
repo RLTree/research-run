@@ -17,6 +17,19 @@ use super::{
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
+#[path = "tests/agent_integration.rs"]
+mod agent_integration;
+#[path = "tests/agent_integration_publication.rs"]
+mod agent_integration_publication;
+#[path = "tests/agent_integration_recovery.rs"]
+mod agent_integration_recovery;
+#[path = "tests/agent_integration_staging_cleanup.rs"]
+mod agent_integration_staging_cleanup;
+include!("tests/agent_integration_extra_tests.rs");
+#[path = "tests/agent_integration_transaction.rs"]
+mod agent_integration_transaction;
+#[path = "tests/agent_integration_transaction_permissions.rs"]
+mod agent_integration_transaction_permissions;
 #[path = "tests/review_binding_policy.rs"]
 mod review_binding_policy;
 #[path = "tests/review_signing.rs"]
@@ -51,7 +64,7 @@ mod retrieval_inventory;
 #[path = "tests/security_findings.rs"]
 mod security_findings;
 
-fn temporary() -> std::path::PathBuf {
+pub(super) fn temporary() -> std::path::PathBuf {
     let path = std::env::temp_dir().join(format!(
         "research-run-workspace-test-{}-{}",
         std::process::id(),
@@ -203,6 +216,8 @@ fn non_history_relationship_may_close_a_history_path() {
 mod handoff_expanded;
 #[path = "tests/handoff_validation.rs"]
 mod handoff_validation;
+#[path = "tests/handoff_validation_receipt.rs"]
+mod handoff_validation_receipt;
 #[path = "tests/inventory_expanded.rs"]
 mod inventory_expanded;
 #[path = "tests/inventory_failure_expanded.rs"]
@@ -245,3 +260,5 @@ mod sshsig;
 mod status_authority;
 #[path = "tests/storage.rs"]
 mod storage;
+#[path = "tests/validation_limits.rs"]
+mod validation_limits;

@@ -1,11 +1,32 @@
+#[path = "product/agent_integration_activation_defense.rs"]
+mod agent_integration_activation_defense;
+#[path = "product/agent_integration_defense.rs"]
+mod agent_integration_defense;
+#[path = "product/agent_integration_hardlink.rs"]
+mod agent_integration_hardlink;
+#[path = "product/agent_integration_journey.rs"]
+mod agent_integration_journey;
+#[path = "product/agent_integration_quickstart.rs"]
+mod agent_integration_quickstart;
+#[cfg(target_os = "linux")]
+#[path = "product/agent_integration_setgid.rs"]
+mod agent_integration_setgid;
 #[path = "product/contribution_protocol_journey.rs"]
 mod contribution_protocol_journey;
 #[path = "product/data_contracts.rs"]
 mod data_contracts;
+#[path = "product/data_contracts_agent_integration.rs"]
+mod data_contracts_agent_integration;
+#[path = "product/data_contracts_handoff_schema.rs"]
+mod data_contracts_handoff_schema;
+#[path = "product/data_contracts_validation_schema.rs"]
+mod data_contracts_validation_schema;
 #[path = "product/domain_boundaries.rs"]
 mod domain_boundaries;
 #[path = "product/handoff_defense.rs"]
 mod handoff_defense;
+#[path = "product/handoff_human.rs"]
+mod handoff_human;
 #[path = "product/handoff_journey.rs"]
 mod handoff_journey;
 #[path = "product/identifier_validation.rs"]

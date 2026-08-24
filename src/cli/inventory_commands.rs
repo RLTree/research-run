@@ -86,20 +86,23 @@ fn execute_apply(
     let outcome = Workspace::apply_inventory_plan_with_status(path, plan)?;
     let created = outcome.created;
     let authority = outcome.review_authority;
+    let agent_integration = Workspace::for_recovery(path)?.agent_integration_onboarding_status();
     if json {
         print_json(&serde_json::json!({
             "kind": "inventory-apply",
             "id": id,
             "created": created,
-            "review_authority": authority
+            "review_authority": authority,
+            "agent_integration": agent_integration
         }))
     } else {
         print_text(&format!(
-            "{} inventory {}\nReview authority: {}; promotion capable: {}",
+            "{} inventory {}\nReview authority: {}; promotion capable: {}\nAgent integration ready: {}\nNext: plan and apply project instruction integration, then start a fresh agent run/session.",
             if created { "Added" } else { "Already present" },
             terminal_text(&id),
             terminal_text(authority.mode),
-            authority.promotion_capable
+            authority.promotion_capable,
+            agent_integration.agent_integration_ready,
         ))
     }
 }

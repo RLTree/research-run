@@ -3,6 +3,7 @@ use crate::domain::{
 };
 use crate::{Error, Result};
 
+use super::agent_integration_commands;
 use super::arguments::{
     ClaimCommand, Cli, Command, EvidenceCommand, ExperimentCommand, ReviewCommand, SourceCommand,
 };
@@ -20,6 +21,7 @@ use super::structured_commands;
 
 pub(super) fn execute(cli: Cli) -> Result<()> {
     match cli.command {
+        Command::AgentIntegration { command } => agent_integration_commands::execute(command),
         Command::Init {
             path,
             name,
@@ -187,13 +189,17 @@ fn validate(json: bool) -> Result<()> {
         print_json(&validation)?;
     } else if validation.valid {
         print_text(&format!(
-            "Workspace is valid.\nCounts: {}",
+            "Workspace is valid.\nCounts: {}\nAgent integration ready for {}: {}\nCurrent session load: {}\n{}",
             validation
                 .counts
                 .iter()
                 .map(|(kind, count)| format!("{kind}={count}"))
                 .collect::<Vec<_>>()
-                .join(", ")
+                .join(", "),
+            validation.agent_integration.ready_scope,
+            validation.agent_integration.agent_integration_ready,
+            validation.agent_integration.current_session_loaded,
+            terminal_text(&validation.agent_integration.diagnostic),
         ))?;
     } else {
         let errors = validation

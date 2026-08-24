@@ -15,6 +15,10 @@ permissions:
 jobs:
   rust:
     runs-on: ubuntu-latest
+    env:
+      CARGO_BUILD_JOBS: "1"
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -26,8 +30,12 @@ jobs:
         run: cargo fmt --check
       - name: Check all targets
         run: cargo check --locked --all-targets
+      - name: Install unsupported-platform compile target
+        run: rustup target add --toolchain 1.97.1 x86_64-pc-windows-gnu
+      - name: Check unsupported-platform fail-closed compile
+        run: cargo check --locked --target x86_64-pc-windows-gnu
       - name: Test all targets
-        run: cargo test --locked --all-targets
+        run: cargo test --locked --all-targets -- --test-threads=1
       - name: Lint all targets
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Build distributable package

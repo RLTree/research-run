@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "authority": {
+    "project_id": "schema-red-fixture",
+    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "protocol_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "instruction_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "valid": true,
+  "errors": [],
+  "counts": {
+    "source": 0,
+    "claim": 0,
+    "evidence": 0,
+    "experiment": 0,
+    "review": 0,
+    "review-authority": 0,
+    "inventory": 0,
+    "knowledge": 0,
+    "relationship": 0,
+    "migration": 0,
+    "contribution-protocol": 1
+  },
+  "agent_integration": {
+    "protocol_installed": false,
+    "instruction_contract_installed": true,
+    "agent_integration_ready": false,
+    "ready_scope": "new-agent-run",
+    "instruction_path": "AGENTS.md",
+    "current_session_loaded": "unverified",
+    "fresh_session_required": true,
+    "diagnostic": "Contradictory red fixture."
+  }
+}

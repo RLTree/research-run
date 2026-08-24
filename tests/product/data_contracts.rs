@@ -4,6 +4,11 @@ use std::path::Path;
 use std::process::Command;
 
 use serde_json::Value;
+#[cfg(unix)]
+use serde_json::json;
+
+#[cfg(unix)]
+use super::researcher_journey::{TempDir, cli, succeeds};
 
 #[test]
 fn every_versioned_schema_is_well_formed_json() {
@@ -34,6 +39,7 @@ fn every_versioned_schema_is_well_formed_json() {
         })
         .collect::<BTreeSet<_>>();
     let expected = [
+        "agent-integration-plan.schema.json",
         "claim.schema.json",
         "contribution-protocol.schema.json",
         "evidence.schema.json",
@@ -73,6 +79,97 @@ fn projection_timestamps_use_the_shared_utc_contract() {
 }
 
 #[test]
+fn every_v2_schema_is_well_formed_json() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/v2");
+    let mut names = BTreeSet::new();
+    for entry in fs::read_dir(&root).expect("v2 schema directory") {
+        let path = entry.expect("v2 schema entry").path();
+        if path
+            .extension()
+            .is_some_and(|extension| extension == "json")
+        {
+            let value: Value = serde_json::from_slice(&fs::read(&path).expect("read v2 schema"))
+                .unwrap_or_else(|error| panic!("{} is invalid JSON: {error}", path.display()));
+            assert_eq!(
+                value["$schema"],
+                "https://json-schema.org/draft/2020-12/schema"
+            );
+            names.insert(
+                path.file_name()
+                    .expect("v2 schema filename")
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+        }
+    }
+    assert_eq!(names, BTreeSet::from(["validation.schema.json".to_owned()]));
+}
+
+#[cfg(unix)]
+#[test]
+fn instruction_inspection_failure_does_not_invalidate_the_canonical_ledger() {
+    use std::os::unix::fs::symlink;
+
+    let temporary = TempDir::new("validation-readiness-separation");
+    let project = temporary.0.join("project");
+    succeeds(
+        &temporary.0,
+        &[
+            "init",
+            project.to_str().unwrap(),
+            "--name",
+            "Validation readiness separation",
+            "--without-review-authority",
+        ],
+    );
+    let outside = temporary.0.join("outside-agents.md");
+    fs::write(&outside, "outside\n").unwrap();
+    symlink(&outside, project.join("AGENTS.md")).unwrap();
+
+    let validation_output = succeeds(&project, &["validate", "--json"]);
+    let validation: Value = serde_json::from_slice(&validation_output.stdout).unwrap();
+    assert_eq!(validation["schema_version"], 2);
+    assert_eq!(validation["authority"], Value::Null);
+    assert_eq!(validation["valid"], true);
+    assert_eq!(validation["errors"], json!([]));
+    assert_eq!(
+        validation["agent_integration"]["agent_integration_ready"],
+        false
+    );
+    assert_eq!(
+        validation["agent_integration"]["ready_scope"],
+        "unavailable"
+    );
+    assert_eq!(
+        validation["agent_integration"]["diagnostic"],
+        "Agent integration inspection is unavailable. Run 'research-run agent-integration status' locally for details and preserve any pending publication evidence."
+    );
+    assert_portable_output_omits_local_roots(&validation_output.stdout, &project);
+
+    let explicit = cli(
+        &temporary.0,
+        &[
+            "agent-integration",
+            "status",
+            project.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert!(!explicit.status.success());
+    assert!(String::from_utf8_lossy(&explicit.stderr).contains("symlink is forbidden"));
+    assert!(String::from_utf8_lossy(&explicit.stderr).contains(&*project.to_string_lossy()));
+}
+
+#[cfg(unix)]
+fn assert_portable_output_omits_local_roots(output: &[u8], project: &Path) {
+    let output = String::from_utf8_lossy(output);
+    assert!(!output.contains(&*project.to_string_lossy()));
+    if let Some(home) = std::env::var_os("HOME") {
+        assert!(!output.contains(&*home.to_string_lossy()));
+    }
+}
+
+#[test]
 fn checked_in_synthetic_example_is_valid_and_reports_limited_claim() {
     let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/synthetic-assay");
     let binary = std::env::var("CARGO_BIN_EXE_research-run").expect("binary path");
@@ -86,6 +183,10 @@ fn checked_in_synthetic_example_is_valid_and_reports_limited_claim() {
         "{}",
         String::from_utf8_lossy(&validation.stderr)
     );
+    let validation: Value =
+        serde_json::from_slice(&validation.stdout).expect("validation projection JSON");
+    assert_eq!(validation["schema_version"], 2);
+    assert!(validation["authority"]["manifest_sha256"].is_string());
     let status = Command::new(binary)
         .current_dir(&example)
         .args(["status", "--json"])

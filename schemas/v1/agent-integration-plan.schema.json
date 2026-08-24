@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-integration-plan.schema.json",
+  "title": "Research Run agent integration plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "kind", "project_id", "manifest_sha256", "protocol_sha256",
+    "instruction_path", "instruction_sha256", "instruction_bytes", "managed_block",
+    "managed_block_sha256", "prospective_sha256", "operation", "plan_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "agent-integration-plan" },
+    "project_id": { "$ref": "types.schema.json#/$defs/id" },
+    "workspace_id": {
+      "oneOf": [
+        { "const": "" },
+        { "$ref": "types.schema.json#/$defs/sha256" }
+      ]
+    },
+    "manifest_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
+    "protocol_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
+    "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md"] },
+    "instruction_sha256": {
+      "oneOf": [
+        { "$ref": "types.schema.json#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "instruction_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+    "managed_block": { "$ref": "types.schema.json#/$defs/text" },
+    "managed_block_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
+    "prospective_sha256": { "$ref": "types.schema.json#/$defs/sha256" },
+    "operation": { "enum": ["create", "append", "no-op"] },
+    "plan_sha256": { "$ref": "types.schema.json#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "create" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "instruction_sha256": { "type": "null" },
+          "instruction_bytes": { "const": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "enum": ["append", "no-op"] } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "instruction_sha256": { "$ref": "types.schema.json#/$defs/sha256" }
+        }
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 
+use super::agent_integration_arguments::AgentIntegrationCommand;
 use super::handoff_arguments::HandoffCommand;
 use super::inventory_arguments::InventoryCommand;
 use super::migration_arguments::MigrationCommand;
@@ -25,6 +26,11 @@ pub(super) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(super) enum Command {
+    /// Bind the canonical contribution protocol into active project instructions.
+    AgentIntegration {
+        #[command(subcommand)]
+        command: AgentIntegrationCommand,
+    },
     /// Initialize a workspace with the versioned agent contribution protocol.
     Init {
         #[arg(default_value = ".")]

@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://research-run.local/schemas/v2/validation.schema.json",
+  "title": "Research Run validation projection v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "authority", "valid", "errors", "counts", "agent_integration"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "authority": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/validationAuthority" }
+      ]
+    },
+    "valid": { "type": "boolean" },
+    "errors": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "../v1/types.schema.json#/$defs/text" }
+    },
+    "counts": { "$ref": "#/$defs/counts" },
+    "agent_integration": { "$ref": "#/$defs/agentIntegrationStatus" }
+  },
+  "$defs": {
+    "counts": {
+      "oneOf": [
+        { "type": "object", "maxProperties": 0 },
+        { "$ref": "#/$defs/completeCounts" }
+      ]
+    },
+    "completeCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source", "claim", "evidence", "experiment", "review", "review-authority",
+        "inventory", "knowledge", "relationship", "migration", "contribution-protocol"
+      ],
+      "properties": {
+        "source": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "claim": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "evidence": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "experiment": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "review": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "review-authority": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "inventory": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "knowledge": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "relationship": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "migration": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "contribution-protocol": { "const": 1 }
+      }
+    },
+    "validationAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id", "workspace_id", "manifest_sha256", "protocol_sha256", "instruction_sha256"
+      ],
+      "properties": {
+        "project_id": { "$ref": "../v1/types.schema.json#/$defs/id" },
+        "workspace_id": {
+          "oneOf": [
+            { "const": "" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        },
+        "manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "protocol_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "instruction_sha256": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        }
+      }
+    },
+    "agentIntegrationStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_installed", "instruction_contract_installed", "agent_integration_ready",
+        "ready_scope", "instruction_path", "current_session_loaded",
+        "fresh_session_required", "diagnostic"
+      ],
+      "properties": {
+        "protocol_installed": { "type": "boolean" },
+        "instruction_contract_installed": { "type": "boolean" },
+        "agent_integration_ready": { "type": "boolean" },
+        "ready_scope": { "enum": ["new-agent-run", "unavailable"] },
+        "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md", "unavailable"] },
+        "current_session_loaded": { "const": "unverified" },
+        "fresh_session_required": { "type": "boolean" },
+        "diagnostic": { "$ref": "../v1/types.schema.json#/$defs/text" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "agent_integration_ready": { "const": true } }, "required": ["agent_integration_ready"] },
+          "then": {
+            "properties": {
+              "protocol_installed": { "const": true },
+              "instruction_contract_installed": { "const": true },
+              "ready_scope": { "const": "new-agent-run" },
+              "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md"] },
+              "fresh_session_required": { "const": true }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "ready_scope": { "const": "unavailable" } }, "required": ["ready_scope"] },
+          "then": {
+            "properties": {
+              "agent_integration_ready": { "const": false },
+              "instruction_contract_installed": { "const": false },
+              "instruction_path": { "const": "unavailable" },
+              "fresh_session_required": { "const": false }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "agent_integration_ready": { "const": false },
+              "ready_scope": { "const": "new-agent-run" }
+            },
+            "required": ["agent_integration_ready", "ready_scope"]
+          },
+          "then": {
+            "properties": {
+              "protocol_installed": { "const": true },
+              "instruction_contract_installed": { "const": false },
+              "instruction_path": { "enum": ["AGENTS.md", "AGENTS.override.md"] },
+              "fresh_session_required": { "const": false }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "valid": { "const": true } }, "required": ["valid"] },
+      "then": {
+        "properties": {
+          "errors": { "maxItems": 0 },
+          "counts": { "$ref": "#/$defs/completeCounts" }
+        }
+      },
+      "else": { "properties": { "errors": { "minItems": 1 } } }
+    },
+    {
+      "if": {
+        "properties": { "counts": { "maxProperties": 0 } },
+        "required": ["counts"]
+      },
+      "then": {
+        "properties": {
+          "authority": { "const": null },
+          "valid": { "const": false }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "agent_integration": {
+            "properties": { "agent_integration_ready": { "const": true } },
+            "required": ["agent_integration_ready"]
+          }
+        },
+        "required": ["agent_integration"]
+      },
+      "then": {
+        "properties": {
+          "authority": {
+            "allOf": [
+              { "$ref": "#/$defs/validationAuthority" },
+              {
+                "properties": {
+                  "instruction_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

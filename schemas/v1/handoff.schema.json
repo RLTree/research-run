@@ -17,6 +17,12 @@
       "properties": {
         "kind": { "const": "context" },
         "project_id": { "$ref": "types.schema.json#/$defs/id" },
+        "workspace_id": {
+          "oneOf": [
+            { "const": "" },
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          ]
+        },
         "project_name": { "type": "string", "minLength": 1 },
         "claim_ceiling": { "const": "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity." },
         "scope": { "type": "string", "minLength": 1 },
@@ -27,12 +33,58 @@
         "next_actions": { "type": "array", "maxItems": 256, "items": { "$ref": "projection.schema.json#/$defs/item" } },
         "relationships": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/relationship" } }
       }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "result_sha256", "context_sha256"],
+      "properties": {
+        "result": {
+          "allOf": [
+            { "$ref": "../v2/validation.schema.json" },
+            {
+              "properties": {
+                "authority": { "type": "object" }
+              }
+            }
+          ]
+        },
+        "result_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "context_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
     }
   },
   "allOf": [
     {
       "if": { "properties": { "schema_version": { "const": 2 } } },
-      "then": { "properties": { "context": { "required": ["contribution_protocol"] } } }
+      "then": {
+        "required": ["validation"],
+        "properties": {
+          "context": {
+            "required": ["workspace_id", "contribution_protocol"],
+            "properties": {
+              "workspace_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          },
+          "validation": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "authority": {
+                    "type": "object",
+                    "properties": {
+                      "workspace_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "not": { "required": ["validation"] }
+      }
     }
   ],
   "$defs": {

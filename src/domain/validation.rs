@@ -47,14 +47,17 @@ pub fn validate_id(value: &str, field: &str) -> Result<()> {
 }
 
 pub(super) fn validate_hex_digest(value: &str, field: &str) -> Result<()> {
-    if value.len() != 64
-        || !value
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-    {
+    if !is_lowercase_sha256(value) {
         return Err(Error::invalid(field, "must be a lowercase SHA-256 digest"));
     }
     Ok(())
+}
+
+pub(crate) fn is_lowercase_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 pub fn required_text(value: &str, field: &str) -> Result<String> {

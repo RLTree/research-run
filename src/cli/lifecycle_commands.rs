@@ -37,8 +37,11 @@ pub(super) fn initialize(
         ),
         None => "unanchored; irreversible; claim promotion disabled".to_owned(),
     };
+    let integration = workspace.agent_integration_onboarding_status();
     print_text(&format!(
-        "Initialized Research Run workspace at {}\nReview authority: {mode}",
+        "Initialized Research Run workspace at {}\nReview authority: {mode}\nAgent integration ready: {}\nNext: run 'research-run agent-integration plan {}', review the plan, apply it, then start a fresh agent run/session.",
+        terminal_text(&workspace.root().display().to_string()),
+        integration.agent_integration_ready,
         terminal_text(&workspace.root().display().to_string()),
     ))
 }

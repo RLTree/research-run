@@ -18,6 +18,10 @@ fn handoff_inspection_rejects_unknown_versions_and_forged_ceiling() {
 
     let hostile = "visible\u{1b}]52;forged\u{7}";
     invalid["schema_version"] = json!(1);
+    invalid
+        .as_object_mut()
+        .expect("handoff object")
+        .remove("validation");
     invalid["context"]["claim_ceiling"] = json!(hostile);
     fs::write(&path, serde_json::to_vec(&invalid).unwrap()).unwrap();
     let forged = inspect(&temporary, &path, true);

@@ -43,6 +43,42 @@ atomic_publication = true
 idempotent_identical_retry = true
 conflicting_identity = "fail_closed"
 
+[agent_integration]
+canonical_protocol_distinct_from_readiness = true
+instruction_targets = ["AGENTS.md", "AGENTS.override.md"]
+explicit_plan_apply = true
+preserve_existing_instructions = true
+digest_bound = true
+reject_symlinks = true
+reject_plan_drift = true
+atomic_publication = true
+identical_retry = "no_op"
+append_publication = "fd_anchored_atomic_exchange"
+append_platforms = ["linux", "macos"]
+append_non_atomic_fallback = false
+append_source_identity = "one_independent_regular_file"
+pre_exchange_anchor_checks = ["project_root", "relative_transaction"]
+post_transaction_create_authority_failure = "metadata_permission_parent_sync_or_handle_failure_is_ambiguous_effect_retain_evidence"
+staging_cleanup = "held_descriptor_fd_relative_closed_witness_set"
+pending_root_scan_base_entries = 20000
+pending_root_scan_allowance = 256
+pending_root_scan_policy = "max_default_or_latest_inventory_plus_allowance"
+pending_root_scan_retained_matches = 2
+transaction_version = 3
+previous_transaction_versions = [2]
+transaction_witnesses = ["version", "original", "reviewed", "exchange", "completion"]
+transaction_child_budget = 5
+transaction_exact_states = ["canonical_o_exchange_p", "canonical_p_exchange_o"]
+completion_publication = "fd_relative_create_only_hard_link"
+recovery_without_completion = "exact_full_states_only"
+publication_metadata_claim = "exact_bytes_and_unix_mode"
+xattr_acl_preservation_claim = false
+open_file_descriptor_write_prevention_claim = false
+ready_scope = "new_agent_run"
+current_session_loaded = "unverified"
+universal_agent_compliance_claim = false
+out_of_band_write_prevention_claim = false
+
 [proof]
 distinct = ["source", "package", "install", "cache", "discovery", "runtime", "journey", "github", "release", "real_use", "product"]
 withheld = ["scientific_truth", "real_world_usefulness", "scientific_impact", "ultragoal_install", "ultragoal_discovery", "ultragoal_runtime_activation", "full_fitted_governance"]
