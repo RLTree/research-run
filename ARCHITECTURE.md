@@ -93,7 +93,13 @@ original `O`, reviewed `P`, and exchange=`P` through their held creation
 descriptors while private. Before the first durability sync it sets `O`, `P`,
 and exchange=`P` through those descriptors to the exact reviewed Unix mode; the
 owner-only-access transaction directory contains any witness whose reviewed
-mode is broader than `0600`. On Linux and macOS,
+mode is broader than `0600`. Append accepts only a preflighted regular canonical
+source with one hard link before creating the transaction. Once `mkdir` has
+succeeded, metadata, permission, parent-sync, or handle-acquisition failure is
+an ambiguous retained effect. Staging failure cleanup keeps the opened root and
+transaction descriptors, enumerates and validates the complete closed witness
+set before deletion, then uses only fd-relative unlink and directory removal;
+pathname replacement cannot redirect cleanup. On Linux and macOS,
 `rustix::fs::renameat_with` exchanges the
 transaction and canonical leaves atomically relative to opened, identity-checked
 directory descriptors; the canonical pathname remains continuously bound and
@@ -115,7 +121,11 @@ separately and retains unknown, malformed, impossible, unsupported, or uncertain
 state. Identical retry is a no-op. The preservation claim is exact
 bytes plus Unix mode, not ownership, timestamps, xattrs, ACLs, universal safety
 against direct writers, or protection from writes through already-open file
-descriptors. The installed block requires bounded retrieval,
+descriptors. Pending-publication discovery is also bounded: one scan visits at
+most `max(20,000, latest accepted inventory max_entries) + 256` root entries,
+stores at most two recognized paths, and treats a third as ambiguous without
+removing evidence. The bound covers userspace work and retained matches, not a
+kernel/filesystem latency guarantee. The installed block requires bounded retrieval,
 typed CLI contributions, no generic canonical JSON writes, a real validation
 receipt, and v2 handoff. Readiness is scoped to a newly started agent run because
 instruction discovery occurs at run start; current-session loading remains

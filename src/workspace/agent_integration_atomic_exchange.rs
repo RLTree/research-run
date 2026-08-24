@@ -5,7 +5,7 @@ use std::path::{Component, Path};
 
 use crate::{Error, Result};
 
-use super::directories::{ExchangeHandles, open_exchange_handles, verify_anchor};
+use super::directories::{ExchangeHandles, verify_anchor};
 #[cfg(all(coverage, test))]
 use super::directories::{ensure_same_device, open_directory};
 
@@ -24,11 +24,20 @@ pub(super) fn ensure_exchange_platform() -> Result<()> {
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-pub(super) fn exchange(target: &Path, transaction: &Path) -> Result<ExchangeHandles> {
+pub(super) fn exchange_with_handles(
+    target: &Path,
+    transaction: &Path,
+    handles: &ExchangeHandles,
+) -> Result<()> {
     use rustix::fs::{RenameFlags, renameat_with};
 
     let target_name = validated_leaf(target)?;
-    let handles = open_exchange_handles(target, transaction)?;
+    super::directories::verify_relative_directory_anchor(
+        &handles.root,
+        transaction,
+        &handles.transaction,
+    )
+    .map_err(|error| exchange_error(target, &format!("pre-exchange transaction check: {error}")))?;
     inject_path_continuity_probe(target);
     inject_concurrent_target_change(target);
     if super::super::injected_storage_failure("replace project instructions") {
@@ -63,11 +72,15 @@ pub(super) fn exchange(target: &Path, transaction: &Path) -> Result<ExchangeHand
     verify_anchor(transaction, &handles.transaction).map_err(|error| {
         exchange_error(target, &format!("post-exchange transaction check: {error}"))
     })?;
-    Ok(handles)
+    Ok(())
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub(super) fn exchange(_target: &Path, _transaction: &Path) -> Result<ExchangeHandles> {
+pub(super) fn exchange_with_handles(
+    _target: &Path,
+    _transaction: &Path,
+    _handles: &ExchangeHandles,
+) -> Result<()> {
     ensure_exchange_platform()
 }
 

@@ -6,7 +6,9 @@ use crate::{Error, Result};
 
 use super::agent_integration::{read_optional_instruction, relative_name};
 use super::agent_integration_content::{InstructionAssessment, assess_instruction, managed_block};
-use super::agent_integration_publication::ensure_no_instruction_pending;
+use super::agent_integration_publication::pending::{
+    ensure_no_instruction_pending, instruction_scan_budget,
+};
 use super::path_safety::reject_symlink_chain;
 use super::{AgentIntegrationStatus, Snapshot, ValidationAuthority, Workspace};
 
@@ -47,7 +49,7 @@ impl Workspace {
         protocol_sha: &str,
     ) -> Result<AgentIntegrationStatus> {
         let path = self.active_instruction_path()?;
-        ensure_no_instruction_pending(&path)?;
+        ensure_no_instruction_pending(&path, instruction_scan_budget(snapshot)?)?;
         let block = managed_block(snapshot, manifest_sha, protocol_sha);
         let bytes = read_optional_instruction(&path)?;
         let assessment = assess_instruction(bytes.bytes(), bytes.exists(), &block)?;

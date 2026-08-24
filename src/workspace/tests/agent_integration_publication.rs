@@ -6,6 +6,9 @@ use crate::domain::AgentIntegrationOperation;
 use super::super::agent_integration_publication::publish_instruction;
 use super::{inject_storage_failure, temporary};
 
+#[path = "agent_integration_append_identity.rs"]
+mod append_identity;
+
 const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 #[test]

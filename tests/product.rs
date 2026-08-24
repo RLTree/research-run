@@ -2,6 +2,8 @@
 mod agent_integration_activation_defense;
 #[path = "product/agent_integration_defense.rs"]
 mod agent_integration_defense;
+#[path = "product/agent_integration_hardlink.rs"]
+mod agent_integration_hardlink;
 #[path = "product/agent_integration_journey.rs"]
 mod agent_integration_journey;
 #[path = "product/agent_integration_quickstart.rs"]

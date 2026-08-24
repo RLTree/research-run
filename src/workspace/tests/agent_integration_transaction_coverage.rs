@@ -18,12 +18,18 @@ fn transaction_collision_and_malformed_cleanup_remain_explicit() {
     for name in ["exchange", "original", "reviewed"] {
         fs::write(transaction.join(name), name.as_bytes()).unwrap();
     }
+    let handles = open_exchange_handles(&target, &transaction).unwrap();
     assert!(matches!(
-        cleanup_staging_transaction(&target, &transaction),
+        cleanup_staging_transaction(&target, &transaction, &handles),
         Err(Error::AmbiguousEffect(_))
     ));
     assert!(matches!(
-        abort_transaction(&target, &transaction, Error::Conflict("staging".to_owned())),
+        abort_transaction(
+            &target,
+            &transaction,
+            &handles,
+            Error::Conflict("staging".to_owned())
+        ),
         Error::AmbiguousEffect(_)
     ));
     fs::remove_dir_all(root).unwrap();

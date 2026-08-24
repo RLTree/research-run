@@ -89,6 +89,64 @@ fn pending_recovery_paths_stay_out_of_portable_receipts() {
     assert!(pending.is_dir(), "recovery evidence must remain intact");
 }
 
+#[cfg(unix)]
+#[test]
+fn invalid_reference_paths_abort_before_a_portable_handoff_exists() {
+    use std::os::unix::fs::symlink;
+
+    let temporary = TempDir::new("handoff-private-validation-errors");
+    let project = temporary.0.join("private-project");
+    succeeds(
+        &temporary.0,
+        &[
+            "init",
+            project.to_str().unwrap(),
+            "--name",
+            "Portable validation privacy",
+            "--without-review-authority",
+        ],
+    );
+    let outside = temporary.0.join("private-outside");
+    fs::create_dir(&outside).unwrap();
+    symlink(&outside, project.join("artifact-link")).unwrap();
+    let experiment = serde_json::json!({
+        "schema_version": 1, "kind": "experiment", "id": "experiment-private",
+        "question": "Question?", "method_ref": "method.md", "observations": ["Observed"],
+        "interpretation": "Interpretation", "limitations": ["Limited"],
+        "outcome": "inconclusive", "next_move": "Repeat",
+        "artifacts": [{"locator_type": "workspace", "locator": "artifact-link/result.txt", "description": "Result", "digest": null}]
+    });
+    fs::write(
+        project.join(".research-run/experiments/experiment-private.json"),
+        serde_json::to_vec_pretty(&experiment).unwrap(),
+    )
+    .unwrap();
+
+    let local = cli(&project, &["validate", "--json"]);
+    assert!(!local.status.success());
+    assert!(String::from_utf8_lossy(&local.stdout).contains(&*project.to_string_lossy()));
+
+    let handoff = cli(
+        &project,
+        &[
+            "handoff",
+            "create",
+            "--id",
+            "handoff-private-validation-errors",
+            "--generated-at",
+            "2026-08-24T03:00:00Z",
+        ],
+    );
+    assert!(!handoff.status.success());
+    assert!(
+        handoff.stdout.is_empty(),
+        "no portable artifact may be emitted"
+    );
+    assert_portable(&handoff.stderr, &project);
+    assert!(!String::from_utf8_lossy(&handoff.stderr).contains(&*outside.to_string_lossy()));
+    assert!(project.join("artifact-link").is_symlink());
+}
+
 fn initialize_with_pending_transaction(temporary: &TempDir) -> (PathBuf, PathBuf) {
     let project = temporary.0.join("project");
     succeeds(

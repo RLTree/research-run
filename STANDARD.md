@@ -99,7 +99,14 @@ exchange without weakening `unsafe_code = "forbid"`.
   private, then sets `O`, `P`, and exchange=`P` to the exact reviewed Unix mode
   through those descriptors before the first durability sync. The owner-only-
   access transaction directory contains any witness whose reviewed mode is
-  broader than `0600`. On Linux and macOS it exchanges the
+  broader than `0600`. Before transaction creation, Append requires the active
+  instruction source to be one regular file with exactly one hard link; a
+  multiply linked source conflicts before any effect. Any failure after private
+  transaction-directory creation is ambiguous and retains that directory as
+  evidence. Pre-exchange abort cleanup retains the opened root and transaction
+  descriptors, preflights only the closed four-leaf staging set, and unlinks
+  leaves and the directory fd-relatively; it never follows or falls back to a
+  replaced transaction pathname. On Linux and macOS it exchanges the
   transaction leaf and canonical instruction leaf atomically through opened,
   identity-checked directory descriptors; the
   canonical pathname remains bound throughout the supported exchange. There is
@@ -116,6 +123,13 @@ exchange without weakening `unsafe_code = "forbid"`.
   versioned `canonical=O/exchange=P` or `canonical=P/exchange=O` states. Legacy,
   unsupported, unknown, malformed, impossible, and uncertain states fail closed
   and retain the applicable full transaction or completion authority.
+  Instruction-pending discovery visits at most the greater of the default
+  20,000-entry inventory allowance or the latest accepted inventory policy's
+  `max_entries`, plus 256 root-authority entries. It retains at most two matching
+  paths and rejects a third as ambiguous. Budget exhaustion performs no write
+  and directs the operator to reduce root fan-out or review a larger inventory
+  policy; this bounds userspace entry visits and retained-match memory, not
+  filesystem response time.
   The preservation claim covers exact bytes and Unix mode only, not owner,
   timestamps, xattrs, ACLs, writes through already-open descriptors, or every
   uncooperative filesystem writer. Readiness is only for a fresh agent

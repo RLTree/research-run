@@ -186,7 +186,7 @@ fn tampered_plan_cannot_escape_the_project_instruction_surface() {
     assert!(!temporary.0.join("AGENTS.md").exists());
 }
 
-fn initialize(temporary: &TempDir) -> std::path::PathBuf {
+pub(super) fn initialize(temporary: &TempDir) -> std::path::PathBuf {
     let project = temporary.0.join("project");
     succeeds(
         &temporary.0,
@@ -201,7 +201,11 @@ fn initialize(temporary: &TempDir) -> std::path::PathBuf {
     project
 }
 
-fn plan(temporary: &TempDir, project: &std::path::Path, name: &str) -> std::path::PathBuf {
+pub(super) fn plan(
+    temporary: &TempDir,
+    project: &std::path::Path,
+    name: &str,
+) -> std::path::PathBuf {
     let output = succeeds(
         &temporary.0,
         &["agent-integration", "plan", project.to_str().unwrap()],
@@ -211,7 +215,11 @@ fn plan(temporary: &TempDir, project: &std::path::Path, name: &str) -> std::path
     path
 }
 
-fn apply(temporary: &TempDir, project: &std::path::Path, plan: &std::path::Path) -> Value {
+pub(super) fn apply(
+    temporary: &TempDir,
+    project: &std::path::Path,
+    plan: &std::path::Path,
+) -> Value {
     serde_json::from_slice(
         &succeeds(
             &temporary.0,

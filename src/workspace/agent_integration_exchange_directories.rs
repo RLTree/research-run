@@ -4,7 +4,6 @@ use std::path::Path;
 use crate::{Error, Result};
 
 use super::super::path_safety::reject_symlink_chain;
-use super::super::storage::sync_directory;
 use super::super::storage::{map_io, same_file_identity};
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 use super::atomic_exchange::ensure_exchange_platform;
@@ -12,72 +11,6 @@ use super::atomic_exchange::ensure_exchange_platform;
 pub(in crate::workspace) struct ExchangeHandles {
     pub(in crate::workspace) root: File,
     pub(in crate::workspace) transaction: File,
-}
-
-#[cfg(unix)]
-pub(in crate::workspace) fn create_transaction_directory(path: &Path) -> Result<()> {
-    use std::os::unix::fs::{DirBuilderExt, MetadataExt};
-
-    let parent = path.parent().expect("transaction has a parent");
-    let parent_metadata = map_io(
-        fs::symlink_metadata(parent),
-        "inspect project instruction transaction parent",
-        parent,
-    )?;
-    let mut builder = fs::DirBuilder::new();
-    builder.mode(0o700);
-    map_io(
-        builder.create(path),
-        "create project instruction transaction",
-        path,
-    )?;
-    let metadata = map_io(
-        fs::symlink_metadata(path),
-        "inspect project instruction transaction permissions",
-        path,
-    )?;
-    if !transaction_directory_permissions_are_private(
-        parent_metadata.mode(),
-        parent_metadata.gid(),
-        metadata.mode(),
-        metadata.gid(),
-        metadata.is_dir(),
-    ) {
-        return Err(Error::Conflict(format!(
-            "project instruction transaction permissions or inherited identity are invalid: {}",
-            path.display()
-        )));
-    }
-    sync_directory(parent)
-}
-
-#[cfg(unix)]
-pub(in crate::workspace) fn transaction_directory_permissions_are_private(
-    parent_mode: u32,
-    parent_gid: u32,
-    transaction_mode: u32,
-    transaction_gid: u32,
-    is_directory: bool,
-) -> bool {
-    if !is_directory || transaction_mode & 0o077 != 0 {
-        return false;
-    }
-    let special = transaction_mode & 0o7000;
-    // Linux mkdir inherits S_ISGID from a setgid parent without granting access.
-    #[cfg(target_os = "linux")]
-    let inherited_setgid =
-        special == 0o2000 && parent_mode & 0o2000 != 0 && transaction_gid == parent_gid;
-    #[cfg(not(target_os = "linux"))]
-    let inherited_setgid = {
-        let _ = (parent_mode, parent_gid, transaction_gid);
-        false
-    };
-    special == 0 || inherited_setgid
-}
-
-#[cfg(not(unix))]
-pub(in crate::workspace) fn create_transaction_directory(_: &Path) -> Result<()> {
-    ensure_exchange_platform()
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -182,6 +115,41 @@ pub(in crate::workspace) fn verify_anchor(path: &Path, handle: &File) -> Result<
         )));
     }
     Ok(())
+}
+
+#[cfg(unix)]
+pub(in crate::workspace) fn verify_relative_directory_anchor(
+    root: &File,
+    path: &Path,
+    handle: &File,
+) -> Result<()> {
+    let current = open_directory_at(root, path)?;
+    let current_metadata = map_io(
+        current.metadata(),
+        "inspect current project instruction transaction directory",
+        path,
+    )?;
+    let opened_metadata = map_io(
+        handle.metadata(),
+        "inspect held project instruction transaction directory",
+        path,
+    )?;
+    if !same_file_identity(&current_metadata, &opened_metadata) {
+        return Err(Error::AmbiguousEffect(format!(
+            "project instruction transaction identity changed at {}",
+            path.display()
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+pub(in crate::workspace) fn verify_relative_directory_anchor(
+    _: &File,
+    _: &Path,
+    _: &File,
+) -> Result<()> {
+    ensure_exchange_platform()
 }
 
 #[cfg(unix)]

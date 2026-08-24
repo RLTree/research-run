@@ -1,3 +1,4 @@
+#[cfg(any(test, coverage))]
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -16,22 +17,31 @@ mod completion_io;
 mod completion_validation;
 #[path = "agent_integration_exchange_directories.rs"]
 pub(super) mod directories;
+#[path = "agent_integration_transaction_directory_creation.rs"]
+pub(super) mod directory_creation;
 #[path = "agent_integration_transaction_receipt.rs"]
 mod receipt;
 #[path = "agent_integration_transaction_receipt_io.rs"]
 pub(super) mod receipt_io;
+#[path = "agent_integration_transaction_staging_cleanup.rs"]
+mod staging_cleanup;
 #[path = "agent_integration_transaction_witnesses.rs"]
 pub(super) mod witnesses;
 
 use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::publication::pending_path;
-use super::storage::{map_io, read_bounded_with_limit, sync_directory};
-use atomic_exchange::{ensure_exchange_platform, exchange};
+use super::storage::{read_bounded_with_limit, sync_directory};
+use atomic_exchange::{ensure_exchange_platform, exchange_with_handles};
 use cleanup::{complete_publication, sync_exchanged_state};
 use cleanup_effects::{ambiguous, open_recovered_handles};
-use directories::create_transaction_directory;
+use directories::{ExchangeHandles, open_exchange_handles};
+use directory_creation::create_transaction_directory;
+use staging_cleanup::abort_transaction;
+#[cfg(test)]
+pub(in crate::workspace) use staging_cleanup::cleanup_staging_transaction;
 use witnesses::{
-    TRANSACTION_VERSION, WitnessPaths, stage_witnesses, sync_witnesses, verify_witnesses,
+    TRANSACTION_VERSION, WitnessPaths, inspect_independent_append_source, stage_witnesses,
+    sync_witnesses, verify_witnesses,
 };
 
 pub(super) fn publish_append(
@@ -41,30 +51,43 @@ pub(super) fn publish_append(
     plan_sha256: &str,
 ) -> Result<bool> {
     ensure_exchange_platform()?;
+    let source_metadata = inspect_independent_append_source(target)?;
     let transaction = transaction_path(target);
     create_transaction(&transaction)?;
+    let handles =
+        open_exchange_handles(target, &transaction).map_err(|error| ambiguous(target, error))?;
     let paths = WitnessPaths::new(&transaction);
-    if let Err(error) = stage_witnesses(target, &transaction, &paths, expected, content) {
-        return Err(abort_transaction(target, &transaction, error));
+    if let Err(error) = stage_witnesses(
+        target,
+        &transaction,
+        &handles.transaction,
+        &paths,
+        &source_metadata,
+        expected,
+        content,
+    ) {
+        return Err(abort_transaction(target, &transaction, &handles, error));
     }
     inject_concurrent_source_change(target);
     let current = match read_bounded_with_limit(target, MAX_INSTRUCTION_BYTES) {
         Ok(current) => current,
-        Err(error) => return Err(abort_transaction(target, &transaction, error)),
+        Err(error) => return Err(abort_transaction(target, &transaction, &handles, error)),
     };
     if current != expected {
         return Err(abort_transaction(
             target,
             &transaction,
+            &handles,
             Error::Conflict(format!(
                 "project instruction file changed during append publication: {}",
                 target.display()
             )),
         ));
     }
-    exchange_and_finish(
+    exchange_and_finish_with_handles(
         target,
         &transaction,
+        handles,
         expected,
         content,
         plan_sha256,
@@ -81,13 +104,35 @@ pub(super) fn exchange_and_finish(
     plan_sha256: &str,
     transaction_version: &[u8],
 ) -> Result<()> {
+    let handles =
+        open_exchange_handles(target, transaction).map_err(|error| ambiguous(target, error))?;
+    exchange_and_finish_with_handles(
+        target,
+        transaction,
+        handles,
+        original,
+        reviewed,
+        plan_sha256,
+        transaction_version,
+    )
+}
+
+fn exchange_and_finish_with_handles(
+    target: &Path,
+    transaction: &Path,
+    handles: ExchangeHandles,
+    original: &[u8],
+    reviewed: &[u8],
+    plan_sha256: &str,
+    transaction_version: &[u8],
+) -> Result<()> {
     let paths = WitnessPaths::new(transaction);
     sync_witnesses(target, transaction, &paths).map_err(|error| ambiguous(target, error))?;
-    let handles = match exchange(target, transaction) {
-        Ok(handles) => handles,
+    match exchange_with_handles(target, transaction, &handles) {
+        Ok(()) => {}
         Err(error @ Error::AmbiguousEffect(_)) => return Err(error),
-        Err(error) => return Err(abort_transaction(target, transaction, error)),
-    };
+        Err(error) => return Err(abort_transaction(target, transaction, &handles, error)),
+    }
     sync_after_exchange(target, transaction, &handles)?;
     verify_post_exchange(target, transaction, original, reviewed, transaction_version)?;
     complete_publication(
@@ -173,57 +218,6 @@ fn verify_post_exchange(
         transaction_version,
     )
     .map_err(|error| ambiguous(target, error))
-}
-
-pub(super) fn cleanup_staging_transaction(target: &Path, transaction: &Path) -> Result<()> {
-    if super::injected_storage_failure("remove abandoned pending record")
-        || super::injected_storage_failure("sync abandoned pending directory")
-    {
-        return Err(ambiguous(
-            target,
-            Error::io(
-                "clean project instruction transaction",
-                transaction,
-                io::Error::other("injected cleanup failure"),
-            ),
-        ));
-    }
-    let paths = WitnessPaths::new(transaction);
-    for path in [
-        paths.version,
-        paths.exchange,
-        paths.original,
-        paths.reviewed,
-    ] {
-        match fs::remove_file(&path) {
-            Ok(()) => {}
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-            Err(error) => {
-                return Err(ambiguous(
-                    target,
-                    Error::io("remove project instruction witness", path, error),
-                ));
-            }
-        }
-    }
-    sync_directory(transaction).map_err(|error| ambiguous(target, error))?;
-    map_io(
-        fs::remove_dir(transaction),
-        "remove project instruction transaction",
-        transaction,
-    )
-    .map_err(|error| ambiguous(target, error))?;
-    sync_directory(transaction.parent().expect("transaction has a parent"))
-        .map_err(|error| ambiguous(target, error))
-}
-
-fn abort_transaction(target: &Path, transaction: &Path, original: Error) -> Error {
-    match cleanup_staging_transaction(target, transaction) {
-        Ok(()) => original,
-        Err(cleanup) => Error::AmbiguousEffect(format!(
-            "project instruction staging failed and cleanup was not durable: {original}; {cleanup}"
-        )),
-    }
 }
 
 fn sync_named_directory(path: &Path, point: &'static str) -> Result<()> {

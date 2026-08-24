@@ -11,7 +11,7 @@ use super::super::path_safety::reject_symlink_chain;
 use super::super::storage::{map_io, read_bounded_with_limit};
 #[cfg(not(unix))]
 use super::atomic_exchange::ensure_exchange_platform;
-use super::directories::{open_directory, verify_anchor};
+use super::directories::verify_anchor;
 use super::sync_named_directory;
 
 pub(in crate::workspace) const PREVIOUS_TRANSACTION_VERSION: &[u8] =
@@ -37,13 +37,9 @@ impl WitnessPaths {
     }
 }
 
-pub(in crate::workspace) fn stage_witnesses(
+pub(in crate::workspace) fn inspect_independent_append_source(
     target: &Path,
-    transaction: &Path,
-    paths: &WitnessPaths,
-    original: &[u8],
-    reviewed: &[u8],
-) -> Result<()> {
+) -> Result<fs::Metadata> {
     if super::super::injected_storage_failure("inspect project instruction permissions") {
         return Err(Error::io(
             "inspect project instruction permissions",
@@ -62,19 +58,41 @@ pub(in crate::workspace) fn stage_witnesses(
             format!("{} is not a regular file", target.display()),
         ));
     }
-    let directory = open_directory(transaction)?;
-    verify_anchor(transaction, &directory)?;
-    let mut version_file = create_private_file(&directory, &paths.version)?;
-    let mut original_file = create_private_file(&directory, &paths.original)?;
-    let mut reviewed_file = create_private_file(&directory, &paths.reviewed)?;
-    let mut exchange_file = create_private_file(&directory, &paths.exchange)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if metadata.nlink() != 1 {
+            return Err(Error::Conflict(format!(
+                "project instructions must be one independent file before append; observed {} hard links at {}",
+                metadata.nlink(),
+                target.display()
+            )));
+        }
+    }
+    Ok(metadata)
+}
+
+pub(in crate::workspace) fn stage_witnesses(
+    target: &Path,
+    transaction: &Path,
+    directory: &File,
+    paths: &WitnessPaths,
+    metadata: &fs::Metadata,
+    original: &[u8],
+    reviewed: &[u8],
+) -> Result<()> {
+    verify_anchor(transaction, directory)?;
+    let mut version_file = create_private_file(directory, &paths.version)?;
+    let mut original_file = create_private_file(directory, &paths.original)?;
+    let mut reviewed_file = create_private_file(directory, &paths.reviewed)?;
+    let mut exchange_file = create_private_file(directory, &paths.exchange)?;
     write_private_bytes(&mut version_file, &paths.version, TRANSACTION_VERSION)?;
     write_private_bytes(&mut original_file, &paths.original, original)?;
     write_private_bytes(&mut reviewed_file, &paths.reviewed, reviewed)?;
     write_private_bytes(&mut exchange_file, &paths.exchange, reviewed)?;
     set_unix_mode(&version_file, &paths.version, 0o600)?;
     preserve_mode(
-        &metadata,
+        metadata,
         [
             (&original_file, paths.original.as_path()),
             (&reviewed_file, paths.reviewed.as_path()),

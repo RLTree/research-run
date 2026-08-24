@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::fs;
 
 use crate::Error;
@@ -54,15 +53,6 @@ fn create_post_effect_failures_and_pending_discovery_are_explicit() {
     fs::remove_dir_all(root).unwrap();
 }
 
-#[cfg(unix)]
-#[test]
-fn non_utf8_transaction_artifact_names_are_not_claimed() {
-    use std::os::unix::ffi::OsStrExt;
-
-    let name = OsStr::from_bytes(b".AGENTS.md.1.\xff.txn");
-    assert!(!is_instruction_transaction_name(name, "AGENTS.md"));
-}
-
 #[test]
 fn legacy_pending_recovery_covers_append_and_conflicting_target_states() {
     let root = temporary();
@@ -93,12 +83,11 @@ fn legacy_pending_recovery_covers_append_and_conflicting_target_states() {
 
 #[test]
 fn artifact_name_and_optional_target_parsers_cover_rejected_shapes() {
-    assert!(!is_instruction_artifact_name(
-        OsStr::new("other"),
-        "AGENTS.md",
-        ".tmp"
-    ));
+    let root = temporary();
+    let target = root.join("AGENTS.md");
+    fs::write(&target, b"instructions").unwrap();
     for name in [
+        "other",
         ".AGENTS.md.no-dot.tmp",
         ".AGENTS.md..1.tmp",
         ".AGENTS.md.1..tmp",
@@ -106,10 +95,14 @@ fn artifact_name_and_optional_target_parsers_cover_rejected_shapes() {
         ".AGENTS.md.x.1.tmp",
         ".AGENTS.md.1.x.tmp",
     ] {
-        assert!(!is_instruction_pending_name(OsStr::new(name), "AGENTS.md"));
+        fs::write(root.join(name), b"ignored").unwrap();
     }
-    let root = temporary();
-    let target = root.join("AGENTS.md");
+    assert!(
+        pending::instruction_pending(&target, 20)
+            .unwrap()
+            .is_empty()
+    );
+    fs::remove_file(&target).unwrap();
     assert!(read_optional_target(&target).unwrap().is_none());
     fs::create_dir(&target).unwrap();
     assert!(read_optional_target(&target).is_err());

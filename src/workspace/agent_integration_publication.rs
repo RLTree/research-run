@@ -1,8 +1,11 @@
+use std::fs;
 use std::path::{Path, PathBuf};
-use std::{ffi::OsStr, fs};
 
 use crate::domain::{AgentIntegrationOperation, AgentIntegrationPlan, digest};
 use crate::{Error, Result};
+
+#[path = "agent_integration_pending.rs"]
+pub(super) mod pending;
 
 use super::agent_integration::private_staging::write_private_pending;
 use super::agent_integration_recovery::plan_transition_matches;
@@ -12,8 +15,12 @@ use super::agent_integration_types::MAX_INSTRUCTION_BYTES;
 use super::path_safety::reject_symlink_chain;
 use super::pending_cleanup::PendingCleanup;
 use super::publication::pending_path;
-use super::storage::{map_io, read_bounded_with_limit, sync_directory};
+use super::storage::{read_bounded_with_limit, sync_directory};
+#[cfg(test)]
+use pending::default_instruction_scan_budget;
+use pending::{ensure_no_instruction_pending as ensure_no_pending, instruction_pending};
 
+#[cfg(test)]
 pub(super) fn publish_instruction(
     target: &Path,
     content: &[u8],
@@ -21,12 +28,30 @@ pub(super) fn publish_instruction(
     expected_source: &[u8],
     plan_sha256: &str,
 ) -> Result<bool> {
+    publish_instruction_with_budget(
+        target,
+        content,
+        operation,
+        expected_source,
+        plan_sha256,
+        default_instruction_scan_budget()?,
+    )
+}
+
+pub(super) fn publish_instruction_with_budget(
+    target: &Path,
+    content: &[u8],
+    operation: AgentIntegrationOperation,
+    expected_source: &[u8],
+    plan_sha256: &str,
+    scan_budget: usize,
+) -> Result<bool> {
     ensure_instruction_budget(content)?;
     if operation == AgentIntegrationOperation::NoOp {
         return Ok(false);
     }
     reject_symlink_chain(target)?;
-    ensure_no_instruction_pending(target)?;
+    ensure_no_pending(target, scan_budget)?;
     if operation == AgentIntegrationOperation::Append {
         return publish_append(target, content, expected_source, plan_sha256);
     }
@@ -56,21 +81,25 @@ pub(super) fn publish_instruction(
     Ok(changed)
 }
 
+#[cfg(all(coverage, test))]
 pub(super) fn ensure_no_instruction_pending(target: &Path) -> Result<()> {
-    if let Some(path) = instruction_pending(target)?.first() {
-        return Err(Error::AmbiguousEffect(format!(
-            "interrupted project instruction publication found at {}; retry the reviewed agent integration plan",
-            path.display()
-        )));
-    }
-    Ok(())
+    ensure_no_pending(target, default_instruction_scan_budget()?)
 }
 
+#[cfg(all(coverage, test))]
 pub(super) fn recover_instruction_pending(
     target: &Path,
     plan: &AgentIntegrationPlan,
 ) -> Result<()> {
-    let pending = instruction_pending(target).map_err(|error| {
+    recover_instruction_pending_with_budget(target, plan, default_instruction_scan_budget()?)
+}
+
+pub(super) fn recover_instruction_pending_with_budget(
+    target: &Path,
+    plan: &AgentIntegrationPlan,
+    scan_budget: usize,
+) -> Result<()> {
+    let pending = instruction_pending(target, scan_budget).map_err(|error| {
         Error::AmbiguousEffect(format!(
             "interrupted project instruction publication could not be inspected at {}: {error}",
             target.display()
@@ -143,83 +172,6 @@ pub(super) fn ensure_instruction_budget(content: &[u8]) -> Result<()> {
         )));
     }
     Ok(())
-}
-
-fn instruction_pending(target: &Path) -> Result<Vec<PathBuf>> {
-    reject_symlink_chain(target)?;
-    let parent = target
-        .parent()
-        .expect("root instruction paths have a parent");
-    let target_name = target
-        .file_name()
-        .and_then(OsStr::to_str)
-        .expect("root instruction names are UTF-8");
-    let entries = map_io(
-        fs::read_dir(parent),
-        "inspect pending project instructions",
-        parent,
-    )?;
-    let mut pending = Vec::new();
-    for entry in entries {
-        let entry = map_io(entry, "inspect pending project instruction", parent)?;
-        let name = entry.file_name();
-        if is_instruction_pending_name(&name, target_name)
-            || is_instruction_transaction_name(&name, target_name)
-            || is_instruction_completion_name(&name, target_name)
-        {
-            let path = entry.path();
-            reject_symlink_chain(&path)?;
-            let metadata = map_io(
-                fs::symlink_metadata(&path),
-                "inspect pending project instruction path",
-                &path,
-            )?;
-            let expected_shape = match is_instruction_transaction_name(&name, target_name) {
-                true => metadata.is_dir(),
-                false => metadata.is_file(),
-            };
-            if !expected_shape {
-                return Err(Error::invalid(
-                    "pending project instruction",
-                    format!("{} has an invalid transaction shape", path.display()),
-                ));
-            }
-            pending.push(path);
-        }
-    }
-    Ok(pending)
-}
-
-fn is_instruction_pending_name(name: &OsStr, target_name: &str) -> bool {
-    is_instruction_artifact_name(name, target_name, ".tmp")
-}
-
-fn is_instruction_transaction_name(name: &OsStr, target_name: &str) -> bool {
-    is_instruction_artifact_name(name, target_name, ".txn")
-}
-
-fn is_instruction_completion_name(name: &OsStr, target_name: &str) -> bool {
-    is_instruction_artifact_name(name, target_name, ".done")
-}
-
-fn is_instruction_artifact_name(name: &OsStr, target_name: &str, suffix: &str) -> bool {
-    let Some(name) = name.to_str() else {
-        return false;
-    };
-    let Some(body) = name
-        .strip_prefix(&format!(".{target_name}."))
-        .and_then(|name| name.strip_suffix(suffix))
-    else {
-        return false;
-    };
-    let Some((process, sequence)) = body.split_once('.') else {
-        return false;
-    };
-    !process.is_empty()
-        && !sequence.is_empty()
-        && !sequence.contains('.')
-        && process.parse::<u32>().is_ok()
-        && sequence.parse::<u64>().is_ok()
 }
 
 fn read_optional_target(target: &Path) -> Result<Option<Vec<u8>>> {

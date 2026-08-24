@@ -13,12 +13,25 @@ fn witness_staging_rejects_non_files_and_mode_persistence_failure() {
     fs::create_dir(&target).unwrap();
     fs::create_dir(&transaction).unwrap();
     let paths = WitnessPaths::new(&transaction);
-    assert!(stage_witnesses(&target, &transaction, &paths, b"o", b"p").is_err());
+    assert!(inspect_independent_append_source(&target).is_err());
 
     fs::remove_dir(&target).unwrap();
     fs::write(&target, b"o").unwrap();
+    let metadata = inspect_independent_append_source(&target).unwrap();
+    let directory = super::super::directories::open_directory(&transaction).unwrap();
     inject_storage_failure("preserve project instruction Unix mode");
-    assert!(stage_witnesses(&target, &transaction, &paths, b"o", b"p").is_err());
+    assert!(
+        stage_witnesses(
+            &target,
+            &transaction,
+            &directory,
+            &paths,
+            &metadata,
+            b"o",
+            b"p",
+        )
+        .is_err()
+    );
     fs::remove_dir_all(root).unwrap();
 }
 
@@ -30,7 +43,18 @@ fn witness_verification_rejects_a_missing_canonical_target() {
     fs::write(&target, b"o").unwrap();
     fs::create_dir(&transaction).unwrap();
     let paths = WitnessPaths::new(&transaction);
-    stage_witnesses(&target, &transaction, &paths, b"o", b"p").unwrap();
+    let metadata = inspect_independent_append_source(&target).unwrap();
+    let directory = super::super::directories::open_directory(&transaction).unwrap();
+    stage_witnesses(
+        &target,
+        &transaction,
+        &directory,
+        &paths,
+        &metadata,
+        b"o",
+        b"p",
+    )
+    .unwrap();
     fs::remove_file(&target).unwrap();
 
     assert!(verify_witnesses(&target, &paths, b"o", b"p", b"p", TRANSACTION_VERSION,).is_err());

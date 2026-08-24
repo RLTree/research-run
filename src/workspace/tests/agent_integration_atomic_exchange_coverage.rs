@@ -13,7 +13,8 @@ fn actual_exchange_failure_has_no_non_atomic_fallback() {
     fs::write(&target, b"original").unwrap();
     fs::create_dir(&transaction).unwrap();
 
-    let error = exchange(&target, &transaction)
+    let handles = super::super::directories::open_exchange_handles(&target, &transaction).unwrap();
+    let error = exchange_with_handles(&target, &transaction, &handles)
         .err()
         .expect("directory cannot be exchanged with a regular file");
 

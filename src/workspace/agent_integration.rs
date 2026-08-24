@@ -7,8 +7,11 @@ use crate::{Error, Result};
 use super::agent_integration_content::{
     InstructionAssessment, assess_instruction, compose_planned_instruction, managed_block,
 };
+use super::agent_integration_publication::pending::{
+    ensure_no_instruction_pending, instruction_scan_budget,
+};
 use super::agent_integration_publication::{
-    ensure_no_instruction_pending, publish_instruction, recover_instruction_pending,
+    publish_instruction_with_budget, recover_instruction_pending_with_budget,
 };
 use super::agent_integration_recovery::identical_retry;
 use super::agent_integration_types::{InstructionFile, MAX_INSTRUCTION_BYTES};
@@ -42,6 +45,7 @@ impl Workspace {
         let workspace = Self::for_recovery(root)?;
         let _write_lock = WorkspaceWriteLock::acquire(&workspace.state)?;
         let snapshot = workspace.load_snapshot()?;
+        let scan_budget = instruction_scan_budget(&snapshot)?;
         let instruction_path = workspace.active_instruction_path()?;
         if !workspace.agent_integration_plan_has_current_authority(
             &snapshot,
@@ -52,7 +56,7 @@ impl Workspace {
                 "agent integration plan drifted; generate a new plan before apply".to_owned(),
             ));
         }
-        recover_instruction_pending(&instruction_path, &plan)?;
+        recover_instruction_pending_with_budget(&instruction_path, &plan, scan_budget)?;
         let current = workspace.build_agent_integration_plan(&snapshot)?;
         if current == plan {
             if plan.operation == AgentIntegrationOperation::NoOp {
@@ -71,12 +75,13 @@ impl Workspace {
                     "agent integration prospective content drifted before apply".to_owned(),
                 ));
             }
-            let changed = publish_instruction(
+            let changed = publish_instruction_with_budget(
                 &workspace.root.join(&plan.instruction_path),
                 &content,
                 plan.operation,
                 instruction.bytes(),
                 &plan.plan_sha256,
+                scan_budget,
             )?;
             return Ok(apply_result(&plan, changed));
         }
@@ -90,7 +95,7 @@ impl Workspace {
 
     fn build_agent_integration_plan(&self, snapshot: &Snapshot) -> Result<AgentIntegrationPlan> {
         let path = self.active_instruction_path()?;
-        ensure_no_instruction_pending(&path)?;
+        ensure_no_instruction_pending(&path, instruction_scan_budget(snapshot)?)?;
         let (manifest_sha, protocol_sha) = self.agent_integration_authority_digests()?;
         let block = managed_block(snapshot, &manifest_sha, &protocol_sha);
         let current = read_optional_instruction(&path)?;

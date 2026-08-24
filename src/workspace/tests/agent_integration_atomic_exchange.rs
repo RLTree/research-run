@@ -90,25 +90,46 @@ fn staged_file_and_pre_exchange_sync_failures_leave_the_original_canonical() {
         "sync project instruction transaction before exchange",
         "sync project instruction root before exchange",
         "inspect record#5",
-        "inspect project instruction directory anchor",
         "replace project instructions",
     ] {
         let (root, plan, original, planned) = fixture(point);
         inject_storage_failure(point);
-        assert!(
-            publish_instruction(
-                &root.join("AGENTS.md"),
-                &planned,
-                AgentIntegrationOperation::Append,
-                &original,
-                &plan.plan_sha256,
-            )
-            .is_err()
-        );
+        let error = publish_instruction(
+            &root.join("AGENTS.md"),
+            &planned,
+            AgentIntegrationOperation::Append,
+            &original,
+            &plan.plan_sha256,
+        )
+        .expect_err(point);
         assert_eq!(fs::read(root.join("AGENTS.md")).unwrap(), original);
-        assert!(find_transactions(&root).is_empty());
+        assert!(
+            find_transactions(&root).is_empty(),
+            "{point}: staging transaction was retained after {error}"
+        );
         fs::remove_dir_all(root).unwrap();
     }
+}
+
+#[test]
+fn post_mkdir_handle_failure_retains_empty_transaction_evidence() {
+    let (root, plan, original, planned) = fixture("post-mkdir handle failure");
+    inject_storage_failure("inspect project instruction directory anchor");
+
+    let error = publish_instruction(
+        &root.join("AGENTS.md"),
+        &planned,
+        AgentIntegrationOperation::Append,
+        &original,
+        &plan.plan_sha256,
+    )
+    .expect_err("post-mkdir handle failure must retain evidence");
+
+    assert!(matches!(error, Error::AmbiguousEffect(_)), "{error:?}");
+    assert_eq!(fs::read(root.join("AGENTS.md")).unwrap(), original);
+    let transaction = find_transaction(&root);
+    assert_eq!(fs::read_dir(&transaction).unwrap().count(), 0);
+    fs::remove_dir_all(root).unwrap();
 }
 
 #[test]

@@ -23,6 +23,9 @@ mod agent_integration;
 mod agent_integration_publication;
 #[path = "tests/agent_integration_recovery.rs"]
 mod agent_integration_recovery;
+#[path = "tests/agent_integration_staging_cleanup.rs"]
+mod agent_integration_staging_cleanup;
+include!("tests/agent_integration_staging_cleanup_boundaries.rs");
 #[path = "tests/agent_integration_transaction.rs"]
 mod agent_integration_transaction;
 #[path = "tests/agent_integration_transaction_permissions.rs"]

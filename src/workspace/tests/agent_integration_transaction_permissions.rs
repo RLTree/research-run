@@ -7,99 +7,19 @@ use crate::domain::AgentIntegrationOperation;
 use super::super::agent_integration::private_staging::create_private_file;
 use super::super::agent_integration_publication::publish_instruction;
 use super::super::agent_integration_transaction::create_transaction;
-#[cfg(unix)]
-use super::super::agent_integration_transaction::directories::create_transaction_directory;
 use super::super::agent_integration_transaction::directories::open_directory;
-#[cfg(unix)]
-use super::super::agent_integration_transaction::directories::transaction_directory_permissions_are_private;
 use super::super::agent_integration_transaction::receipt_io::stage_receipt;
-use super::super::agent_integration_transaction::witnesses::{WitnessPaths, stage_witnesses};
+use super::super::agent_integration_transaction::witnesses::{
+    WitnessPaths, inspect_independent_append_source, stage_witnesses,
+};
 use super::super::inject_storage_failure;
 
 const CHILD_ROOT: &str = "RESEARCH_RUN_PERMISSION_CHILD_ROOT";
 const TEST_FILTER: &str = "private_agent_integration_staging_respects_permission_ceilings";
 const TEST_PLAN_SHA256: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
-#[cfg(unix)]
-#[test]
-fn transaction_creation_fails_before_effect_when_parent_cannot_be_observed() {
-    let root = child_root("parent-observation-failure");
-    fs::create_dir_all(&root).unwrap();
-    let transaction = root.join(".AGENTS.md.989.1.txn");
-
-    inject_storage_failure("inspect project instruction transaction parent");
-    let error = create_transaction_directory(&transaction).unwrap_err();
-
-    assert!(
-        matches!(
-            error,
-            crate::Error::Io {
-                action: "inspect project instruction transaction parent",
-                ..
-            }
-        ),
-        "unexpected error: {error}"
-    );
-    assert!(
-        !transaction.exists(),
-        "transaction directory was created before parent observation"
-    );
-    fs::remove_dir_all(root).unwrap();
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn setgid_project_root_keeps_transaction_access_private() {
-    use std::os::unix::fs::PermissionsExt;
-
-    let root = child_root("setgid");
-    fs::create_dir_all(&root).unwrap();
-    fs::set_permissions(&root, fs::Permissions::from_mode(0o2770)).unwrap();
-    let root_mode = fs::metadata(&root).unwrap().permissions().mode() & 0o7777;
-    assert_eq!(root_mode & 0o2000, 0o2000, "setgid precondition missing");
-
-    let transaction = root.join(".AGENTS.md.990.1.txn");
-    create_transaction(&transaction).unwrap();
-    let mode = fs::metadata(&transaction).unwrap().permissions().mode() & 0o7777;
-    assert_eq!(mode & 0o2000, 0o2000, "setgid inheritance missing");
-    assert_eq!(mode & 0o077, 0, "group/other transaction access: {mode:o}");
-    assert_eq!(
-        mode & 0o5000,
-        0,
-        "unexpected transaction special bits: {mode:o}"
-    );
-
-    fs::remove_dir_all(root).unwrap();
-}
-
-#[cfg(unix)]
-#[test]
-fn transaction_directory_permission_predicate_is_strict() {
-    let private = |parent_mode, parent_gid, transaction_mode, transaction_gid, is_directory| {
-        transaction_directory_permissions_are_private(
-            parent_mode,
-            parent_gid,
-            transaction_mode,
-            transaction_gid,
-            is_directory,
-        )
-    };
-    assert!(private(0o700, 10, 0o700, 10, true));
-    assert!(private(0o700, 10, 0o500, 10, true));
-    for mode in [0o740, 0o704, 0o4700, 0o1700, 0o6700] {
-        assert!(!private(0o2700, 10, mode, 10, true), "mode {mode:o}");
-    }
-    assert!(!private(0o700, 10, 0o700, 10, false));
-
-    #[cfg(target_os = "linux")]
-    {
-        assert!(private(0o2700, 10, 0o2700, 10, true));
-        assert!(!private(0o700, 10, 0o2700, 10, true));
-        assert!(!private(0o2700, 10, 0o2700, 11, true));
-    }
-    #[cfg(not(target_os = "linux"))]
-    assert!(!private(0o2700, 10, 0o2700, 10, true));
-}
+#[path = "agent_integration_transaction_creation.rs"]
+mod creation;
 
 #[cfg(unix)]
 #[test]
@@ -137,12 +57,31 @@ fn exercise_permission_boundaries(root: &Path) {
     let target = root.join("AGENTS.md");
     fs::write(&target, b"original").unwrap();
     fs::set_permissions(&target, fs::Permissions::from_mode(0o640)).unwrap();
+    let (transaction, paths, pending) = stage_private_intermediates(root, &target);
+    assert_permission_ceilings(&transaction, &paths, &pending);
+    assert_exact_witness_modes(root, &target);
+}
+
+#[cfg(unix)]
+fn stage_private_intermediates(root: &Path, target: &Path) -> (PathBuf, WitnessPaths, PathBuf) {
     let transaction = root.join(".AGENTS.md.991.1.txn");
     create_transaction(&transaction).unwrap();
     let paths = WitnessPaths::new(&transaction);
-    inject_storage_failure("preserve project instruction Unix mode");
-    assert!(stage_witnesses(&target, &transaction, &paths, b"original", b"reviewed").is_err());
     let transaction_handle = open_directory(&transaction).unwrap();
+    let source_metadata = inspect_independent_append_source(target).unwrap();
+    inject_storage_failure("preserve project instruction Unix mode");
+    assert!(
+        stage_witnesses(
+            target,
+            &transaction,
+            &transaction_handle,
+            &paths,
+            &source_metadata,
+            b"original",
+            b"reviewed",
+        )
+        .is_err()
+    );
     stage_receipt(&transaction_handle, &transaction, b"completion").unwrap();
     assert_private_create_collision(&transaction_handle, &transaction);
 
@@ -169,16 +108,20 @@ fn exercise_permission_boundaries(root: &Path) {
                 .starts_with(".AGENTS.override.md.")
         })
         .unwrap();
+    (transaction, paths, pending)
+}
 
+#[cfg(unix)]
+fn assert_permission_ceilings(transaction: &Path, paths: &WitnessPaths, pending: &Path) {
     let mut violations = Vec::new();
-    check_ceiling(&transaction, 0o700, &mut violations);
+    check_ceiling(transaction, 0o700, &mut violations);
     for path in [
         &paths.version,
         &paths.original,
         &paths.reviewed,
         &paths.exchange,
         &transaction.join("completion"),
-        &pending,
+        pending,
     ] {
         check_ceiling(path, 0o600, &mut violations);
     }
@@ -187,14 +130,23 @@ fn exercise_permission_boundaries(root: &Path) {
         "private staging permission violations: {}",
         violations.join(", ")
     );
+}
+
+#[cfg(unix)]
+fn assert_exact_witness_modes(root: &Path, target: &Path) {
+    use std::os::unix::fs::PermissionsExt;
 
     let exact_transaction = root.join(".AGENTS.md.992.1.txn");
     create_transaction(&exact_transaction).unwrap();
     let exact_paths = WitnessPaths::new(&exact_transaction);
+    let exact_handle = open_directory(&exact_transaction).unwrap();
+    let source_metadata = inspect_independent_append_source(target).unwrap();
     stage_witnesses(
-        &target,
+        target,
         &exact_transaction,
+        &exact_handle,
         &exact_paths,
+        &source_metadata,
         b"original",
         b"reviewed",
     )
