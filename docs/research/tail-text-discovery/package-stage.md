@@ -6,14 +6,14 @@ release, canonical research changes and monitor closure remain outside scope.
 
 The reviewed implementation/evidence pack began at
 `b16f1cbb708ab8b6d43574b5ea75cd71d135e554`; the current review-fix candidate is
-`60fa9a69deb956e6a6388695d2f2cf390aab139a` on `codex/tail-text-discovery`.
+`6eea87ca59f62099690a44b6b2d010a657d40315` on `codex/tail-text-discovery`.
 The earlier experiment report and manifest entries remain historical where they
 name their preceding candidate.
 
 ## Measured declaration
 
-`cargo package --locked` from the review-fix candidate produced archive SHA-256
-`7dcfd112ae0bb441ca0b4419c8caa4633c6bbfc7ed126c691a54a33188d2aaba`.
+`cargo package --locked` from the final review-fix candidate produced archive
+SHA-256 `8f14b75e303dd7b5a97d241f6e2969d7292ea3e8f496872a25091eb948c8b583`.
 Its embedded `.cargo_vcs_info.json` identifies that same commit. An isolated
 `cargo install --path ... --locked` built the extracted package. The installed
 executable passed `codesign --verify --strict` and measured:
