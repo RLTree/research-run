@@ -35,7 +35,8 @@ def digest_state(workspace):
 def expected_body(size):
     prefix, tail = 'prefix-marker common-marker ', ' tail-needle'
     body = prefix + 'x' * (size - len(prefix) - len(tail)) + tail
-    assert len(body.encode()) == size
+    if len(body.encode()) != size:
+        raise ValueError(f'synthetic body size mismatch: expected {size}')
     return body
 
 
@@ -121,13 +122,14 @@ def measure(name, workspace, queries):
             for binary_name, binary in BINARIES.items():
                 result = subprocess.run([sys.executable, '-c', memory_probe, str(binary), *args],
                                         cwd=workspace, capture_output=True)
-                assert result.returncode == 0
+                if result.returncode != 0:
+                    raise RuntimeError(f'memory probe failed: {binary}')
                 case['observations'][binary_name]['peak_rss_bytes'] = int(result.stdout)
             output['cases'].append(case)
-            (EVIDENCE / f'latency-{name}.json').write_text(json.dumps(output, indent=2))
             print(name, command, label, 'done', flush=True)
     output['canonical_unchanged'] = before == digest_state(workspace)
-    assert output['canonical_unchanged']
+    if not output['canonical_unchanged']:
+        raise RuntimeError('measurement changed canonical workspace state')
     (EVIDENCE / f'latency-{name}.json').write_text(json.dumps(output, indent=2))
 
 
@@ -138,16 +140,21 @@ def self_test():
         knowledge.mkdir(parents=True)
         for index in range(2):
             (knowledge / f'note-{index:04}.json').write_bytes(expected_record(index, 200))
-        assert corpus_is_expected(workspace, 2, 200)
+        if not corpus_is_expected(workspace, 2, 200):
+            raise AssertionError('complete corpus was rejected')
         (knowledge / 'note-0001.json').unlink()
-        assert not corpus_is_expected(workspace, 2, 200)
+        if corpus_is_expected(workspace, 2, 200):
+            raise AssertionError('missing record was accepted')
         (knowledge / 'note-0001.json').write_bytes(expected_record(1, 200).replace(b'tail-needle', b'changed-text'))
-        assert not corpus_is_expected(workspace, 2, 200)
+        if corpus_is_expected(workspace, 2, 200):
+            raise AssertionError('changed record was accepted')
         (knowledge / 'note-0001.json').write_bytes(expected_record(1, 200))
         (knowledge / 'note-0002.json').write_bytes(expected_record(2, 200))
-        assert not corpus_is_expected(workspace, 2, 200)
+        if corpus_is_expected(workspace, 2, 200):
+            raise AssertionError('extra record was accepted')
         (knowledge / 'note-0002.json').unlink()
-        assert corpus_is_expected(workspace, 2, 200)
+        if not corpus_is_expected(workspace, 2, 200):
+            raise AssertionError('restored corpus was rejected')
         (knowledge / 'linked').symlink_to(knowledge / 'note-0000.json')
         try:
             safe_files(workspace)

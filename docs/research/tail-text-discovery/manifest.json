@@ -19,7 +19,7 @@
     "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
     "tests/product/retrieval_journey/tail_text_compat.rs": "9f2a7cf70e6f222d8d8dbd0397cb469db36381b458bf3a503836d0e5b2209f85",
     "docs/research/tail-text-discovery/README.md": "cf72078d2018847007656e451d2d5d13d146adc1734bcfb0277b0f862fde4622",
-    "docs/research/tail-text-discovery/measure.py": "a76eb7d3406c1a3e61c3a014e29e4fad6044046408ca2641be765f07532a3f83",
+    "docs/research/tail-text-discovery/measure.py": "a443dd1ab8aec8fa3038c32a3a78c1780315bec01af84adbcc7e0434711693db",
     "docs/research/tail-text-discovery/verify.py": "052cc0fed885ce27025b35a36fe989bfd14f3c12212d7a441d968d9689ee587e",
     "docs/research/tail-text-discovery/measurement_fs.py": "9b361cd0c79ba368e0fc482dd480fe57b46bc07232c3ca7da55c7435e9cbda9d"
   },
