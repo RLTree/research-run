@@ -31,16 +31,15 @@ pub(super) fn context_from_snapshot(
     });
     next_actions.extend(claim_next_actions(&status));
     sort_and_truncate(&mut next_actions, limit);
-    let ids = matches
+    let identities = matches
         .iter()
-        .map(|item| item.id.as_str())
+        .map(|item| (item.kind.as_str(), item.id.as_str()))
         .collect::<BTreeSet<_>>();
     let mut relationships = relationship_items(&snapshot)
         .into_iter()
         .filter(|item| {
-            [item.from_id.as_str(), item.to_id.as_str()]
-                .iter()
-                .any(|id| ids.contains(id))
+            identities.contains(&(item.from_kind.as_str(), item.from_id.as_str()))
+                || identities.contains(&(item.to_kind.as_str(), item.to_id.as_str()))
         })
         .collect::<Vec<_>>();
     relationships.truncate(limit);

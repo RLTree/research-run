@@ -9,15 +9,19 @@
   "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-apple-darwin\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
   "files": {
     "ARCHITECTURE.md": "666a8e3ed4a4794510e36d884318d3a451c317667191dddfeec7da1acef077b3",
-    "README.md": "189191b744377f5cc470ee976e9a6b204b751c1e1bb4bcfafd168fcba32335ba",
+    "README.md": "ada9b85f4bcd1cb54070a7efd1df57abdeb9ea388515792d1a97447db9e76a9a",
     "src/cli/retrieval_commands.rs": "0aa94e29a49db71363c99067bc1d213e386da32d5e7e0de3a1f3b897f84f73c5",
     "src/workspace/retrieval.rs": "30a65409d2ba4a627e9ce40301d05d58c2780a4cc276dae72dd0cb745184b08e",
-    "src/workspace/retrieval_context.rs": "0c34b99df4b2d193f55cdb3cc83638c20ff4d4b3012a5ed6259e6c5a9edb5d2c",
+    "src/workspace/retrieval_context.rs": "34996683fa8571ba455e35631db886d8260c5d4c7a31872660daf7ab1df3b5bc",
     "tests/product/retrieval_journey.rs": "2c1919613b111443a729b943ce847acd5a409735c40c61dd12ecb8bc0748425c",
     "src/workspace/retrieval_match.rs": "915fcdd34ce8aec40cef27b411abfa784fa293e4015851043b74f7f534cb922b",
     "src/workspace/retrieval_match/tests.rs": "b22b8c38c0e6f695b28f72ffbd84342d53aa7972eead3ca1e4858084709ab23b",
     "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
-    "tests/product/retrieval_journey/tail_text_compat.rs": "90e1e376fa03ca0083b2f2720b02ab1e40a8e6563b9060ad5b6f320b9901f691"
+    "tests/product/retrieval_journey/tail_text_compat.rs": "9f2a7cf70e6f222d8d8dbd0397cb469db36381b458bf3a503836d0e5b2209f85",
+    "docs/research/tail-text-discovery/README.md": "cf72078d2018847007656e451d2d5d13d146adc1734bcfb0277b0f862fde4622",
+    "docs/research/tail-text-discovery/measure.py": "a76eb7d3406c1a3e61c3a014e29e4fad6044046408ca2641be765f07532a3f83",
+    "docs/research/tail-text-discovery/verify.py": "052cc0fed885ce27025b35a36fe989bfd14f3c12212d7a441d968d9689ee587e",
+    "docs/research/tail-text-discovery/measurement_fs.py": "9b361cd0c79ba368e0fc482dd480fe57b46bc07232c3ca7da55c7435e9cbda9d"
   },
   "artifacts": {
     "doctests-final.log": "b7583c03758fc3fa3e0b6a7abf9e1cc90160cec92973f57d81444baed07c485c",
@@ -32,9 +36,9 @@
     "baseline-build.log": "fe668c5ad8469390f174dbcaa32ddd9ad2055c6aed2b6a58d892af57ba957cd6",
     "check-final.log": "12560410166db72729f2b11eadf0af6ba0159f937c8d90c6f32a17a3ee192d2a",
     "nextest-final.log": "f2007d9e117fd4af146b0df5449932f80997fe77d2129137bdd30da3f3f23c91",
-    "latency-near-budget.json": "ca175bbd73ed60a2e90146616583818ebf48cbbaf4e578bf9ee8959f36a67d65",
+    "latency-near-budget.json": "c4320f55bf83cd8f09f5d3173b9b6a87f589834f6e1cd4f03a841cff54fdc764",
     "release-final.log": "99dfd177e77d11c8b0bc27e53c3edef17983192e14eed72c257fad96424c4bb8",
-    "latency-many-short.json": "7a1eeaaf1347bce5cfdcae27a1b1bca6ee8453766b3694e6a6ee6bef3c9eb2f0",
+    "latency-many-short.json": "a154af1c56ce101181eb5b488aa023382fe1cb94b5920e0dfdc758712b386c74",
     "baseline-red.json": "e454ee10542bd1b47b74949f5e704eabfef616a0b4aafdff417417d77ea8d6d4",
     "coverage-final.log": "8711837c2d692c5a32b5f4c33848ede665e5032d616737d88292afc41d146da6"
   },
@@ -49,5 +53,15 @@
       "coverage-final.log"
     ],
     "original_manifest_commit": "b16f1cbb708ab8b6d43574b5ea75cd71d135e554"
+  },
+  "review_fix": {
+    "source": "CodeRabbit review 5205779785, comments 4012170771 and 4012170780",
+    "changes": [
+      "Context relationship selection now compares typed kind plus ID pairs.",
+      "Synthetic benchmark reuse validates every expected record and rejects drift before measurement.",
+      "Measurement and compatibility fingerprints reject symlinks and non-regular entries and read regular files through no-follow, nonblocking descriptors.",
+      "Human knowledge-body labeling remains source-field semantics for both projected and fallback matches; JSON and handoff shapes are unchanged."
+    ],
+    "historical_evidence_preserved": true
   }
 }

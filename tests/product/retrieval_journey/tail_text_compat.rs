@@ -8,7 +8,7 @@ fn tail_text_typed_identity_and_existing_matches_preserve_projections() {
         &temporary,
         &project,
         "shared-id",
-        &format!("{} uniquetail", "x".repeat(600)),
+        &format!("{} other-tail", "x".repeat(600)),
     );
     succeeds(
         &project,
@@ -25,6 +25,27 @@ fn tail_text_typed_identity_and_existing_matches_preserve_projections() {
             "human",
         ],
     );
+    succeeds(
+        &project,
+        &[
+            "source",
+            "add",
+            "--id",
+            "source-target",
+            "--citation",
+            "Synthetic target",
+            "--locator",
+            "local:synthetic-target",
+            "--provenance",
+            "human",
+        ],
+    );
+    body_record(
+        &temporary,
+        &project,
+        "tail-record",
+        &format!("{} uniquetail", "x".repeat(600)),
+    );
     let tail = json_output(&project, &["search", "uniquetail"]);
     assert_eq!(tail["total_matches"], 1);
     assert_eq!(tail["items"][0]["kind"], "knowledge");
@@ -32,6 +53,64 @@ fn tail_text_typed_identity_and_existing_matches_preserve_projections() {
     assert_eq!(identity["total_matches"], 2);
     assert_eq!(identity["items"][0]["kind"], "knowledge");
     assert_eq!(identity["items"][1]["kind"], "source");
+    add(
+        &temporary,
+        &project,
+        "relationship",
+        typed_relationship(
+            "source-only-link",
+            "source",
+            "shared-id",
+            "source",
+            "source-target",
+        ),
+    );
+    add(
+        &temporary,
+        &project,
+        "relationship",
+        typed_relationship(
+            "knowledge-outgoing-link",
+            "knowledge",
+            "shared-id",
+            "knowledge",
+            "tail-record",
+        ),
+    );
+    add(
+        &temporary,
+        &project,
+        "relationship",
+        typed_relationship(
+            "knowledge-incoming-link",
+            "knowledge",
+            "tail-record",
+            "knowledge",
+            "shared-id",
+        ),
+    );
+    let context = json_output(&project, &["context", "--query", "uniquetail"]);
+    assert_eq!(
+        context["relationships"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["knowledge-incoming-link", "knowledge-outgoing-link"]
+    );
+    assert!(
+        !context["relationships"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == "source-only-link")
+    );
+    let limited = json_output(
+        &project,
+        &["context", "--query", "uniquetail", "--limit", "1"],
+    );
+    assert_eq!(limited["relationships"][0]["id"], "knowledge-incoming-link");
     let mut record = knowledge(
         "titlemarker-id",
         "observation",
@@ -72,6 +151,26 @@ fn unchanged_views(project: &Path) -> Vec<Value> {
         .iter()
         .map(|args| json_output(project, args))
         .collect()
+}
+
+fn typed_relationship(
+    id: &str,
+    from_kind: &str,
+    from_id: &str,
+    to_kind: &str,
+    to_id: &str,
+) -> Value {
+    json!({
+        "schema_version": 1,
+        "kind": "relationship",
+        "id": id,
+        "relationship": "related-to",
+        "from": { "kind": from_kind, "id": from_id },
+        "to": { "kind": to_kind, "id": to_id },
+        "rationale": "Synthetic typed identity relationship",
+        "occurred_at": "2026-07-18T20:05:00Z",
+        "authorship": "human"
+    })
 }
 
 #[test]

@@ -4,6 +4,8 @@ import json
 import pathlib
 import subprocess
 
+from measurement_fs import read_regular, safe_files
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 OUT = ROOT / 'target/tail-text-evidence'
 WORKSPACE = OUT / 'red-workspace'
@@ -16,8 +18,10 @@ def call(name, args, cwd=WORKSPACE):
 
 
 def canonical():
-    return {str(p.relative_to(WORKSPACE)): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in (WORKSPACE / '.research-run').rglob('*') if p.is_file()}
+    return {
+        str(path.relative_to(WORKSPACE)): hashlib.sha256(read_regular(path, WORKSPACE)).hexdigest()
+        for path in safe_files(WORKSPACE)
+    }
 
 
 before = canonical()

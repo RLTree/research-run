@@ -82,6 +82,10 @@ cases were added and passed. The same reviewer checked that repair and the
 ASCII optimization and found no material source issue. Static review does not
 replace the executable compatibility, timing or coverage results.
 
+The human label `summary (knowledge body)` describes the source field for both
+projected prefix summaries and fallback excerpts. It does not claim that the
+match was necessarily a fallback; the JSON reason remains `summary`.
+
 The broad source check caught a 251-line workspace router after the new module
 declaration. Nesting the matcher under retrieval restored the 250-line cap
 without changing its behavior. The standards gate also required keeping exactly

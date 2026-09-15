@@ -52,6 +52,21 @@ Repository-wide 100% coverage remains HOLD (511 missed regions, 156 lines and
 verification does not waive aggregate coverage, mutation, release or real-use
 fitness gates.
 
+## PR review corrections
+
+After publication, CodeRabbit identified an identity-selection defect reachable
+from body matches: queried context could select a relationship by ID while
+ignoring endpoint kind. The fix compares typed `(kind, id)` pairs and adds
+outgoing/incoming knowledge relationships plus a source-ID collision regression.
+The same review identified benchmark evidence drift and symlink/FIFO risks in
+the local measurement helpers. Those helpers now validate every expected
+synthetic record, reject unexpected or modified corpus entries before reuse, and
+use confined no-follow, nonblocking regular-file reads. Historical measurements
+remain preserved; refreshed synthetic outputs are separately hash-bound in the
+manifest. The human label `summary (knowledge body)` remains intentionally
+source-field semantics for both projected and fallback knowledge matches, so no
+hidden serialized discriminator was added.
+
 ## Portability correction before final gate
 
 The clean-gate preparation found host-specific checkout paths in six archived
