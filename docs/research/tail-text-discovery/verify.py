@@ -4,7 +4,7 @@ import json
 import pathlib
 import subprocess
 
-from measurement_fs import read_regular, safe_files
+from measurement_fs import ReadBudget, read_regular, safe_files
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 OUT = ROOT / 'target/tail-text-evidence'
@@ -24,8 +24,9 @@ def call(name, args, cwd=WORKSPACE):
 
 
 def canonical():
+    budget = ReadBudget()
     return {
-        str(path.relative_to(WORKSPACE)): hashlib.sha256(read_regular(path, WORKSPACE)).hexdigest()
+        str(path.relative_to(WORKSPACE)): hashlib.sha256(read_regular(path, WORKSPACE, budget)).hexdigest()
         for path in safe_files(WORKSPACE)
     }
 

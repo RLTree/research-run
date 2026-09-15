@@ -8,7 +8,13 @@ import sys
 import tempfile
 import time
 
-from measurement_fs import read_regular, safe_files
+from measurement_fs import (
+    MAX_INVENTORY_RECORD_BYTES,
+    MAX_RECORD_BYTES,
+    ReadBudget,
+    read_regular,
+    safe_files,
+)
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 EVIDENCE = ROOT / 'target/tail-text-evidence'
@@ -25,8 +31,9 @@ def invoke(binary, workspace, args):
 
 
 def digest_state(workspace):
+    budget = ReadBudget()
     return {
-        str(path.relative_to(workspace)): hashlib.sha256(read_regular(path, workspace)).hexdigest()
+        str(path.relative_to(workspace)): hashlib.sha256(read_regular(path, workspace, budget)).hexdigest()
         for path in safe_files(workspace)
     }
 
@@ -56,8 +63,9 @@ def corpus_is_expected(workspace, count, size):
     if entries != expected:
         return False
     records = [knowledge / name for name in expected]
+    budget = ReadBudget()
     return all(
-        read_regular(path, workspace) == expected_record(index, size)
+        read_regular(path, workspace, budget) == expected_record(index, size)
         for index, path in enumerate(records)
     )
 
@@ -101,8 +109,9 @@ def require_reusable_workspace(workspace, count, size):
 def measure(name, workspace, queries):
     before = digest_state(workspace)
     records = list((workspace / '.research-run/knowledge').glob('*.json'))
+    byte_budget = ReadBudget()
     output = dict(workload=name, knowledge_records=len(records),
-                  canonical_bytes=sum(len(read_regular(path, workspace)) for path in safe_files(workspace)),
+                  canonical_bytes=sum(len(read_regular(path, workspace, byte_budget)) for path in safe_files(workspace)),
                   cases=[])
     for command in ('search', 'context'):
         for label, query in queries.items():
@@ -151,9 +160,69 @@ def measure(name, workspace, queries):
 
 def self_test():
     with tempfile.TemporaryDirectory() as temporary:
-        workspace = pathlib.Path(temporary)
+        workspace = pathlib.Path(temporary) / 'corpus-workspace'
         knowledge = workspace / '.research-run/knowledge'
         knowledge.mkdir(parents=True)
+        measurement_files = workspace / '.research-run/measurements'
+        measurement_files.mkdir()
+        budget = workspace / '.research-run/inventories'
+        budget.mkdir()
+        exact = measurement_files / 'exact.bin'
+        exact.touch()
+        exact.write_bytes(b'')
+        with exact.open('r+b') as stream:
+            stream.truncate(MAX_RECORD_BYTES)
+        read_regular(exact, workspace)
+        oversized = measurement_files / 'oversized.bin'
+        oversized.touch()
+        with oversized.open('r+b') as stream:
+            stream.truncate(MAX_RECORD_BYTES + 1)
+        try:
+            read_regular(oversized, workspace)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('oversized regular file was accepted')
+        oversized.unlink()
+        aggregate_a = measurement_files / 'aggregate-a.bin'
+        aggregate_b = measurement_files / 'aggregate-b.bin'
+        for path in (aggregate_a, aggregate_b):
+            path.touch()
+            with path.open('r+b') as stream:
+                stream.truncate(MAX_RECORD_BYTES // 2)
+        aggregate_budget = ReadBudget(MAX_RECORD_BYTES)
+        read_regular(aggregate_a, workspace, aggregate_budget)
+        read_regular(aggregate_b, workspace, aggregate_budget)
+        overflow_a = measurement_files / 'overflow-a.bin'
+        overflow_b = measurement_files / 'overflow-b.bin'
+        for path in (overflow_a, overflow_b):
+            path.touch()
+            with path.open('r+b') as stream:
+                stream.truncate((MAX_RECORD_BYTES * 3) // 5)
+        overflow_budget = ReadBudget(MAX_RECORD_BYTES)
+        read_regular(overflow_a, workspace, overflow_budget)
+        try:
+            read_regular(overflow_b, workspace, overflow_budget)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('aggregate over-budget files were accepted')
+        inventory_exact = budget / 'exact.bin'
+        inventory_exact.touch()
+        with inventory_exact.open('r+b') as stream:
+            stream.truncate(MAX_INVENTORY_RECORD_BYTES)
+        read_regular(inventory_exact, workspace)
+        inventory_over = budget / 'oversized.bin'
+        inventory_over.touch()
+        with inventory_over.open('r+b') as stream:
+            stream.truncate(MAX_INVENTORY_RECORD_BYTES + 1)
+        try:
+            read_regular(inventory_over, workspace)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('oversized inventory file was accepted')
+        inventory_over.unlink()
         for index in range(2):
             (knowledge / f'note-{index:04}.json').write_bytes(expected_record(index, 200))
         if not corpus_is_expected(workspace, 2, 200):
@@ -290,7 +359,8 @@ if __name__ == '__main__':
         workspace = pathlib.Path(sys.argv[1]).absolute()
         files = safe_files(workspace)
         records = [path for path in files if path.parent.name == 'knowledge']
-        body = max((json.loads(read_regular(path, workspace).decode())['body'] for path in records), key=len)
+        budget = ReadBudget()
+        body = max((json.loads(read_regular(path, workspace, budget).decode())['body'] for path in records), key=len)
         queries = dict(prefix=body[:16].strip(), tail=body[-16:].strip(),
                        absent='rropp-synthetic-absent-needle', common='the')
         measure('current-workspace', workspace, queries)

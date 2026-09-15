@@ -66,6 +66,11 @@ remain preserved; refreshed synthetic outputs are separately hash-bound in the
 manifest. The human label `summary (knowledge body)` remains intentionally
 source-field semantics for both projected and fallback knowledge matches, so no
 hidden serialized discriminator was added.
+The helper additionally enforces 1 MiB ordinary, 32 MiB inventory and 64 MiB
+aggregate read budgets, including live query-selection reads. Its CLI entry
+controls reject lexical symlink aliases before measurement in normal and
+optimized Python. These measurements remain cooperative and quiescent; no
+descriptor-relative concurrent-writer architecture was added.
 
 ## Portability correction before final gate
 

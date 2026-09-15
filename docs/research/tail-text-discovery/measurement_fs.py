@@ -3,14 +3,31 @@
 Static symlinks and special files are rejected before reads; regular files are
 opened no-follow and nonblocking, then checked with ``fstat``. This helper does
 not prevent an adversarial concurrent parent-directory replacement between its
-path checks and descriptor acquisition. Measurement evidence therefore excludes
-uncooperative concurrent writers and makes no universal confinement claim.
+path checks and descriptor acquisition. Per-file limits follow canonical record
+budgets (1 MiB ordinary, 32 MiB inventory) and each pass has a 64 MiB aggregate
+budget. Measurement evidence therefore excludes uncooperative concurrent
+writers and makes no universal confinement claim.
 """
 
 import os
 import stat
 import sys
 from pathlib import Path
+
+MAX_RECORD_BYTES = 1 * 1024 * 1024
+MAX_INVENTORY_RECORD_BYTES = 32 * 1024 * 1024
+MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
+
+
+class ReadBudget:
+    def __init__(self, limit=MAX_SNAPSHOT_BYTES):
+        self.limit = limit
+        self.used = 0
+
+    def consume(self, amount):
+        if self.used + amount > self.limit:
+            raise RuntimeError(f'measurement snapshot exceeds {self.limit} bytes')
+        self.used += amount
 
 
 def _allowed_os_alias(path):
@@ -73,7 +90,13 @@ def safe_files(workspace):
     return sorted(files)
 
 
-def read_regular(path, workspace):
+def file_limit(path, workspace):
+    state = Path(workspace).resolve(strict=True) / '.research-run'
+    relative = Path(path).resolve(strict=True).relative_to(state)
+    return MAX_INVENTORY_RECORD_BYTES if relative.parts[:1] == ('inventories',) else MAX_RECORD_BYTES
+
+
+def read_regular(path, workspace, budget=None):
     path = _confined(path, workspace)
     flags = os.O_RDONLY | os.O_NONBLOCK
     if hasattr(os, 'O_NOFOLLOW'):
@@ -83,11 +106,22 @@ def read_regular(path, workspace):
         info = os.fstat(descriptor)
         if not stat.S_ISREG(info.st_mode):
             raise RuntimeError(f'refusing non-regular measurement entry: {path}')
-        chunks = []
+        limit = file_limit(path, workspace)
+        if info.st_size > limit:
+            raise RuntimeError(f'measurement file exceeds {limit} bytes: {path}')
+        budget = budget or ReadBudget()
+        chunks = bytearray()
+        remaining = limit + 1
+        total_read = 0
         while True:
-            chunk = os.read(descriptor, 1024 * 1024)
+            chunk = os.read(descriptor, min(1024 * 1024, remaining))
             if not chunk:
-                return b''.join(chunks)
-            chunks.append(chunk)
+                return bytes(chunks)
+            budget.consume(len(chunk))
+            chunks.extend(chunk)
+            remaining -= len(chunk)
+            total_read += len(chunk)
+            if total_read > limit:
+                raise RuntimeError(f'measurement file grew beyond {limit} bytes: {path}')
     finally:
         os.close(descriptor)

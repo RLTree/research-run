@@ -58,6 +58,9 @@ and open; no universal concurrent-writer confinement claim is made.
 The helper's `entry-test` exercises the actual command-line path under normal
 and optimized Python against workspace-root, ancestor, state-root and dangling
 symlink inputs, and confirms no timing evidence is written on rejection.
+Reads also enforce the existing canonical budgets: 1 MiB ordinary records,
+32 MiB inventory records and 64 MiB per complete state pass, including a
+one-byte sentinel for files that grow after metadata inspection.
 
 ## Implementation
 
