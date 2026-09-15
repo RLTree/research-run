@@ -19,6 +19,7 @@ from measurement_fs import (
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 EVIDENCE = ROOT / 'target/tail-text-evidence'
 BINARIES = {name: EVIDENCE / name for name in ('baseline', 'candidate')}
+PROJECTION_CHARS = 512
 
 
 def invoke(binary, workspace, args):
@@ -158,6 +159,23 @@ def measure(name, workspace, queries):
     (EVIDENCE / f'latency-{name}.json').write_text(json.dumps(output, indent=2))
 
 
+def derive_queries(workspace, records):
+    if not records:
+        raise RuntimeError('measurement workspace has no knowledge records')
+    budget = ReadBudget()
+    bodies = [json.loads(read_regular(path, workspace, budget).decode())['body'] for path in records]
+    body = max(bodies, key=len)
+    if len(body) <= PROJECTION_CHARS:
+        raise RuntimeError('measurement workspace has no body tail beyond the projection')
+    prefix = body[:16].strip()
+    tail = body[-16:].strip()
+    tail_source = body[PROJECTION_CHARS:]
+    if not prefix or not tail or not tail_source.strip() or tail not in tail_source:
+        raise RuntimeError('derived measurement queries do not prove a tail-only control')
+    return dict(prefix=prefix, tail=tail,
+                absent='rropp-synthetic-absent-needle', common='the')
+
+
 def self_test():
     with tempfile.TemporaryDirectory() as temporary:
         workspace = pathlib.Path(temporary) / 'corpus-workspace'
@@ -250,6 +268,17 @@ def self_test():
             raise AssertionError('drifted corpus was accepted for reuse')
         if digest_state(workspace) != before:
             raise AssertionError('drifted corpus was changed during rejection')
+        short_workspace = workspace.parent / 'short-workspace'
+        short_knowledge = short_workspace / '.research-run/knowledge'
+        short_knowledge.mkdir(parents=True)
+        short_record = short_knowledge / 'short.json'
+        short_record.write_text(json.dumps({'body': 'short body'}))
+        try:
+            derive_queries(short_workspace, [short_record])
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('short body was accepted for tail measurement')
         (knowledge / 'linked').symlink_to(knowledge / 'note-0000.json')
         try:
             safe_files(workspace)
@@ -359,8 +388,5 @@ if __name__ == '__main__':
         workspace = pathlib.Path(sys.argv[1]).absolute()
         files = safe_files(workspace)
         records = [path for path in files if path.parent.name == 'knowledge']
-        budget = ReadBudget()
-        body = max((json.loads(read_regular(path, workspace, budget).decode())['body'] for path in records), key=len)
-        queries = dict(prefix=body[:16].strip(), tail=body[-16:].strip(),
-                       absent='rropp-synthetic-absent-needle', common='the')
+        queries = derive_queries(workspace, records)
         measure('current-workspace', workspace, queries)

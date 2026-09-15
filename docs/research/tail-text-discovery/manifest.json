@@ -19,7 +19,7 @@
     "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
     "tests/product/retrieval_journey/tail_text_compat.rs": "cb31f072724373110066fea2222f934067ab65e3f55cf2c73d4859b987f6d5d1",
     "docs/research/tail-text-discovery/README.md": "ae49068feb80d621641f67c024d656859310474e0476166845798acbc99f9a49",
-    "docs/research/tail-text-discovery/measure.py": "563e994c584f3c2dc26e76cc4df599b21b89b02cea8ff6b21a7a89a65aa79ac7",
+    "docs/research/tail-text-discovery/measure.py": "b58c8f82d5d24e37406f4cb5e5df57373d79f881614935cc70443bef4609a341",
     "docs/research/tail-text-discovery/verify.py": "22c83549df4419afc7caf271557d2c8ac22fd5c8f65fe1e7002e4bd04a0b3c90",
     "docs/research/tail-text-discovery/measurement_fs.py": "52efc5a599980ba5e930f165e130e17b7c38c438ee36fbed113837ca4c11684d",
     "docs/research/tail-text-discovery/package-stage.md": "077bef755f3322b66814fe85c87417bd964ae9c3e217b1b6b5438e140e9b8f5a"
