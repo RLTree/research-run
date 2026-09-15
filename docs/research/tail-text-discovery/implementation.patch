@@ -1,0 +1,601 @@
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 0c6de38..211466f 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -163,3 +163,12 @@ The repository has no network runtime, service, database, async executor,
+ telemetry backend, user interface, Python product code, or release machinery.
+ Those absences are architectural constraints until a measured product need and
+ new authority contract justify them.
++
++### Knowledge discovery
++
++`retrieval_match` owns shared search/queried-context selection. It first preserves
++existing projection matches, then joins otherwise unmatched knowledge IDs to
++borrowed bodies in the same validated snapshot. Full-body lowercase substring
++truth precedes literal source-span excerpt construction; no canonical reread or
++index is involved. Knowledge excerpts retain the wire reason `summary`, so
++existing handoff readers and final-context digest binding remain unchanged.
+diff --git a/README.md b/README.md
+index 3b2fc4e..01040a9 100644
+--- a/README.md
++++ b/README.md
+@@ -334,6 +334,16 @@ research-run next
+ research-run context --query "binding assay" --limit 20
+ ```
+ 
++Search and queried context match a trimmed, 1–256-byte query using whole-string
++Unicode lowercase and substring comparison. Knowledge discovery includes the
++complete validated body. Existing projection matches keep their prefix summary
++and reasons; otherwise a body match supplies a literal, query-centered excerpt
++of at most 512 Unicode scalars including omission ellipses. JSON retains the
++`summary` match label; human output calls it `summary (knowledge body)`.
++Match reasons describe the source field: contextual Unicode casing can differ
++when the excerpt is lowercased alone. List, show, recent, and unqueried context
++keep their existing projections. Handoff v1/v2 wire shapes are unchanged.
++
+ Search explains which fields matched. Results identify canonical authority and
+ keep stale or invalidated records visible instead of silently preferring newer
+ prose. Context bundles include the requested matches, unresolved material,
+diff --git a/src/cli/retrieval_commands.rs b/src/cli/retrieval_commands.rs
+index 019b3d9..1a19fc3 100644
+--- a/src/cli/retrieval_commands.rs
++++ b/src/cli/retrieval_commands.rs
+@@ -187,6 +187,22 @@ fn render_items(title: &str, items: &[ProjectionItem]) -> String {
+             terminal_text(&item.authority_path)
+         )
+         .expect("String rendering is infallible");
++        if !item.matched_by.is_empty() {
++            let reasons = item
++                .matched_by
++                .iter()
++                .map(|reason| {
++                    if item.kind == "knowledge" && reason == "summary" {
++                        "summary (knowledge body)"
++                    } else {
++                        reason.as_str()
++                    }
++                })
++                .collect::<Vec<_>>()
++                .join(", ");
++            writeln!(output, "  Matched by: {}", terminal_text(&reasons))
++                .expect("String rendering is infallible");
++        }
+     }
+     output
+ }
+diff --git a/src/workspace/retrieval.rs b/src/workspace/retrieval.rs
+index 4ac7ff9..bf611d0 100644
+--- a/src/workspace/retrieval.rs
++++ b/src/workspace/retrieval.rs
+@@ -4,6 +4,9 @@ use crate::domain::{KnowledgeKind, KnowledgeState, MAX_LIST_ITEMS};
+ use crate::{Error, Result};
+ 
+ use super::Workspace;
++
++#[path = "retrieval_match.rs"]
++mod matching;
+ use super::retrieval_canonical::relationship_items;
+ use super::retrieval_context::{
+     claim_blockers, claim_next_actions, context_from_snapshot, sort_and_truncate,
+@@ -12,6 +15,7 @@ use super::retrieval_items::projection_items;
+ use super::retrieval_types::{
+     ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
+ };
++pub(super) use matching::matching_items;
+ 
+ impl Workspace {
+     pub fn list(&self, kind: Option<&str>, limit: usize) -> Result<ProjectionResult> {
+@@ -44,13 +48,7 @@ impl Workspace {
+         let limit = validate_limit(limit)?;
+         let query = validate_query(query)?;
+         let snapshot = self.load_snapshot()?;
+-        let items = projection_items(self, &snapshot)?
+-            .into_iter()
+-            .filter_map(|mut item| {
+-                item.matched_by = match_reasons(&item, &query);
+-                (!item.matched_by.is_empty()).then_some(item)
+-            })
+-            .collect();
++        let items = matching_items(projection_items(self, &snapshot)?, &snapshot, &query);
+         Ok(result("search", items, limit))
+     }
+ 
+diff --git a/src/workspace/retrieval_context.rs b/src/workspace/retrieval_context.rs
+index e86d369..56eb024 100644
+--- a/src/workspace/retrieval_context.rs
++++ b/src/workspace/retrieval_context.rs
+@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
+ use crate::Result;
+ use crate::domain::{KnowledgeKind, KnowledgeState};
+ 
+-use super::retrieval::{match_reasons, unresolved_kind, validate_query};
++use super::retrieval::{unresolved_kind, validate_query};
+ use super::retrieval_canonical::relationship_items;
+ use super::retrieval_items::projection_items;
+ use super::{ContextBundle, ProjectionItem, Snapshot, Status, Workspace};
+@@ -17,7 +17,7 @@ pub(super) fn context_from_snapshot(
+     let items = projection_items(workspace, &snapshot)?;
+     let status = workspace.status_from_snapshot(&snapshot)?;
+     let matches = match query {
+-        Some(query) => search_items(items.clone(), query, limit)?,
++        Some(query) => search_items(items.clone(), &snapshot, query, limit)?,
+         None => recent_items(items.clone(), limit),
+     };
+     let unresolved = knowledge_subset(&snapshot, &items, limit, unresolved_kind);
+@@ -61,15 +61,13 @@ pub(super) fn context_from_snapshot(
+ }
+ 
+ fn search_items(
+-    mut items: Vec<ProjectionItem>,
++    items: Vec<ProjectionItem>,
++    snapshot: &Snapshot,
+     query: &str,
+     limit: usize,
+ ) -> Result<Vec<ProjectionItem>> {
+     let query = validate_query(query)?;
+-    for item in &mut items {
+-        item.matched_by = match_reasons(item, &query);
+-    }
+-    items.retain(|item| !item.matched_by.is_empty());
++    let mut items = super::retrieval::matching_items(items, snapshot, &query);
+     items.truncate(limit);
+     Ok(items)
+ }
+diff --git a/tests/product/retrieval_journey.rs b/tests/product/retrieval_journey.rs
+index d10150b..a184f71 100644
+--- a/tests/product/retrieval_journey.rs
++++ b/tests/product/retrieval_journey.rs
+@@ -11,6 +11,9 @@ fn unanchored_init<'a>(path: &'a str, name: &'a str) -> [&'a str; 5] {
+ #[path = "retrieval_journey/defense.rs"]
+ mod defense;
+ 
++#[path = "retrieval_journey/tail_text.rs"]
++mod tail_text;
++
+ #[test]
+ fn bounded_retrieval_commands_explain_matches_and_preserve_history() {
+     let temporary = TempDir::new("retrieval");
+diff --git a/src/workspace/retrieval_match.rs b/src/workspace/retrieval_match.rs
+new file mode 100644
+index 0000000..9d4b26c
+--- /dev/null
++++ b/src/workspace/retrieval_match.rs
+@@ -0,0 +1,89 @@
++use std::collections::BTreeMap;
++
++use super::super::{ProjectionItem, Snapshot};
++use super::match_reasons;
++
++/// Match projections first, preserving legacy summaries and reasons. Body fallback
++/// borrows only knowledge from the same validated snapshot; kinds cannot collide.
++pub(in crate::workspace) fn matching_items(
++    items: Vec<ProjectionItem>,
++    snapshot: &Snapshot,
++    query: &str,
++) -> Vec<ProjectionItem> {
++    let bodies = snapshot
++        .knowledge
++        .iter()
++        .map(|record| (record.id.as_str(), record.body.as_str()))
++        .collect::<BTreeMap<_, _>>();
++    items
++        .into_iter()
++        .filter_map(|mut item| {
++            item.matched_by = match_reasons(&item, query);
++            if item.matched_by.is_empty()
++                && item.kind == "knowledge"
++                && let Some(body) = bodies.get(item.id.as_str())
++                && let Some(excerpt) = body_excerpt(body, query)
++            {
++                item.summary = excerpt;
++                item.matched_by.push("summary".to_owned());
++            }
++            (!item.matched_by.is_empty()).then_some(item)
++        })
++        .collect()
++}
++
++/// Matching is authoritative on the complete lowercase body, even if a literal
++/// excerpt changes the context of Greek final sigma when lowercased in isolation.
++fn body_excerpt(body: &str, query: &str) -> Option<String> {
++    let normalized = body.to_lowercase();
++    let start = normalized.find(query)?;
++    let end = start + query.len();
++    if body.is_ascii() {
++        return Some(excerpt_window(body, start, end, body.len()));
++    }
++    let (mut offset, mut first, mut last, mut count) = (0, None, 0, 0);
++    for (index, character) in body.chars().enumerate() {
++        // Rust's whole-string contextual mapping changes Σ to σ or ς; both
++        // have the same UTF-8 width. Scalar lowercase gives the correct width
++        // for every other mapping, including the expanding İ -> i + U+0307.
++        let width: usize = character.to_lowercase().map(char::len_utf8).sum();
++        if offset < end && offset + width > start {
++            first.get_or_insert(index);
++            last = index + 1;
++        }
++        offset += width;
++        count = index + 1;
++    }
++    let first = first.expect("nonempty normalized match has a source scalar");
++    Some(excerpt_window(body, first, last, count))
++}
++
++fn excerpt_window(body: &str, first: usize, last: usize, count: usize) -> String {
++    if count <= 512 {
++        return body.to_owned();
++    }
++    // Reserve both ellipses. Lowercasing never removes a source scalar, so a
++    // validated <=256-byte query cannot require more than this payload budget.
++    let payload = 510;
++    let start = first
++        .saturating_sub((payload - (last - first)) / 2)
++        .min(count - payload);
++    let end = start + payload;
++    let mut excerpt = String::new();
++    if start > 0 {
++        excerpt.push('…');
++    }
++    if body.is_ascii() {
++        excerpt.push_str(&body[start..end]);
++    } else {
++        excerpt.extend(body.chars().skip(start).take(payload));
++    }
++    if end < count {
++        excerpt.push('…');
++    }
++    excerpt
++}
++
++#[cfg(test)]
++#[path = "retrieval_match/tests.rs"]
++mod tests;
+diff --git a/src/workspace/retrieval_match/tests.rs b/src/workspace/retrieval_match/tests.rs
+new file mode 100644
+index 0000000..82ce892
+--- /dev/null
++++ b/src/workspace/retrieval_match/tests.rs
+@@ -0,0 +1,48 @@
++use super::body_excerpt;
++
++#[test]
++fn literal_windows_preserve_unicode_and_first_match() {
++    for (needle, query) in [
++        ("İSTANBUL", "i\u{307}stanbul"),
++        ("ΟΣ", "ος"),
++        ("ΣB", "σb"),
++        ("🧬e\u{301}", "🧬e\u{301}"),
++        ("İ", "\u{307}"),
++    ] {
++        let body = format!("{} {needle} {} {needle}", "x".repeat(700), "y".repeat(700));
++        let excerpt = body_excerpt(&body, query).unwrap();
++        assert!(excerpt.contains(needle));
++        assert!(excerpt.contains('x'));
++        assert!(excerpt.chars().count() <= 512);
++        assert!(body.contains(excerpt.trim_matches('…')));
++        assert_eq!(body_excerpt(&body, query).unwrap(), excerpt);
++    }
++}
++
++#[test]
++fn full_body_context_remains_authoritative() {
++    let body = format!("AΣ{}B", "\u{301}".repeat(600));
++    assert!(body.to_lowercase().contains("aσ"));
++    let excerpt = body_excerpt(&body, "aσ").unwrap();
++    assert!(excerpt.starts_with("AΣ"));
++    assert!(!excerpt.to_lowercase().contains("aσ"));
++    assert!(excerpt.chars().count() <= 512);
++}
++
++#[test]
++fn boundaries_and_maximum_query_fit() {
++    assert_eq!(body_excerpt("Short Body", "body").unwrap(), "Short Body");
++    assert_eq!(body_excerpt("Short Body", "absent"), None);
++    for position in [0, 1, 255, 510, 511, 512, 700] {
++        let needle = "Q".repeat(256);
++        let body = format!("{}{needle}{}", "a".repeat(position), "z".repeat(700));
++        let excerpt = body_excerpt(&body, &needle.to_lowercase()).unwrap();
++        assert!(excerpt.contains(&needle));
++        assert!(excerpt.chars().count() <= 512);
++    }
++    let body = format!("{}END", "a".repeat(65533));
++    let excerpt = body_excerpt(&body, "end").unwrap();
++    assert!(excerpt.ends_with("END"));
++    assert!(excerpt.starts_with('…'));
++    assert_eq!(body_excerpt(&"a".repeat(512), "a").unwrap().len(), 512);
++}
+diff --git a/tests/product/retrieval_journey/tail_text.rs b/tests/product/retrieval_journey/tail_text.rs
+new file mode 100644
+index 0000000..6af621b
+--- /dev/null
++++ b/tests/product/retrieval_journey/tail_text.rs
+@@ -0,0 +1,184 @@
++use super::*;
++use std::path::{Path, PathBuf};
++
++fn body_record(temporary: &TempDir, project: &Path, id: &str, body: &str) {
++    let mut record = knowledge(id, "observation", "Synthetic note", "2026-07-18T20:00:00Z");
++    record["body"] = json!(body);
++    add(temporary, project, "knowledge", record);
++}
++
++fn canonical_bytes(root: &Path) -> Vec<(PathBuf, Vec<u8>)> {
++    let mut files = Vec::new();
++    for entry in fs::read_dir(root).unwrap() {
++        let path = entry.unwrap().path();
++        if path.is_dir() {
++            files.extend(canonical_bytes(&path));
++        } else {
++            files.push((path.clone(), fs::read(path).unwrap()));
++        }
++    }
++    files.sort_by(|a, b| a.0.cmp(&b.0));
++    files
++}
++
++#[test]
++fn tail_text_search_context_and_handoff_preserve_canonical_bytes() {
++    let temporary = TempDir::new("tail-text-handoff");
++    let project = setup(&temporary);
++    let body = format!("prefixneedle {} tailneedle", "x".repeat(65536 - 24));
++    assert_eq!(body.len(), 65536);
++    body_record(&temporary, &project, "tail-record", &body);
++    let before = canonical_bytes(&project.join(".research-run"));
++    let shown = json_output(
++        &project,
++        &["show", "--kind", "knowledge", "--id", "tail-record"],
++    );
++    let prefix = json_output(&project, &["search", "prefixneedle"]);
++    assert_eq!(prefix["items"][0]["summary"], shown["summary"]);
++    let search = json_output(&project, &["search", " tailneedle "]);
++    assert_eq!(search["total_matches"], 1);
++    let item = &search["items"][0];
++    assert_eq!(item["id"], "tail-record");
++    assert_eq!(item["matched_by"], json!(["summary"]));
++    let excerpt = item["summary"].as_str().unwrap();
++    assert!(excerpt.ends_with("tailneedle"));
++    assert!(excerpt.chars().count() <= 512);
++    let context = json_output(&project, &["context", "--query", "tailneedle"]);
++    assert_eq!(context["matches"], search["items"]);
++    assert_eq!(before, canonical_bytes(&project.join(".research-run")));
++    assert_handoff(&temporary, &project, &context);
++    for (path, bytes) in before {
++        assert_eq!(fs::read(path).unwrap(), bytes);
++    }
++    succeeds(&project, &["validate", "--json"]);
++}
++
++fn assert_handoff(temporary: &TempDir, project: &Path, context: &Value) {
++    let handoff = json_output(
++        project,
++        &[
++            "handoff",
++            "create",
++            "--id",
++            "handoff-tail",
++            "--generated-at",
++            "2026-07-18T21:00:00Z",
++            "--query",
++            "tailneedle",
++        ],
++    );
++    assert_eq!(handoff["schema_version"], 2);
++    assert_eq!(handoff["context"], *context);
++    let path = temporary.0.join("tail-handoff.json");
++    fs::write(&path, serde_json::to_vec(&handoff).unwrap()).unwrap();
++    let inspected = json_output(
++        &temporary.0,
++        &["handoff", "inspect", "--input", path.to_str().unwrap()],
++    );
++    assert_eq!(inspected, handoff);
++}
++
++#[test]
++fn tail_text_order_limits_and_history_remain_visible() {
++    let temporary = TempDir::new("tail-text-history");
++    let project = setup(&temporary);
++    for id in ["tail-z", "tail-a", "tail-m"] {
++        body_record(
++            &temporary,
++            &project,
++            id,
++            &format!("{} orderedneedle", "x".repeat(600)),
++        );
++    }
++    add(
++        &temporary,
++        &project,
++        "relationship",
++        relationship("tail-revision", "tail-z", "tail-a"),
++    );
++    let mut invalidation = relationship("tail-invalidation", "tail-z", "tail-m");
++    invalidation["relationship"] = json!("invalidates");
++    add(&temporary, &project, "relationship", invalidation);
++    let full = json_output(&project, &["search", "orderedneedle"]);
++    assert_eq!(full["total_matches"], 3);
++    let items = full["items"].as_array().unwrap();
++    assert_eq!(
++        items
++            .iter()
++            .map(|v| v["id"].as_str().unwrap())
++            .collect::<Vec<_>>(),
++        vec!["tail-a", "tail-m", "tail-z"]
++    );
++    assert_eq!(items[0]["stale"], true);
++    assert_eq!(items[1]["invalidated"], true);
++    let limited = json_output(&project, &["search", "orderedneedle", "--limit", "1"]);
++    assert_eq!(limited["total_matches"], 3);
++    assert_eq!(limited["items"], json!([items[0]]));
++    let context = json_output(
++        &project,
++        &["context", "--query", "orderedneedle", "--limit", "1"],
++    );
++    assert_eq!(context["matches"], limited["items"]);
++    assert_eq!(
++        json_output(&project, &["search", "absentneedle"])["total_matches"],
++        0
++    );
++    let human = succeeds(&project, &["search", "orderedneedle", "--human"]);
++    assert!(String::from_utf8_lossy(&human.stdout).contains("summary (knowledge body)"));
++}
++
++#[test]
++fn tail_text_unicode_literal_excerpts_and_terminal_escaping() {
++    let temporary = TempDir::new("tail-text-unicode");
++    let project = setup(&temporary);
++    for (id, body, query, literal) in [
++        (
++            "tail-expanded",
++            format!("{} İSTANBUL 🧬 e\u{301}", "x".repeat(600)),
++            "i\u{307}stanbul",
++            "İSTANBUL",
++        ),
++        (
++            "tail-emoji",
++            format!("{} 🧬e\u{301}marker", "x".repeat(600)),
++            "🧬e\u{301}",
++            "🧬e\u{301}",
++        ),
++        (
++            "tail-sigma",
++            format!("{} AΣ{}B", "x".repeat(600), "\u{301}".repeat(600)),
++            "aσ",
++            "AΣ",
++        ),
++        (
++            "tail-boundary",
++            format!("{} boundaryneedle", "x".repeat(505)),
++            "boundaryneedle",
++            "boundaryneedle",
++        ),
++        (
++            "tail-control",
++            format!("{} controlneedle\u{1b}]52;forged\u{7}", "x".repeat(600)),
++            "controlneedle",
++            "controlneedle",
++        ),
++    ] {
++        body_record(&temporary, &project, id, &body);
++        let search = json_output(&project, &["search", query]);
++        assert_eq!(search["total_matches"], 1, "{id}");
++        let item = &search["items"][0];
++        assert_eq!(item["id"], id);
++        let excerpt = item["summary"].as_str().unwrap();
++        assert!(excerpt.contains(literal), "{id}: {excerpt}");
++        assert!(excerpt.chars().count() <= 512);
++        assert_eq!(item["matched_by"], json!(["summary"]));
++        let context = json_output(&project, &["context", "--query", query]);
++        assert_eq!(context["matches"], search["items"]);
++        let human = succeeds(&project, &["search", query, "--human"]);
++        assert!(!human.stdout.contains(&0x1b));
++        assert!(!human.stdout.contains(&0x07));
++    }
++}
++
++#[path = "tail_text_compat.rs"]
++mod compatibility;
+diff --git a/tests/product/retrieval_journey/tail_text_compat.rs b/tests/product/retrieval_journey/tail_text_compat.rs
+new file mode 100644
+index 0000000..b6734ad
+--- /dev/null
++++ b/tests/product/retrieval_journey/tail_text_compat.rs
+@@ -0,0 +1,99 @@
++use super::*;
++
++#[test]
++fn tail_text_typed_identity_and_existing_matches_preserve_projections() {
++    let temporary = TempDir::new("tail-text-compat");
++    let project = setup(&temporary);
++    body_record(
++        &temporary,
++        &project,
++        "shared-id",
++        &format!("{} uniquetail", "x".repeat(600)),
++    );
++    succeeds(
++        &project,
++        &[
++            "source",
++            "add",
++            "--id",
++            "shared-id",
++            "--citation",
++            "Synthetic citation",
++            "--locator",
++            "local:synthetic",
++            "--provenance",
++            "human",
++        ],
++    );
++    let tail = json_output(&project, &["search", "uniquetail"]);
++    assert_eq!(tail["total_matches"], 1);
++    assert_eq!(tail["items"][0]["kind"], "knowledge");
++    let identity = json_output(&project, &["search", "shared-id"]);
++    assert_eq!(identity["total_matches"], 2);
++    assert_eq!(identity["items"][0]["kind"], "knowledge");
++    assert_eq!(identity["items"][1]["kind"], "source");
++    let mut record = knowledge(
++        "titlemarker-id",
++        "observation",
++        "titlemarker title",
++        "2026-07-18T20:00:00Z",
++    );
++    record["body"] = json!(format!("{} titlemarker", "x".repeat(600)));
++    add(&temporary, &project, "knowledge", record);
++    let before = unchanged_views(&project);
++    let shown = json_output(
++        &project,
++        &["show", "--kind", "knowledge", "--id", "titlemarker-id"],
++    );
++    for (view, field) in before.iter().zip(["matches", "items", "items"]) {
++        let item = view[field]
++            .as_array()
++            .unwrap()
++            .iter()
++            .find(|item| item["id"] == "titlemarker-id")
++            .unwrap();
++        assert_eq!(item["summary"], shown["summary"]);
++        assert_eq!(item["matched_by"], json!([]));
++    }
++    let search = json_output(&project, &["search", "titlemarker"]);
++    assert_eq!(search["total_matches"], 1);
++    assert_eq!(search["items"][0]["summary"], shown["summary"]);
++    assert_eq!(
++        search["items"][0]["matched_by"],
++        json!(["id", "title", "authority-path"])
++    );
++    let context = json_output(&project, &["context", "--query", "titlemarker"]);
++    assert_eq!(context["matches"], search["items"]);
++    assert_eq!(unchanged_views(&project), before);
++}
++
++fn unchanged_views(project: &Path) -> Vec<Value> {
++    [vec!["context"], vec!["list"], vec!["recent"]]
++        .iter()
++        .map(|args| json_output(project, args))
++        .collect()
++}
++
++#[test]
++fn tail_text_query_byte_budget_and_search_limit_fail_closed() {
++    let temporary = TempDir::new("tail-text-query-budget");
++    let project = setup(&temporary);
++    for query in ["x".repeat(257), format!("{}x", "é".repeat(128))] {
++        for args in [
++            vec!["search", query.as_str()],
++            vec!["context", "--query", query.as_str()],
++        ] {
++            assert!(!cli(&project, &args).status.success());
++        }
++    }
++    assert!(
++        !cli(&project, &["search", "signal", "--limit", "0"])
++            .status
++            .success()
++    );
++    assert!(
++        !cli(&project, &["context", "--query", "signal", "--limit", "0"])
++            .status
++            .success()
++    );
++}

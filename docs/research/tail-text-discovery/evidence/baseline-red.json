@@ -1,0 +1,69 @@
+{
+  "prefix-marker": {
+    "kind": "search",
+    "limit": 50,
+    "total_matches": 1,
+    "items": [
+      {
+        "kind": "knowledge",
+        "id": "synthetic-method",
+        "subtype": "method",
+        "title": "Synthetic method",
+        "summary": "prefix-marker xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "occurred_at": "2026-07-18T20:00:00Z",
+        "state": "active",
+        "authority_path": ".research-run/knowledge/synthetic-method.json",
+        "matched_by": [
+          "summary"
+        ],
+        "stale": false,
+        "invalidated": false
+      }
+    ]
+  },
+  "tail-needle": {
+    "kind": "search",
+    "limit": 50,
+    "total_matches": 0,
+    "items": []
+  },
+  "context-tail": {
+    "kind": "context",
+    "project_id": "tail-experiment",
+    "workspace_id": "75e6605a49f8d4673b94ff4aef653a1dc865296e808c2849d44fcf6a9945b8d0",
+    "project_name": "Tail experiment",
+    "claim_ceiling": "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.",
+    "scope": "tail-needle",
+    "contribution_protocol": {
+      "schema_version": 1,
+      "kind": "contribution-protocol",
+      "id": "agent-contribution",
+      "sequence": [
+        "retrieve-bounded-context",
+        "classify-new-material",
+        "append-typed-records",
+        "validate-workspace",
+        "answer-or-handoff"
+      ],
+      "triggers": [
+        "human-observation",
+        "human-correction",
+        "human-decision",
+        "negative-result",
+        "ambiguous-result",
+        "blocker",
+        "next-action"
+      ],
+      "human_input_authorship": "human",
+      "agent_analysis_authorship": "ai",
+      "no_new_material_effect": "no-write",
+      "identical_retry_effect": "no-op",
+      "claim_promotion": "signed-human-review-only"
+    },
+    "matches": [],
+    "unresolved": [],
+    "blockers": [],
+    "next_actions": [],
+    "relationships": []
+  }
+}

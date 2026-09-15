@@ -187,6 +187,22 @@ fn render_items(title: &str, items: &[ProjectionItem]) -> String {
             terminal_text(&item.authority_path)
         )
         .expect("String rendering is infallible");
+        if !item.matched_by.is_empty() {
+            let reasons = item
+                .matched_by
+                .iter()
+                .map(|reason| {
+                    if item.kind == "knowledge" && reason == "summary" {
+                        "summary (knowledge body)"
+                    } else {
+                        reason.as_str()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            writeln!(output, "  Matched by: {}", terminal_text(&reasons))
+                .expect("String rendering is infallible");
+        }
     }
     output
 }

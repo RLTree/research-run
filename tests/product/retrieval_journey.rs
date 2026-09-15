@@ -11,6 +11,9 @@ fn unanchored_init<'a>(path: &'a str, name: &'a str) -> [&'a str; 5] {
 #[path = "retrieval_journey/defense.rs"]
 mod defense;
 
+#[path = "retrieval_journey/tail_text.rs"]
+mod tail_text;
+
 #[test]
 fn bounded_retrieval_commands_explain_matches_and_preserve_history() {
     let temporary = TempDir::new("retrieval");

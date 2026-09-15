@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use crate::Result;
 use crate::domain::{KnowledgeKind, KnowledgeState};
 
-use super::retrieval::{match_reasons, unresolved_kind, validate_query};
+use super::retrieval::{unresolved_kind, validate_query};
 use super::retrieval_canonical::relationship_items;
 use super::retrieval_items::projection_items;
 use super::{ContextBundle, ProjectionItem, Snapshot, Status, Workspace};
@@ -17,7 +17,7 @@ pub(super) fn context_from_snapshot(
     let items = projection_items(workspace, &snapshot)?;
     let status = workspace.status_from_snapshot(&snapshot)?;
     let matches = match query {
-        Some(query) => search_items(items.clone(), query, limit)?,
+        Some(query) => search_items(items.clone(), &snapshot, query, limit)?,
         None => recent_items(items.clone(), limit),
     };
     let unresolved = knowledge_subset(&snapshot, &items, limit, unresolved_kind);
@@ -61,15 +61,13 @@ pub(super) fn context_from_snapshot(
 }
 
 fn search_items(
-    mut items: Vec<ProjectionItem>,
+    items: Vec<ProjectionItem>,
+    snapshot: &Snapshot,
     query: &str,
     limit: usize,
 ) -> Result<Vec<ProjectionItem>> {
     let query = validate_query(query)?;
-    for item in &mut items {
-        item.matched_by = match_reasons(item, &query);
-    }
-    items.retain(|item| !item.matched_by.is_empty());
+    let mut items = super::retrieval::matching_items(items, snapshot, &query);
     items.truncate(limit);
     Ok(items)
 }
