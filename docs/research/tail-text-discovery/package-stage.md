@@ -12,9 +12,9 @@ name their preceding candidate.
 
 ## Measured declaration
 
-`cargo package --locked` from the final review-fix candidate produced archive
-SHA-256 `8f14b75e303dd7b5a97d241f6e2969d7292ea3e8f496872a25091eb948c8b583`.
-Its embedded `.cargo_vcs_info.json` identifies that same commit. An isolated
+`cargo package --locked` from the final review-fix candidate is checked by the
+external completion receipt, including its archive SHA-256 and embedded
+`.cargo_vcs_info.json` commit identity. An isolated
 `cargo install --path ... --locked` built the extracted package. The installed
 executable passed `codesign --verify --strict` and measured:
 
