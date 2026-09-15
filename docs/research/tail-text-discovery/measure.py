@@ -31,6 +31,22 @@ def invoke(binary, workspace, args):
     return elapsed, result.stdout
 
 
+def validate_workspace(workspace):
+    result = subprocess.run(
+        [str(BINARIES['baseline']), 'validate', '--json'],
+        cwd=workspace,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError('baseline validation rejected supplied workspace')
+    try:
+        receipt = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError('baseline validation returned non-JSON output') from error
+    if receipt.get('valid') is not True:
+        raise RuntimeError('baseline validation returned valid=false')
+
+
 def digest_state(workspace):
     budget = ReadBudget()
     return {
@@ -163,7 +179,12 @@ def derive_queries(workspace, records):
     if not records:
         raise RuntimeError('measurement workspace has no knowledge records')
     budget = ReadBudget()
-    bodies = [json.loads(read_regular(path, workspace, budget).decode())['body'] for path in records]
+    bodies = []
+    for path in records:
+        record = json.loads(read_regular(path, workspace, budget).decode())
+        if not isinstance(record, dict) or not isinstance(record.get('body'), str):
+            raise RuntimeError(f'knowledge record body is not text: {path}')
+        bodies.append(record['body'])
     body = max(bodies, key=len)
     if len(body) <= PROJECTION_CHARS:
         raise RuntimeError('measurement workspace has no body tail beyond the projection')
@@ -174,6 +195,11 @@ def derive_queries(workspace, records):
         raise RuntimeError('derived measurement queries do not prove a tail-only control')
     return dict(prefix=prefix, tail=tail,
                 absent='rropp-synthetic-absent-needle', common='the')
+
+
+def select_knowledge_files(workspace, files):
+    knowledge = workspace / '.research-run/knowledge'
+    return [path for path in files if path.parent == knowledge and path.suffix == '.json']
 
 
 def self_test():
@@ -279,6 +305,29 @@ def self_test():
             pass
         else:
             raise AssertionError('short body was accepted for tail measurement')
+        query_workspace = workspace.parent / 'query-workspace'
+        query_knowledge = query_workspace / '.research-run/knowledge'
+        query_knowledge.mkdir(parents=True)
+        direct = query_knowledge / 'direct.json'
+        direct.write_text(json.dumps({'body': 'x' * 600 + ' direct-tail'}))
+        nested = query_workspace / '.research-run/nested/knowledge'
+        nested.mkdir(parents=True)
+        nested_record = nested / 'nested.json'
+        nested_record.write_text(json.dumps({'body': 'x' * 600 + ' nested-tail'}))
+        selected = select_knowledge_files(query_workspace, safe_files(query_workspace))
+        if direct not in selected or nested_record in selected:
+            raise AssertionError('nested knowledge file was selected')
+        derive_queries(query_workspace, selected)
+        invalid_workspace = workspace.parent / 'invalid-workspace'
+        invoke(BINARIES['baseline'], workspace.parent, ['init', str(invalid_workspace), '--name', 'Invalid', '--without-review-authority'])
+        invalid_path = invalid_workspace / '.research-run/knowledge/invalid.json'
+        invalid_path.write_text('{}')
+        try:
+            validate_workspace(invalid_workspace)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('invalid canonical record was accepted')
         (knowledge / 'linked').symlink_to(knowledge / 'note-0000.json')
         try:
             safe_files(workspace)
@@ -387,6 +436,8 @@ if __name__ == '__main__':
     else:
         workspace = pathlib.Path(sys.argv[1]).absolute()
         files = safe_files(workspace)
-        records = [path for path in files if path.parent.name == 'knowledge']
+        validate_workspace(workspace)
+        files = safe_files(workspace)
+        records = select_knowledge_files(workspace, files)
         queries = derive_queries(workspace, records)
         measure('current-workspace', workspace, queries)
