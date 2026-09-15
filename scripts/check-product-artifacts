@@ -224,9 +224,9 @@ if [[ "$artifact_platform" == *-apple-darwin ]]; then
   uuid_offset="$(otool -l "$normalized_binary" | awk '
     BEGIN { offset = 32 }
     /^[[:space:]]*cmd / {
-      if ($2 == "LC_UUID") {
+      if ($2 == "LC_UUID" && !found) {
         print offset + 8
-        exit
+        found = 1
       }
     }
     /^[[:space:]]*cmdsize / { offset += $2 }

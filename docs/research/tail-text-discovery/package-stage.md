@@ -59,3 +59,10 @@ experiment logs. Those paths are now represented as `<worktree>` without
 changing command outcomes, and the evidence manifest hashes are refreshed.
 The original exact bytes and manifest remain in the first implementation commit.
 This repairs the existing authority-portability rule; it does not relax it.
+
+The subsequent traced artifact run built and signed the expected-size binary,
+then stopped in the existing `otool | awk` normalization pipeline. Early `awk`
+exit left the producer with a broken pipe under `pipefail`. The extractor now
+records the first UUID offset while consuming all output. It retains the same
+offset calculation and missing-UUID rejection, without suppressing pipeline
+errors or changing the expected identity.
