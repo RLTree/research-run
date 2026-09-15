@@ -4,25 +4,25 @@ Terry approved a feature branch, local commits, the measured package identity
 update and isolated package verification. Push, PR, merge, live installation,
 release, canonical research changes and monitor closure remain outside scope.
 
-The reviewed implementation/evidence pack is committed as
-`b16f1cbb708ab8b6d43574b5ea75cd71d135e554` on
-`codex/tail-text-discovery` (tree
-`a365df9d31576ea70da052d0cb6077436f325274`). The earlier experiment report and
-manifest describe the preceding uncommitted source stage and remain historical.
+The reviewed implementation/evidence pack began at
+`b16f1cbb708ab8b6d43574b5ea75cd71d135e554`; the current review-fix candidate is
+`60fa9a69deb956e6a6388695d2f2cf390aab139a` on `codex/tail-text-discovery`.
+The earlier experiment report and manifest entries remain historical where they
+name their preceding candidate.
 
 ## Measured declaration
 
-`cargo package --locked` from that clean commit produced archive SHA-256
-`0ff39e1aed8ff8decc2fec48d60d9a4434c78f17966515fb2e9eae31b485cc3e`.
+`cargo package --locked` from the review-fix candidate produced archive SHA-256
+`7dcfd112ae0bb441ca0b4419c8caa4633c6bbfc7ed126c691a54a33188d2aaba`.
 Its embedded `.cargo_vcs_info.json` identifies that same commit. An isolated
 `cargo install --path ... --locked` built the extracted package. The installed
 executable passed `codesign --verify --strict` and measured:
 
-- Raw executable: 2,822,224 bytes; SHA-256
-  `641570301822aafe701f92c835292bab74d44a20553999a8d3cf4cacaa6eb7de`.
+- Raw executable: 2,822,352 bytes; SHA-256
+  `a32317f5fb2bf4341e15425a58084e6c1f4bd39994163446991f020e2edfc3d3`.
 - After removing the ad-hoc signature and zeroing Mach-O LC_UUID:
-  2,800,192 bytes; SHA-256
-  `1b061fa5b2e657d3f34233fb2a7fefb600cd1a2475cf6539726d96cd0816f505`.
+  2,800,312 bytes; SHA-256
+  `90eb4d2e130b0c6ce930d5cbd41761b9074dfc602444b855433c65e39b4af987`.
 
 This measurement supplies the tracked expected identity. It is not final
 candidate verification: the declaration and gate extension must first be
