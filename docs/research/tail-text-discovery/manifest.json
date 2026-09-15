@@ -18,8 +18,8 @@
     "src/workspace/retrieval_match/tests.rs": "b22b8c38c0e6f695b28f72ffbd84342d53aa7972eead3ca1e4858084709ab23b",
     "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
     "tests/product/retrieval_journey/tail_text_compat.rs": "cb31f072724373110066fea2222f934067ab65e3f55cf2c73d4859b987f6d5d1",
-    "docs/research/tail-text-discovery/README.md": "9841394518717ceda27a8e34217e8d3731ddfe73af0a74cde02354ced857a893",
-    "docs/research/tail-text-discovery/measure.py": "07037631ad722ef8121338a881b28a1f5bbec051da821607d6f138ee26672475",
+    "docs/research/tail-text-discovery/README.md": "a55f04f09f426dfa060ce79ddd42d3b4088d6d6f5436bc462c0c39db6515bc7f",
+    "docs/research/tail-text-discovery/measure.py": "2eb8771d5c478a012c659bfbdc37649b9bf081d08bae09bb6778a4d31cad097c",
     "docs/research/tail-text-discovery/verify.py": "499c038b6dc20122dd470a79b8ed9c7b986d8823121fae2d947965645b85be5b",
     "docs/research/tail-text-discovery/measurement_fs.py": "e42eaaffbbc86ef56c06899116578b1767d3dce4c9d99db53160237dc05e1c75"
   },

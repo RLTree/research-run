@@ -55,6 +55,9 @@ static symlinks, path escape and special files before reading, then use
 no-follow, nonblocking regular-file descriptors with `fstat`. They do not defeat
 an adversarial concurrent replacement of a parent directory between validation
 and open; no universal concurrent-writer confinement claim is made.
+The helper's `entry-test` exercises the actual command-line path under normal
+and optimized Python against workspace-root, ancestor, state-root and dangling
+symlink inputs, and confirms no timing evidence is written on rejection.
 
 ## Implementation
 

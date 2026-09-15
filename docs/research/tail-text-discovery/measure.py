@@ -64,6 +64,8 @@ def corpus_is_expected(workspace, count, size):
 
 def synthetic(name, count, size):
     workspace = EVIDENCE / name
+    if workspace.is_symlink():
+        raise RuntimeError(f'synthetic workspace is a symlink: {workspace}')
     if workspace.exists():
         require_reusable_workspace(workspace, count, size)
     else:
@@ -246,16 +248,46 @@ def self_test():
     print('measurement helper controls passed')
 
 
+def entry_self_test():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = pathlib.Path(temporary)
+        actual_parent = root / 'actual-parent'
+        workspace = actual_parent / 'workspace'
+        knowledge = workspace / '.research-run/knowledge'
+        knowledge.mkdir(parents=True)
+        (knowledge / 'record.json').write_text(json.dumps({'body': 'synthetic entry control'}))
+        linked_workspace = root / 'workspace-link'
+        linked_workspace.symlink_to(workspace, target_is_directory=True)
+        linked_parent = root / 'parent-link'
+        linked_parent.symlink_to(actual_parent, target_is_directory=True)
+        dangling = root / 'dangling-workspace'
+        dangling.symlink_to(root / 'missing-workspace', target_is_directory=True)
+        evidence = {path: path.read_bytes() for path in EVIDENCE.glob('latency-*.json')}
+        for interpreter in ([sys.executable], [sys.executable, '-O']):
+            for candidate in (linked_workspace, linked_parent / 'workspace', dangling):
+                result = subprocess.run(
+                    interpreter + [str(pathlib.Path(__file__)), str(candidate)],
+                    capture_output=True,
+                )
+                if result.returncode == 0:
+                    raise AssertionError('symlink entry path was accepted')
+                if any(path.read_bytes() != content for path, content in evidence.items()):
+                    raise AssertionError('rejected entry path wrote measurement evidence')
+    print('measurement entry controls passed')
+
+
 if __name__ == '__main__':
     EVIDENCE.mkdir(exist_ok=True)
     if sys.argv[1] == 'self-test':
         self_test()
+    elif sys.argv[1] == 'entry-test':
+        entry_self_test()
     elif sys.argv[1] == 'synthetic':
         for name, count, size in [('many-short', 1000, 200), ('near-budget', 1000, 65536)]:
             workspace, queries = synthetic(name, count, size)
             measure(name, workspace, queries)
     else:
-        workspace = pathlib.Path(sys.argv[1]).resolve()
+        workspace = pathlib.Path(sys.argv[1]).absolute()
         files = safe_files(workspace)
         records = [path for path in files if path.parent.name == 'knowledge']
         body = max((json.loads(read_regular(path, workspace).decode())['body'] for path in records), key=len)
