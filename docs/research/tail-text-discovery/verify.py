@@ -38,7 +38,16 @@ for name in ['baseline', 'candidate']:
         args = [command, 'tail-needle'] if command == 'search' else [command, '--query', 'tail-needle']
         value = call(name, args)
         items = value['items' if command == 'search' else 'matches']
-        require(len(items) == (name == 'candidate'), f'{name} {command} match count changed')
+        if name == 'baseline':
+            require(not items, f'{name} {command} unexpectedly matched tail text')
+        else:
+            require(len(items) == 1, f'{name} {command} match count changed')
+            item = items[0]
+            require(item['kind'] == 'knowledge' and item['id'] == 'synthetic-method',
+                    f'{name} {command} returned the wrong record')
+            require(item['matched_by'] == ['summary'], f'{name} {command} match reason changed')
+            require('tail-needle' in item['summary'] and len(item['summary']) <= 512,
+                    f'{name} {command} did not return a bounded tail excerpt')
         result[name][command] = len(items)
     handoff = call(name, ['handoff', 'create', '--id', f'{name}-handoff',
                          '--generated-at', '2026-07-18T21:00:00Z', '--query', 'tail-needle'])
