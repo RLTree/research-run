@@ -1,5 +1,5 @@
 info: cargo-llvm-cov currently setting cfg(coverage); you can opt-out it by passing --no-cfg-coverage
-   Compiling research-run v0.1.0 (/Users/terrynoblin/.codex/worktrees/94f6/research-run)
+   Compiling research-run v0.1.0 (<worktree>)
     Finished `test` profile [unoptimized] target(s) in 12.76s
      Running unittests src/lib.rs (target/llvm-cov-target/debug/deps/research_run-d7ba51d762eca543)
 
@@ -934,5 +934,5 @@ test parser_fixture_covers_raw_comments_aliases_unions_and_macros ... ok
 test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
 
 
-    Finished report saved to /Users/terrynoblin/.codex/worktrees/94f6/research-run/target/llvm-cov-target/source-coverage.json
+    Finished report saved to <worktree>/target/llvm-cov-target/source-coverage.json
 authoritative production-source coverage failed: {"regions":{"total":14597,"missed":511},"lines":{"total":7577,"missed":156},"functions":{"total":955,"missed":48}}

@@ -24,18 +24,30 @@
     "fast.log": "1301bf1ab3ec21c78fb511edb022664fbb3128e3bab7902cec2781fbcc11d615",
     "initial-latency-many-short.json": "3436855480d359a25fee38b897bd93b0916eed4f4dab9225dfbda7329566fc71",
     "initial-latency-near-budget.json": "b95dc1d66df516491c783cf51b4ef5ee34878e1025a11d8faf1987ae4dc25844",
-    "clippy-final.log": "d9999c441f6547ec8d9d8e4e46de8ffaca9c283b0dc5406219f458ee1b827547",
+    "clippy-final.log": "961f3f49e05916284d6de2054b57b152d54da915b98eb5ed4428db13f748926b",
     "changed-coverage.json": "bd3fe2f66d441874cc3a4a564e998010e3dd85d9975136016d0f7c642e71f4d7",
     "latency-current-workspace.json": "29d87b524913a024b3f17cb7e971f438e959ec3052f570a31631fb2a686165af",
     "standards-final.log": "6a80f9540f28333d1456f1cb12d0407923b5c5f314705288122302f55972a36c",
     "compatibility.json": "072bef24cd5dbc4f5f1e5a140b73d14ba1520a2ad40a5ff09bd36e6b4dd10964",
-    "baseline-build.log": "127c7331863e6e97e6e3bee1535d9d6fb915ccb464bbbbb73f470044df5ff720",
-    "check-final.log": "d3be87ea8b5b2867c7a78d0daa8b7324e53cf9021272fe441389bf8a46e6cdf2",
-    "nextest-final.log": "ef8bbd860262f92405dbb664099c9eeb569cd01c8c3826211d041dee3ea0bb72",
+    "baseline-build.log": "fe668c5ad8469390f174dbcaa32ddd9ad2055c6aed2b6a58d892af57ba957cd6",
+    "check-final.log": "12560410166db72729f2b11eadf0af6ba0159f937c8d90c6f32a17a3ee192d2a",
+    "nextest-final.log": "f2007d9e117fd4af146b0df5449932f80997fe77d2129137bdd30da3f3f23c91",
     "latency-near-budget.json": "ca175bbd73ed60a2e90146616583818ebf48cbbaf4e578bf9ee8959f36a67d65",
-    "release-final.log": "f6d6e4cb20e8a59a05e88413e84a774a5f4ccca870158c09c07dad2f3ef3d868",
+    "release-final.log": "99dfd177e77d11c8b0bc27e53c3edef17983192e14eed72c257fad96424c4bb8",
     "latency-many-short.json": "7a1eeaaf1347bce5cfdcae27a1b1bca6ee8453766b3694e6a6ee6bef3c9eb2f0",
     "baseline-red.json": "e454ee10542bd1b47b74949f5e704eabfef616a0b4aafdff417417d77ea8d6d4",
-    "coverage-final.log": "eecd185d867e83e52215da89430c2119956cf51b1e15b659d3be6011551c11b0"
+    "coverage-final.log": "8711837c2d692c5a32b5f4c33848ede665e5032d616737d88292afc41d146da6"
+  },
+  "artifact_redaction": {
+    "change": "Replace host-specific checkout root with <worktree> in archived logs; command outcomes unchanged",
+    "files": [
+      "clippy-final.log",
+      "baseline-build.log",
+      "check-final.log",
+      "nextest-final.log",
+      "release-final.log",
+      "coverage-final.log"
+    ],
+    "original_manifest_commit": "b16f1cbb708ab8b6d43574b5ea75cd71d135e554"
   }
 }

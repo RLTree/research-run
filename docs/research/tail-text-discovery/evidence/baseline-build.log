@@ -45,5 +45,5 @@
    Compiling clap v4.6.2
    Compiling getrandom v0.2.17
    Compiling base64ct v1.8.3
-   Compiling research-run v0.1.0 (/Users/terrynoblin/.codex/worktrees/94f6/research-run)
+   Compiling research-run v0.1.0 (<worktree>)
     Finished `release` profile [optimized] target(s) in 46.40s

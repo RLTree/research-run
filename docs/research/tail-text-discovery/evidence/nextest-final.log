@@ -1,4 +1,4 @@
-   Compiling research-run v0.1.0 (/Users/terrynoblin/.codex/worktrees/94f6/research-run)
+   Compiling research-run v0.1.0 (<worktree>)
     Finished `test` profile [unoptimized] target(s) in 6.60s
 ────────────
  Nextest run ID f80787c0-b814-4c9c-8f46-433a5f80e3a1 with nextest profile: default

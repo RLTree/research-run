@@ -51,3 +51,11 @@ Repository-wide 100% coverage remains HOLD (511 missed regions, 156 lines and
 48 functions, outside the four changed production files). Separate package
 verification does not waive aggregate coverage, mutation, release or real-use
 fitness gates.
+
+## Portability correction before final gate
+
+The clean-gate preparation found host-specific checkout paths in six archived
+experiment logs. Those paths are now represented as `<worktree>` without
+changing command outcomes, and the evidence manifest hashes are refreshed.
+The original exact bytes and manifest remain in the first implementation commit.
+This repairs the existing authority-portability rule; it does not relax it.
