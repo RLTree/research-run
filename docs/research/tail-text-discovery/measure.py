@@ -47,6 +47,22 @@ def validate_workspace(workspace):
         raise RuntimeError('baseline validation returned valid=false')
 
 
+def validate_workspace(workspace):
+    result = subprocess.run(
+        [str(BINARIES['baseline']), 'validate', '--json'],
+        cwd=workspace,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError('baseline validation rejected supplied workspace')
+    try:
+        receipt = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError('baseline validation returned non-JSON output') from error
+    if receipt.get('valid') is not True:
+        raise RuntimeError('baseline validation returned valid=false')
+
+
 def digest_state(workspace):
     budget = ReadBudget()
     return {
@@ -111,8 +127,13 @@ def synthetic(name, count, size):
             path.write_text(json.dumps(record))
     if not corpus_is_expected(workspace, count, size):
         raise RuntimeError(f'synthetic corpus did not converge: {workspace}')
-    invoke(BINARIES['baseline'], workspace, ['validate', '--json'])
-    return workspace, dict(prefix='prefix-marker', tail='tail-needle', absent='absent-needle', common='common-marker')
+    validate_workspace(workspace)
+    fingerprint = digest_state(workspace)
+    return workspace, dict(
+        queries=dict(prefix='prefix-marker', tail='tail-needle', absent='absent-needle', common='common-marker'),
+        target_id='note-0000',
+        fingerprint=fingerprint,
+    )
 
 
 def require_reusable_workspace(workspace, count, size):
@@ -123,15 +144,72 @@ def require_reusable_workspace(workspace, count, size):
         raise RuntimeError(f'reused synthetic corpus drifted; preserving workspace: {workspace}')
 
 
-def measure(name, workspace, queries):
-    before = digest_state(workspace)
+def query_probe(binary, workspace, command, query):
+    args = [command, query, '--limit', '256'] if command == 'search' else [command, '--query', query, '--limit', '256']
+    result = subprocess.run([str(binary), *args], cwd=workspace, capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(f'{command} probe failed')
+    value = json.loads(result.stdout)
+    items = value.get('items', value.get('matches', []))
+    total = value.get('total_matches', len(items))
+    return items, total, len(items) >= 256
+
+
+def qualify_queries(workspace, queries, target_id):
+    qualifications = {'search': {}, 'context': {}}
+    for command in qualifications:
+        for label, query in queries.items():
+            baseline_items, baseline_total, baseline_saturated = query_probe(
+                BINARIES['baseline'], workspace, command, query
+            )
+            candidate_items, candidate_total, candidate_saturated = query_probe(
+                BINARIES['candidate'], workspace, command, query
+            )
+            baseline_ids = {item.get('id') for item in baseline_items}
+            candidate_ids = {item.get('id') for item in candidate_items}
+            status, reason = 'not_applicable', 'control did not separate baseline and candidate'
+            if label == 'absent':
+                status = 'qualified' if baseline_total == 0 and candidate_total == 0 else 'not_applicable'
+                reason = 'both binaries returned zero matches' if status == 'qualified' else 'absent control matched a record'
+            elif label == 'common':
+                status = 'qualified' if baseline_total > 0 and candidate_total > 0 else 'not_applicable'
+                reason = 'both binaries returned nonzero matches' if status == 'qualified' else 'common control had no matches'
+            elif target_id:
+                if label == 'tail' and not baseline_saturated and target_id not in baseline_ids and target_id in candidate_ids:
+                    status, reason = 'qualified', 'target absent in baseline and present in candidate'
+                elif label == 'prefix' and target_id in baseline_ids and target_id in candidate_ids:
+                    status, reason = 'qualified', 'target present in both binaries'
+                elif label == 'tail' and baseline_saturated:
+                    reason = 'baseline result set saturated; absence is unknown'
+                else:
+                    reason = 'target result separation was not established'
+            qualifications[command][label] = {
+                'status': status,
+                'reason': reason,
+                'baseline_matches': baseline_total,
+                'candidate_matches': candidate_total,
+            }
+    return qualifications
+
+
+def measure(name, workspace, specification):
+    queries = specification['queries']
+    target_id = specification.get('target_id')
+    before = specification['fingerprint']
+    if digest_state(workspace) != before:
+        raise RuntimeError('measurement workspace changed before qualification')
     records = list((workspace / '.research-run/knowledge').glob('*.json'))
+    qualifications = qualify_queries(workspace, queries, target_id)
+    if digest_state(workspace) != before:
+        raise RuntimeError('measurement workspace changed during qualification')
     byte_budget = ReadBudget()
     output = dict(workload=name, knowledge_records=len(records),
                   canonical_bytes=sum(len(read_regular(path, workspace, byte_budget)) for path in safe_files(workspace)),
-                  cases=[])
+                  qualifications=qualifications, cases=[])
     for command in ('search', 'context'):
         for label, query in queries.items():
+            if qualifications[command][label]['status'] != 'qualified':
+                continue
             args = [command, query] if command == 'search' else [command, '--query', query]
             case = dict(command=command, query_class=label, observations={})
             for binary_name, binary in BINARIES.items():
@@ -185,7 +263,7 @@ def derive_queries(workspace, records):
         if not isinstance(record, dict) or not isinstance(record.get('body'), str):
             raise RuntimeError(f'knowledge record body is not text: {path}')
         bodies.append(record['body'])
-    body = max(bodies, key=len)
+    target, body = max(zip(records, bodies), key=lambda pair: len(pair[1]))
     if len(body) <= PROJECTION_CHARS:
         raise RuntimeError('measurement workspace has no body tail beyond the projection')
     prefix = body[:16].strip()
@@ -193,8 +271,9 @@ def derive_queries(workspace, records):
     tail_source = body[PROJECTION_CHARS:]
     if not prefix or not tail or not tail_source.strip() or tail not in tail_source:
         raise RuntimeError('derived measurement queries do not prove a tail-only control')
-    return dict(prefix=prefix, tail=tail,
-                absent='rropp-synthetic-absent-needle', common='the')
+    return dict(queries=dict(prefix=prefix, tail=tail,
+                             absent='rropp-synthetic-absent-needle', common='the'),
+                target_id=target.stem)
 
 
 def select_knowledge_files(workspace, files):
@@ -436,8 +515,12 @@ if __name__ == '__main__':
     else:
         workspace = pathlib.Path(sys.argv[1]).absolute()
         files = safe_files(workspace)
+        before = digest_state(workspace)
         validate_workspace(workspace)
         files = safe_files(workspace)
         records = select_knowledge_files(workspace, files)
-        queries = derive_queries(workspace, records)
-        measure('current-workspace', workspace, queries)
+        specification = derive_queries(workspace, records)
+        if digest_state(workspace) != before:
+            raise RuntimeError('supplied workspace changed during validation and query derivation')
+        specification['fingerprint'] = before
+        measure('current-workspace', workspace, specification)

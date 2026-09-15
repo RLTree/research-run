@@ -62,6 +62,12 @@ Reads also enforce the existing canonical budgets: 1 MiB ordinary records,
 32 MiB inventory records and 64 MiB per complete state pass, including a
 one-byte sentinel for files that grow after metadata inspection.
 
+Current synthetic evidence records qualification status per query. The
+many-short tail control is `NOT_APPLICABLE` because the baseline result set is
+saturated with 1,000 prefix-visible records, so tail absence cannot be proven
+at the bounded limit. The near-budget tail control remains qualified; historical
+performance tables retain their original candidate-stage scope.
+
 ## Implementation
 
 `retrieval_match` shares one matcher between search and queried context. It

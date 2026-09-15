@@ -50,6 +50,12 @@ Each case has three warmup pairs and 15 alternating measured pairs; p95 is the
 nearest-rank maximum of those 15 observations. Initial observations and raw
 durations are retained. Filesystem caches were not flushed or assumed cold.
 
+The refreshed helper evidence records qualification metadata. Its many-short
+tail control is explicitly `NOT_APPLICABLE` because baseline results saturate
+the bounded result set, so absence cannot be proven. The near-budget tail
+control remains qualified. The table below preserves the earlier experiment's
+historical timing scope rather than re-labeling it as the final helper run.
+
 | Tail search workload | Matches, baseline → candidate | Median, baseline → candidate | p95, baseline → candidate |
 | --- | ---: | ---: | ---: |
 | Read-only current workspace, 55 knowledge records | 0 → 1 | 11.98 → 12.17 ms | 12.63 → 13.56 ms |

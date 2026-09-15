@@ -18,11 +18,12 @@
     "src/workspace/retrieval_match/tests.rs": "b22b8c38c0e6f695b28f72ffbd84342d53aa7972eead3ca1e4858084709ab23b",
     "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
     "tests/product/retrieval_journey/tail_text_compat.rs": "cb31f072724373110066fea2222f934067ab65e3f55cf2c73d4859b987f6d5d1",
-    "docs/research/tail-text-discovery/README.md": "ae49068feb80d621641f67c024d656859310474e0476166845798acbc99f9a49",
-    "docs/research/tail-text-discovery/measure.py": "e063bae629071ba73400faa0a083d4b0569f43d33dcb3feffd454d330528bec9",
+    "docs/research/tail-text-discovery/README.md": "61e656900c2f5387db44ff4438116d2014e415f382f56c937f2c1c038308d573",
+    "docs/research/tail-text-discovery/measure.py": "e1eafacb9b1c323b2d80bac01ce6344a4786c0b5c65b007b2a2c43c81b357e67",
     "docs/research/tail-text-discovery/verify.py": "22c83549df4419afc7caf271557d2c8ac22fd5c8f65fe1e7002e4bd04a0b3c90",
     "docs/research/tail-text-discovery/measurement_fs.py": "52efc5a599980ba5e930f165e130e17b7c38c438ee36fbed113837ca4c11684d",
-    "docs/research/tail-text-discovery/package-stage.md": "077bef755f3322b66814fe85c87417bd964ae9c3e217b1b6b5438e140e9b8f5a"
+    "docs/research/tail-text-discovery/package-stage.md": "077bef755f3322b66814fe85c87417bd964ae9c3e217b1b6b5438e140e9b8f5a",
+    "docs/research/tail-text-discovery/results.md": "ee9b8aacaee80dac9540870c9c8fe6cc33f39a5aa214f2832f5bdc0369f6416a"
   },
   "artifacts": {
     "doctests-final.log": "b7583c03758fc3fa3e0b6a7abf9e1cc90160cec92973f57d81444baed07c485c",
@@ -37,9 +38,9 @@
     "baseline-build.log": "fe668c5ad8469390f174dbcaa32ddd9ad2055c6aed2b6a58d892af57ba957cd6",
     "check-final.log": "12560410166db72729f2b11eadf0af6ba0159f937c8d90c6f32a17a3ee192d2a",
     "nextest-final.log": "f2007d9e117fd4af146b0df5449932f80997fe77d2129137bdd30da3f3f23c91",
-    "latency-near-budget.json": "4e2ac1a730683301eafee713afcf40654bc903592a90304c0b8135569cfe4c22",
+    "latency-near-budget.json": "b2b295eeddc60685278dbbcdedfdab5118e7d59b4f2322ac9bbfc1870fb76f00",
     "release-final.log": "99dfd177e77d11c8b0bc27e53c3edef17983192e14eed72c257fad96424c4bb8",
-    "latency-many-short.json": "9c1e57a1843ca0215345be0541b60dfc2dbccc8caf4fd492cce6b03a0c793c9d",
+    "latency-many-short.json": "ff756890a31a69f4fbb87853d2768619bab029f443c045f0429f0eeb8b770c6d",
     "baseline-red.json": "e454ee10542bd1b47b74949f5e704eabfef616a0b4aafdff417417d77ea8d6d4",
     "coverage-final.log": "8711837c2d692c5a32b5f4c33848ede665e5032d616737d88292afc41d146da6"
   },
