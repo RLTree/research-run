@@ -2,7 +2,6 @@
 import hashlib
 import json
 import pathlib
-import shutil
 import statistics
 import subprocess
 import sys
@@ -49,9 +48,14 @@ def expected_record(index, size):
 
 
 def corpus_is_expected(workspace, count, size):
-    records = sorted((workspace / '.research-run/knowledge').glob('note-*.json'))
-    if len(records) != count:
+    knowledge = workspace / '.research-run/knowledge'
+    if knowledge.is_symlink() or not knowledge.is_dir():
         return False
+    entries = sorted(path.name for path in knowledge.iterdir())
+    expected = [f'note-{index:04}.json' for index in range(count)]
+    if entries != expected:
+        return False
+    records = [knowledge / name for name in expected]
     return all(
         read_regular(path, workspace) == expected_record(index, size)
         for index, path in enumerate(records)
@@ -60,26 +64,36 @@ def corpus_is_expected(workspace, count, size):
 
 def synthetic(name, count, size):
     workspace = EVIDENCE / name
-    if workspace.exists() and (workspace.is_symlink() or not workspace.is_dir()):
-        raise RuntimeError(f'synthetic workspace is not a regular directory: {workspace}')
     if workspace.exists():
-        safe_files(workspace)
-    if workspace.exists() and not corpus_is_expected(workspace, count, size):
-        shutil.rmtree(workspace)
-    if not workspace.exists():
+        require_reusable_workspace(workspace, count, size)
+    else:
         invoke(BINARIES['baseline'], EVIDENCE,
                ['init', str(workspace), '--name', name, '--without-review-authority'])
+        safe_files(workspace)
+    knowledge = workspace / '.research-run/knowledge'
+    if knowledge.is_symlink() or not knowledge.is_dir():
+        raise RuntimeError(f'synthetic knowledge directory is not a regular directory: {knowledge}')
     if not corpus_is_expected(workspace, count, size):
         for index in range(count):
             record = dict(schema_version=1, kind='knowledge', id=f'note-{index:04}',
                           record_type='observation', title='Synthetic note', body=expected_body(size),
                           occurred_at='2026-07-18T20:00:00Z', state='open', authorship='human')
             path = workspace / '.research-run/knowledge' / f'note-{index:04}.json'
+            if path.exists() or path.is_symlink():
+                raise RuntimeError(f'synthetic record path already exists: {path}')
             path.write_text(json.dumps(record))
     if not corpus_is_expected(workspace, count, size):
         raise RuntimeError(f'synthetic corpus did not converge: {workspace}')
     invoke(BINARIES['baseline'], workspace, ['validate', '--json'])
     return workspace, dict(prefix='prefix-marker', tail='tail-needle', absent='absent-needle', common='common-marker')
+
+
+def require_reusable_workspace(workspace, count, size):
+    if workspace.is_symlink() or not workspace.is_dir():
+        raise RuntimeError(f'synthetic workspace is not a regular directory: {workspace}')
+    safe_files(workspace)
+    if not corpus_is_expected(workspace, count, size):
+        raise RuntimeError(f'reused synthetic corpus drifted; preserving workspace: {workspace}')
 
 
 def measure(name, workspace, queries):
@@ -155,6 +169,16 @@ def self_test():
         (knowledge / 'note-0002.json').unlink()
         if not corpus_is_expected(workspace, 2, 200):
             raise AssertionError('restored corpus was rejected')
+        (knowledge / 'note-0001.json').write_bytes(expected_record(1, 200).replace(b'tail-needle', b'changed-text'))
+        before = digest_state(workspace)
+        try:
+            require_reusable_workspace(workspace, 2, 200)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('drifted corpus was accepted for reuse')
+        if digest_state(workspace) != before:
+            raise AssertionError('drifted corpus was changed during rejection')
         (knowledge / 'linked').symlink_to(knowledge / 'note-0000.json')
         try:
             safe_files(workspace)
@@ -184,6 +208,21 @@ def self_test():
         else:
             raise AssertionError('symlink workspace was accepted')
         linked_workspace.unlink()
+        actual_parent = workspace.parent / f'actual-parent-{workspace.name}'
+        actual_workspace = actual_parent / 'nested'
+        (actual_workspace / '.research-run').mkdir(parents=True)
+        linked_parent = workspace.parent / f'linked-parent-{workspace.name}'
+        linked_parent.symlink_to(actual_parent, target_is_directory=True)
+        try:
+            safe_files(linked_parent / 'nested')
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('symlink ancestor was accepted')
+        linked_parent.unlink()
+        (actual_workspace / '.research-run').rmdir()
+        actual_workspace.rmdir()
+        actual_parent.rmdir()
         linked_state_workspace = workspace.parent / f'linked-state-{workspace.name}'
         linked_state_workspace.mkdir()
         (linked_state_workspace / '.research-run').symlink_to(knowledge, target_is_directory=True)

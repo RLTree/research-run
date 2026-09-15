@@ -50,6 +50,12 @@ attempted separately with macOS `/usr/bin/time -l`; the host denies
 one CLI subprocess and reads `resource.getrusage(RUSAGE_CHILDREN).ru_maxrss`
 (macOS bytes). These separate peak-memory observations are outside timing pairs.
 
+Measurement helpers operate on a quiescent, cooperative workspace. They reject
+static symlinks, path escape and special files before reading, then use
+no-follow, nonblocking regular-file descriptors with `fstat`. They do not defeat
+an adversarial concurrent replacement of a parent directory between validation
+and open; no universal concurrent-writer confinement claim is made.
+
 ## Implementation
 
 `retrieval_match` shares one matcher between search and queried context. It

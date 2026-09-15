@@ -1,17 +1,32 @@
-"""Fail-closed filesystem reads for the local measurement helpers."""
+"""Fail-closed reads for quiescent, cooperative local measurements.
+
+Static symlinks and special files are rejected before reads; regular files are
+opened no-follow and nonblocking, then checked with ``fstat``. This helper does
+not prevent an adversarial concurrent parent-directory replacement between its
+path checks and descriptor acquisition. Measurement evidence therefore excludes
+uncooperative concurrent writers and makes no universal confinement claim.
+"""
 
 import os
 import stat
+import sys
 from pathlib import Path
 
 
-def _reject_symlink_components(path, floor=None):
+def _allowed_os_alias(path):
+    if sys.platform != 'darwin':
+        return False
+    return path in (Path('/var'), Path('/tmp')) and path.resolve(strict=True) in (
+        Path('/private/var'), Path('/private/tmp')
+    )
+
+
+def _reject_symlink_components(path):
     absolute = Path(path).absolute()
-    floor_parts = len(Path(floor).absolute().parts) if floor else 1
-    current = Path(floor).absolute() if floor else Path(absolute.anchor)
-    for component in absolute.parts[floor_parts:]:
+    current = Path(absolute.anchor)
+    for component in absolute.parts[1:]:
         current /= component
-        if current.is_symlink():
+        if current.is_symlink() and not _allowed_os_alias(current):
             raise RuntimeError(f'refusing symlink path component: {current}')
 
 
@@ -19,8 +34,8 @@ def _confined(path, workspace):
     if Path(path).is_symlink():
         raise RuntimeError(f'refusing symlink path: {path}')
     workspace_path = Path(workspace).absolute()
-    _reject_symlink_components(workspace_path, workspace_path.parent)
-    _reject_symlink_components(path, workspace_path)
+    _reject_symlink_components(workspace_path)
+    _reject_symlink_components(path)
     workspace_root = workspace_path.resolve(strict=True)
     resolved = Path(path).resolve(strict=True)
     resolved.relative_to(workspace_root)
@@ -31,7 +46,7 @@ def safe_files(workspace):
     workspace = Path(workspace)
     if workspace.is_symlink():
         raise RuntimeError(f'refusing symlink workspace: {workspace}')
-    _reject_symlink_components(workspace, workspace.parent)
+    _reject_symlink_components(workspace)
     root = workspace / '.research-run'
     if root.is_symlink():
         raise RuntimeError(f'refusing symlink research state: {root}')

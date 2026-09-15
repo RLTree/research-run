@@ -11,9 +11,15 @@ OUT = ROOT / 'target/tail-text-evidence'
 WORKSPACE = OUT / 'red-workspace'
 
 
+def require(condition, message):
+    if not condition:
+        raise RuntimeError(message)
+
+
 def call(name, args, cwd=WORKSPACE):
     result = subprocess.run([str(OUT / name), *args], cwd=cwd, capture_output=True)
-    assert result.returncode == 0, result.stderr.decode()
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.decode())
     return json.loads(result.stdout)
 
 
@@ -32,29 +38,31 @@ for name in ['baseline', 'candidate']:
         args = [command, 'tail-needle'] if command == 'search' else [command, '--query', 'tail-needle']
         value = call(name, args)
         items = value['items' if command == 'search' else 'matches']
-        assert len(items) == (name == 'candidate')
+        require(len(items) == (name == 'candidate'), f'{name} {command} match count changed')
         result[name][command] = len(items)
     handoff = call(name, ['handoff', 'create', '--id', f'{name}-handoff',
                          '--generated-at', '2026-07-18T21:00:00Z', '--query', 'tail-needle'])
     path = OUT / f'{name}-handoff-v2.json'
     path.write_text(json.dumps(handoff, ensure_ascii=False))
     other = 'candidate' if name == 'baseline' else 'baseline'
-    assert call(other, ['handoff', 'inspect', '--input', str(path)], OUT) == handoff
+    require(call(other, ['handoff', 'inspect', '--input', str(path)], OUT) == handoff,
+            'cross-reader v2 handoff mismatch')
     result[name]['v2_accepted_by_other_reader'] = True
     legacy = dict(handoff, schema_version=1)
     del legacy['validation']
     path = OUT / f'{name}-handoff-v1.json'
     path.write_text(json.dumps(legacy, ensure_ascii=False))
-    assert call(other, ['handoff', 'inspect', '--input', str(path)], OUT) == legacy
+    require(call(other, ['handoff', 'inspect', '--input', str(path)], OUT) == legacy,
+            'cross-reader v1 handoff mismatch')
     result[name]['v1_accepted_by_other_reader'] = True
     call(name, ['validate', '--json'])
 for args in [['list'], ['recent'], ['timeline'], ['context'],
              ['show', '--kind', 'knowledge', '--id', 'synthetic-method'],
              ['search', 'prefix-marker']]:
-    assert call('baseline', args) == call('candidate', args)
+    require(call('baseline', args) == call('candidate', args), f'projection changed: {args}')
 result['unchanged_projections_and_prefix'] = True
 result['canonical_unchanged'] = before == canonical()
-assert result['canonical_unchanged']
+require(result['canonical_unchanged'], 'compatibility verification changed canonical state')
 result['binary_sha256'] = {name: hashlib.sha256((OUT/name).read_bytes()).hexdigest()
                            for name in ['baseline', 'candidate']}
 (OUT / 'compatibility.json').write_text(json.dumps(result, indent=2))

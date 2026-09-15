@@ -17,11 +17,11 @@
     "src/workspace/retrieval_match.rs": "915fcdd34ce8aec40cef27b411abfa784fa293e4015851043b74f7f534cb922b",
     "src/workspace/retrieval_match/tests.rs": "b22b8c38c0e6f695b28f72ffbd84342d53aa7972eead3ca1e4858084709ab23b",
     "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
-    "tests/product/retrieval_journey/tail_text_compat.rs": "9f2a7cf70e6f222d8d8dbd0397cb469db36381b458bf3a503836d0e5b2209f85",
-    "docs/research/tail-text-discovery/README.md": "cf72078d2018847007656e451d2d5d13d146adc1734bcfb0277b0f862fde4622",
-    "docs/research/tail-text-discovery/measure.py": "a443dd1ab8aec8fa3038c32a3a78c1780315bec01af84adbcc7e0434711693db",
-    "docs/research/tail-text-discovery/verify.py": "052cc0fed885ce27025b35a36fe989bfd14f3c12212d7a441d968d9689ee587e",
-    "docs/research/tail-text-discovery/measurement_fs.py": "9b361cd0c79ba368e0fc482dd480fe57b46bc07232c3ca7da55c7435e9cbda9d"
+    "tests/product/retrieval_journey/tail_text_compat.rs": "cb31f072724373110066fea2222f934067ab65e3f55cf2c73d4859b987f6d5d1",
+    "docs/research/tail-text-discovery/README.md": "9841394518717ceda27a8e34217e8d3731ddfe73af0a74cde02354ced857a893",
+    "docs/research/tail-text-discovery/measure.py": "07037631ad722ef8121338a881b28a1f5bbec051da821607d6f138ee26672475",
+    "docs/research/tail-text-discovery/verify.py": "499c038b6dc20122dd470a79b8ed9c7b986d8823121fae2d947965645b85be5b",
+    "docs/research/tail-text-discovery/measurement_fs.py": "e42eaaffbbc86ef56c06899116578b1767d3dce4c9d99db53160237dc05e1c75"
   },
   "artifacts": {
     "doctests-final.log": "b7583c03758fc3fa3e0b6a7abf9e1cc90160cec92973f57d81444baed07c485c",
@@ -36,9 +36,9 @@
     "baseline-build.log": "fe668c5ad8469390f174dbcaa32ddd9ad2055c6aed2b6a58d892af57ba957cd6",
     "check-final.log": "12560410166db72729f2b11eadf0af6ba0159f937c8d90c6f32a17a3ee192d2a",
     "nextest-final.log": "f2007d9e117fd4af146b0df5449932f80997fe77d2129137bdd30da3f3f23c91",
-    "latency-near-budget.json": "c4320f55bf83cd8f09f5d3173b9b6a87f589834f6e1cd4f03a841cff54fdc764",
+    "latency-near-budget.json": "ba7359fdc595d427e646b089104c1a36c346da983322a6067663da3d146df464",
     "release-final.log": "99dfd177e77d11c8b0bc27e53c3edef17983192e14eed72c257fad96424c4bb8",
-    "latency-many-short.json": "a154af1c56ce101181eb5b488aa023382fe1cb94b5920e0dfdc758712b386c74",
+    "latency-many-short.json": "7340f5ce48c3bef7ca73a26a3dffe166692b30e991abf483a9da1cf02f5ec5d5",
     "baseline-red.json": "e454ee10542bd1b47b74949f5e704eabfef616a0b4aafdff417417d77ea8d6d4",
     "coverage-final.log": "8711837c2d692c5a32b5f4c33848ede665e5032d616737d88292afc41d146da6"
   },
