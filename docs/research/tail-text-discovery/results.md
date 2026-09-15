@@ -1,5 +1,9 @@
 # Retain the bounded tail-text discovery change
 
+This report records the initial local experiment. The subsequently approved
+[commit and package stage](package-stage.md) has a separate candidate and proof
+route; the original measurements and holds below remain scoped to this stage.
+
 The local implementation finds tail-only knowledge through both `search` and
 `context --query`, preserves existing projection matches, returns literal bounded
 Unicode excerpts, and keeps the existing handoff wire contract. The final

@@ -322,7 +322,7 @@ jq -e \
   '.matches == [] and .contribution_protocol.sequence == ["retrieve-bounded-context", "classify-new-material", "append-typed-records", "validate-workspace", "answer-or-handoff"]' \
   "$observation_root/context.json" \
   >/dev/null
-jq -n '{schema_version:1,kind:"knowledge",id:"decision-buffer",record_type:"decision",title:"Use the selected buffer",body:"The researcher selected the recorded buffer condition.",occurred_at:"2026-08-20T18:00:00Z",state:"active",authorship:"human"}' \
+jq -n '{schema_version:1,kind:"knowledge",id:"decision-buffer",record_type:"decision",title:"Use the selected buffer",body:("The researcher selected the recorded buffer condition. " + ("x" * 600) + " tail-text-discovery-marker"),occurred_at:"2026-08-20T18:00:00Z",state:"active",authorship:"human"}' \
   >"$observation_root/decision.json"
 jq -n '{schema_version:1,kind:"knowledge",id:"next-buffer-check",record_type:"next-action",title:"Check the buffer condition",body:"Verify the selected buffer condition in the next bounded run.",occurred_at:"2026-08-20T18:01:00Z",state:"open",authorship:"human"}' \
   >"$observation_root/next.json"
@@ -401,6 +401,27 @@ jq -e \
   "$observation_root/handoff-receipt.json" \
   >/dev/null
 handoff_receipt_sha256="$(sha256_file "$observation_root/handoff-receipt.json")"
+workspace_fingerprint "$workspace/.research-run" >"$observation_root/state-before-tail"
+installed_command search tail-text-discovery-marker >"$observation_root/tail-search.json"
+installed_command context --query tail-text-discovery-marker >"$observation_root/tail-context.json"
+jq -e '.total_matches == 1 and .items[0].id == "decision-buffer" and
+  .items[0].matched_by == ["summary"] and
+  (.items[0].summary | contains("tail-text-discovery-marker") and length <= 512)' \
+  "$observation_root/tail-search.json" >/dev/null
+jq -e --slurpfile search "$observation_root/tail-search.json" \
+  '.matches == $search[0].items' "$observation_root/tail-context.json" >/dev/null
+installed_command handoff create --id handoff-installed-tail \
+  --generated-at 2026-08-20T20:01:00Z --query tail-text-discovery-marker \
+  >"$observation_root/tail-handoff.json"
+installed_command handoff inspect --input "$observation_root/tail-handoff.json" \
+  >"$observation_root/tail-handoff-inspected.json"
+cmp "$observation_root/tail-handoff.json" "$observation_root/tail-handoff-inspected.json"
+jq -e --slurpfile context "$observation_root/tail-context.json" \
+  '.schema_version == 2 and .context == $context[0] and .validation.result.valid == true' \
+  "$observation_root/tail-handoff.json" >/dev/null
+workspace_fingerprint "$workspace/.research-run" >"$observation_root/state-after-tail"
+cmp "$observation_root/state-before-tail" "$observation_root/state-after-tail"
+tail_handoff_sha256="$(sha256_file "$observation_root/tail-handoff.json")"
 installed_command status --json | jq -e \
   '.claims[0].assessment == "limited" and .experiments[0].outcome == "negative"' >/dev/null
 
@@ -470,6 +491,7 @@ jq -n \
   --arg installed_binary_normalized_sha256 "$normalized_sha256" \
   --arg validation_receipt_sha256 "$validation_receipt_sha256" \
   --arg handoff_receipt_sha256 "$handoff_receipt_sha256" \
+  --arg tail_handoff_sha256 "$tail_handoff_sha256" \
   --argjson archive_bytes "$archive_bytes" \
   --argjson binary_bytes "$binary_bytes" \
   --argjson normalized_binary_bytes "$normalized_bytes" \
@@ -484,4 +506,4 @@ jq -n \
   --argjson status_warm_seconds "$status_warm_seconds" \
   --argjson recovery_cold_seconds "$recovery_cold_seconds" \
   --argjson recovery_warm_seconds "$recovery_warm_seconds" \
-  '{candidate:$candidate, cache_state:$cache_state, installed_binary_platform:$installed_binary_platform, installed_binary_raw_sha256:$installed_binary_raw_sha256, installed_binary_signature_profile:$installed_binary_signature_profile, installed_binary_signature_profile_sha256:$installed_binary_signature_profile_sha256, installed_binary_normalization:$installed_binary_normalization, installed_binary_normalized_sha256:$installed_binary_normalized_sha256, journey:{agent_integration_operation:"append",validation_receipt_sha256:$validation_receipt_sha256,handoff_receipt_sha256:$handoff_receipt_sha256,preserved_existing_instruction_bytes:true,preserved_unix_mode:true,ready_scope:"new-agent-run",current_session_loaded:"unverified"}, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,normalized_binary:$normalized_binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine, platform-qualified installed Append journey only; exact existing bytes and Unix mode are preserved, bounded retrieval is observed read-only before typed contribution, and validation plus v2 handoff receipts are retained; no universal agent compliance, actual session loading, crash durability, xattr or ACL preservation, scientific truth, cross-machine result, or regression promise"}'
+  '{candidate:$candidate, cache_state:$cache_state, installed_binary_platform:$installed_binary_platform, installed_binary_raw_sha256:$installed_binary_raw_sha256, installed_binary_signature_profile:$installed_binary_signature_profile, installed_binary_signature_profile_sha256:$installed_binary_signature_profile_sha256, installed_binary_normalization:$installed_binary_normalization, installed_binary_normalized_sha256:$installed_binary_normalized_sha256, journey:{tail_text_discovery:{search:true,context:true,handoff_create_inspect:true,canonical_unchanged:true,handoff_sha256:$tail_handoff_sha256},agent_integration_operation:"append",validation_receipt_sha256:$validation_receipt_sha256,handoff_receipt_sha256:$handoff_receipt_sha256,preserved_existing_instruction_bytes:true,preserved_unix_mode:true,ready_scope:"new-agent-run",current_session_loaded:"unverified"}, timer_resolution_seconds:0.01, latency_seconds:{first_use:{cold_single:$help_cold_seconds,warm_average_50:$help_warm_seconds},status:{cold_single:$status_cold_seconds,warm_average_50:$status_warm_seconds},recovery:{cold_single:$recovery_cold_seconds,warm_average_50:$recovery_warm_seconds}}, bytes:{package_archive:$archive_bytes,installed_binary:$binary_bytes,normalized_binary:$normalized_binary_bytes,stripped_binary:$stripped_binary_bytes}, kib:{install_footprint:$install_kib,target_before:$target_before_kib,target_after:$target_after_kib,coverage_target:$coverage_target_kib}, claim_ceiling:"single-machine, platform-qualified installed Append journey only; exact existing bytes and Unix mode are preserved, bounded retrieval is observed read-only before typed contribution, and validation plus v2 handoff receipts are retained; no universal agent compliance, actual session loading, crash durability, xattr or ACL preservation, scientific truth, cross-machine result, or regression promise"}'
