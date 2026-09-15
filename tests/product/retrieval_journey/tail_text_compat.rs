@@ -4,48 +4,7 @@ use super::*;
 fn tail_text_typed_identity_and_existing_matches_preserve_projections() {
     let temporary = TempDir::new("tail-text-compat");
     let project = setup(&temporary);
-    body_record(
-        &temporary,
-        &project,
-        "shared-id",
-        &format!("{} other-tail", "x".repeat(600)),
-    );
-    succeeds(
-        &project,
-        &[
-            "source",
-            "add",
-            "--id",
-            "shared-id",
-            "--citation",
-            "Synthetic citation",
-            "--locator",
-            "local:synthetic",
-            "--provenance",
-            "human",
-        ],
-    );
-    succeeds(
-        &project,
-        &[
-            "source",
-            "add",
-            "--id",
-            "source-target",
-            "--citation",
-            "Synthetic target",
-            "--locator",
-            "local:synthetic-target",
-            "--provenance",
-            "human",
-        ],
-    );
-    body_record(
-        &temporary,
-        &project,
-        "tail-record",
-        &format!("{} uniquetail", "x".repeat(600)),
-    );
+    seed_tail_records(&temporary, &project);
     let tail = json_output(&project, &["search", "uniquetail"]);
     assert_eq!(tail["total_matches"], 1);
     assert_eq!(tail["items"][0]["kind"], "knowledge");
@@ -53,64 +12,7 @@ fn tail_text_typed_identity_and_existing_matches_preserve_projections() {
     assert_eq!(identity["total_matches"], 2);
     assert_eq!(identity["items"][0]["kind"], "knowledge");
     assert_eq!(identity["items"][1]["kind"], "source");
-    add(
-        &temporary,
-        &project,
-        "relationship",
-        typed_relationship(
-            "source-only-link",
-            "source",
-            "shared-id",
-            "source",
-            "source-target",
-        ),
-    );
-    add(
-        &temporary,
-        &project,
-        "relationship",
-        typed_relationship(
-            "knowledge-outgoing-link",
-            "knowledge",
-            "shared-id",
-            "knowledge",
-            "tail-record",
-        ),
-    );
-    add(
-        &temporary,
-        &project,
-        "relationship",
-        typed_relationship(
-            "knowledge-incoming-link",
-            "knowledge",
-            "tail-record",
-            "knowledge",
-            "shared-id",
-        ),
-    );
-    let context = json_output(&project, &["context", "--query", "uniquetail"]);
-    assert_eq!(
-        context["relationships"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|item| item["id"].as_str().unwrap())
-            .collect::<Vec<_>>(),
-        vec!["knowledge-incoming-link", "knowledge-outgoing-link"]
-    );
-    assert!(
-        !context["relationships"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|item| item["id"] == "source-only-link")
-    );
-    let limited = json_output(
-        &project,
-        &["context", "--query", "uniquetail", "--limit", "1"],
-    );
-    assert_eq!(limited["relationships"][0]["id"], "knowledge-incoming-link");
+    assert_typed_relationship_selection(&temporary, &project);
     let mut record = knowledge(
         "titlemarker-id",
         "observation",
@@ -146,6 +48,51 @@ fn tail_text_typed_identity_and_existing_matches_preserve_projections() {
     assert_eq!(unchanged_views(&project), before);
 }
 
+fn seed_tail_records(temporary: &TempDir, project: &Path) {
+    body_record(
+        temporary,
+        project,
+        "shared-id",
+        &format!("{} other-tail", "x".repeat(600)),
+    );
+    succeeds(
+        project,
+        &[
+            "source",
+            "add",
+            "--id",
+            "shared-id",
+            "--citation",
+            "Synthetic citation",
+            "--locator",
+            "local:synthetic",
+            "--provenance",
+            "human",
+        ],
+    );
+    succeeds(
+        project,
+        &[
+            "source",
+            "add",
+            "--id",
+            "source-target",
+            "--citation",
+            "Synthetic target",
+            "--locator",
+            "local:synthetic-target",
+            "--provenance",
+            "human",
+        ],
+    );
+    body_record(
+        temporary,
+        project,
+        "tail-record",
+        &format!("{} uniquetail", "x".repeat(600)),
+    );
+}
+
 fn unchanged_views(project: &Path) -> Vec<Value> {
     [vec!["context"], vec!["list"], vec!["recent"]]
         .iter()
@@ -171,6 +118,50 @@ fn typed_relationship(
         "occurred_at": "2026-07-18T20:05:00Z",
         "authorship": "human"
     })
+}
+
+fn assert_typed_relationship_selection(temporary: &TempDir, project: &Path) {
+    for relationship in [
+        typed_relationship(
+            "source-only-link",
+            "source",
+            "shared-id",
+            "source",
+            "source-target",
+        ),
+        typed_relationship(
+            "knowledge-outgoing-link",
+            "knowledge",
+            "shared-id",
+            "knowledge",
+            "tail-record",
+        ),
+        typed_relationship(
+            "knowledge-incoming-link",
+            "knowledge",
+            "tail-record",
+            "knowledge",
+            "shared-id",
+        ),
+    ] {
+        add(temporary, project, "relationship", relationship);
+    }
+    let context = json_output(project, &["context", "--query", "uniquetail"]);
+    let relationships = context["relationships"].as_array().unwrap();
+    let ids = relationships
+        .iter()
+        .map(|item| item["id"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        ids,
+        vec!["knowledge-incoming-link", "knowledge-outgoing-link"]
+    );
+    assert!(!ids.contains(&"source-only-link"));
+    let limited = json_output(
+        project,
+        &["context", "--query", "uniquetail", "--limit", "1"],
+    );
+    assert_eq!(limited["relationships"][0]["id"], "knowledge-incoming-link");
 }
 
 #[test]
