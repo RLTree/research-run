@@ -6,10 +6,10 @@ Opportunity: `RROPP-tail-text-discovery`.
 
 ## Scope and reproduction
 
-This is a bounded local source experiment based on
-`71ad5fd8f0533a7ab34b35ffeb3f86d88a92a2c5`. Remote default `main` and the
-clean detached worktree matched before edits. No commits, pushes, installation,
-release, settings, automation, or live canonical research changes are authorized.
+This bounded experiment began at `71ad5fd8f0533a7ab34b35ffeb3f86d88a92a2c5`.
+The initial local-only stage is historical; subsequent local commits, isolated
+package verification, PR publication and scoped review fixes were approved.
+Merge, live installation, release and live research mutations remain outside scope.
 
 The baseline release executable is retained at
 `target/tail-text-evidence/baseline`; the candidate at
@@ -27,10 +27,63 @@ The candidate must produce both tail hits without altering existing matches.
 
 `measure.py synthetic` creates two synthetic workspaces through CLI initialization
 and typed canonical fixture construction, validates them, and measures both
-commands. `measure.py PATH` reads an existing research workspace without writing
+commands. Each new fixture retains `.tail-text-fixture.json` outside canonical
+state, binding the CLI-generated initialization file hashes, empty directory
+layout, record count and body size. Reuse must match that complete layout and
+the expected knowledge contents. Extra sources, claims, relationships, authority
+records, empty directories or root files fail before timing and remain untouched.
+Each fixture keeps its own generated identity; fresh fixture IDs need not agree.
+Existing fixtures without this receipt are preserved and rejected, never silently
+adopted or rebuilt. Use a new `--evidence-dir` for a fresh synthetic run.
+
+`measure.py PATH` reads an existing research workspace without writing
 its canonical state. It uses the longest knowledge body's first/last 16
 characters, an absent control and a common term. Query strings, record IDs,
 scientific content and command outputs are not retained in timing evidence.
+
+### Binary-independent checks on a fresh checkout
+
+These commands require only Python 3.9+ and standard-library modules; no Cargo
+build, ignored executable, or pre-existing `target` directory is needed:
+
+```console
+python3 -B docs/research/tail-text-discovery/measure.py self-test
+python3 -B -O docs/research/tail-text-discovery/measure.py self-test
+python3 -B docs/research/tail-text-discovery/measurement_fresh_controls.py
+```
+
+The fresh-layout check copies the helper sources to a disposable checkout and
+executes real self-test and entry-test commands in normal and optimized modes.
+It verifies that no evidence parents or binaries are created. Validation-unit
+controls stub only subprocess results (nonzero exit, non-JSON, `valid=false` and
+`valid=true`); they do not duplicate the Rust knowledge schema.
+
+### Binary-dependent integration and measurements
+
+Build the named original baseline and current candidate serially from the repo
+root. The archive extraction below requires a new, empty `baseline-source` path;
+preserve any existing experiment evidence and choose another build directory
+when that path is already occupied.
+
+```console
+export CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_PROFILE_TEST_DEBUG=0
+mkdir -p target/tail-text-evidence/baseline-source
+git archive 71ad5fd8f0533a7ab34b35ffeb3f86d88a92a2c5 | tar -x -C target/tail-text-evidence/baseline-source
+cargo build --locked --release --manifest-path target/tail-text-evidence/baseline-source/Cargo.toml --target-dir target/tail-text-evidence/baseline-build
+cp target/tail-text-evidence/baseline-build/release/research-run target/tail-text-evidence/baseline
+cargo build --locked --release
+cp target/release/research-run target/tail-text-evidence/candidate
+python3 -B docs/research/tail-text-discovery/measure.py integration-test
+python3 -B -O docs/research/tail-text-discovery/measure.py integration-test
+python3 -B docs/research/tail-text-discovery/measure.py synthetic --evidence-dir target/tail-text-new-fixtures
+```
+
+The separately named integration test initializes real disposable fixtures,
+adds valid sources and relationships through the CLI, proves they change search
+counts while validation still passes, then verifies rejection and byte
+preservation on reuse. `verify.py` additionally requires the earlier retained
+`red-workspace` and its `synthetic-method` record; it is not a fresh-checkout
+self-test. All historical timing files remain scoped to their original binaries.
 
 For each workload, command and query class, timing records the first invocation
 separately, three warmup pairs and 15 alternating baseline/candidate pairs. Pair

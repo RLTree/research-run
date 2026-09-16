@@ -1,4 +1,5 @@
 """Reproducible local experiment; outputs contain operational metadata only."""
+import argparse
 import hashlib
 import json
 import pathlib
@@ -14,7 +15,9 @@ from measurement_fs import (
     ReadBudget,
     read_regular,
     safe_files,
+    _reject_symlink_components,
 )
+from measurement_fixture import record_initialization, require_fixture
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 EVIDENCE = ROOT / 'target/tail-text-evidence'
@@ -43,23 +46,7 @@ def validate_workspace(workspace):
         receipt = json.loads(result.stdout)
     except json.JSONDecodeError as error:
         raise RuntimeError('baseline validation returned non-JSON output') from error
-    if receipt.get('valid') is not True:
-        raise RuntimeError('baseline validation returned valid=false')
-
-
-def validate_workspace(workspace):
-    result = subprocess.run(
-        [str(BINARIES['baseline']), 'validate', '--json'],
-        cwd=workspace,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError('baseline validation rejected supplied workspace')
-    try:
-        receipt = json.loads(result.stdout)
-    except json.JSONDecodeError as error:
-        raise RuntimeError('baseline validation returned non-JSON output') from error
-    if receipt.get('valid') is not True:
+    if not isinstance(receipt, dict) or receipt.get('valid') is not True:
         raise RuntimeError('baseline validation returned valid=false')
 
 
@@ -104,6 +91,10 @@ def corpus_is_expected(workspace, count, size):
 
 
 def synthetic(name, count, size):
+    if pathlib.Path(name).name != name or name in ('.', '..'):
+        raise RuntimeError('synthetic fixture name must be one path component')
+    _reject_symlink_components(EVIDENCE)
+    EVIDENCE.mkdir(parents=True, exist_ok=True)
     workspace = EVIDENCE / name
     if workspace.is_symlink():
         raise RuntimeError(f'synthetic workspace is a symlink: {workspace}')
@@ -112,23 +103,16 @@ def synthetic(name, count, size):
     else:
         invoke(BINARIES['baseline'], EVIDENCE,
                ['init', str(workspace), '--name', name, '--without-review-authority'])
-        safe_files(workspace)
-    knowledge = workspace / '.research-run/knowledge'
-    if knowledge.is_symlink() or not knowledge.is_dir():
-        raise RuntimeError(f'synthetic knowledge directory is not a regular directory: {knowledge}')
-    if not corpus_is_expected(workspace, count, size):
+        record_initialization(workspace, count, size)
         for index in range(count):
-            record = dict(schema_version=1, kind='knowledge', id=f'note-{index:04}',
-                          record_type='observation', title='Synthetic note', body=expected_body(size),
-                          occurred_at='2026-07-18T20:00:00Z', state='open', authorship='human')
             path = workspace / '.research-run/knowledge' / f'note-{index:04}.json'
-            if path.exists() or path.is_symlink():
-                raise RuntimeError(f'synthetic record path already exists: {path}')
-            path.write_text(json.dumps(record))
-    if not corpus_is_expected(workspace, count, size):
-        raise RuntimeError(f'synthetic corpus did not converge: {workspace}')
-    validate_workspace(workspace)
+            with path.open('xb') as output:
+                output.write(expected_record(index, size))
+    require_reusable_workspace(workspace, count, size)
     fingerprint = digest_state(workspace)
+    validate_workspace(workspace)
+    if digest_state(workspace) != fingerprint:
+        raise RuntimeError('synthetic workspace changed during validation')
     return workspace, dict(
         queries=dict(prefix='prefix-marker', tail='tail-needle', absent='absent-needle', common='common-marker'),
         target_id='note-0000',
@@ -139,9 +123,7 @@ def synthetic(name, count, size):
 def require_reusable_workspace(workspace, count, size):
     if workspace.is_symlink() or not workspace.is_dir():
         raise RuntimeError(f'synthetic workspace is not a regular directory: {workspace}')
-    safe_files(workspace)
-    if not corpus_is_expected(workspace, count, size):
-        raise RuntimeError(f'reused synthetic corpus drifted; preserving workspace: {workspace}')
+    require_fixture(workspace, count, size, expected_record)
 
 
 def query_probe(binary, workspace, command, query):
@@ -282,197 +264,10 @@ def select_knowledge_files(workspace, files):
 
 
 def self_test():
-    with tempfile.TemporaryDirectory() as temporary:
-        workspace = pathlib.Path(temporary) / 'corpus-workspace'
-        knowledge = workspace / '.research-run/knowledge'
-        knowledge.mkdir(parents=True)
-        measurement_files = workspace / '.research-run/measurements'
-        measurement_files.mkdir()
-        budget = workspace / '.research-run/inventories'
-        budget.mkdir()
-        exact = measurement_files / 'exact.bin'
-        exact.touch()
-        exact.write_bytes(b'')
-        with exact.open('r+b') as stream:
-            stream.truncate(MAX_RECORD_BYTES)
-        read_regular(exact, workspace)
-        oversized = measurement_files / 'oversized.bin'
-        oversized.touch()
-        with oversized.open('r+b') as stream:
-            stream.truncate(MAX_RECORD_BYTES + 1)
-        try:
-            read_regular(oversized, workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('oversized regular file was accepted')
-        oversized.unlink()
-        aggregate_a = measurement_files / 'aggregate-a.bin'
-        aggregate_b = measurement_files / 'aggregate-b.bin'
-        for path in (aggregate_a, aggregate_b):
-            path.touch()
-            with path.open('r+b') as stream:
-                stream.truncate(MAX_RECORD_BYTES // 2)
-        aggregate_budget = ReadBudget(MAX_RECORD_BYTES)
-        read_regular(aggregate_a, workspace, aggregate_budget)
-        read_regular(aggregate_b, workspace, aggregate_budget)
-        overflow_a = measurement_files / 'overflow-a.bin'
-        overflow_b = measurement_files / 'overflow-b.bin'
-        for path in (overflow_a, overflow_b):
-            path.touch()
-            with path.open('r+b') as stream:
-                stream.truncate((MAX_RECORD_BYTES * 3) // 5)
-        overflow_budget = ReadBudget(MAX_RECORD_BYTES)
-        read_regular(overflow_a, workspace, overflow_budget)
-        try:
-            read_regular(overflow_b, workspace, overflow_budget)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('aggregate over-budget files were accepted')
-        inventory_exact = budget / 'exact.bin'
-        inventory_exact.touch()
-        with inventory_exact.open('r+b') as stream:
-            stream.truncate(MAX_INVENTORY_RECORD_BYTES)
-        read_regular(inventory_exact, workspace)
-        inventory_over = budget / 'oversized.bin'
-        inventory_over.touch()
-        with inventory_over.open('r+b') as stream:
-            stream.truncate(MAX_INVENTORY_RECORD_BYTES + 1)
-        try:
-            read_regular(inventory_over, workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('oversized inventory file was accepted')
-        inventory_over.unlink()
-        for index in range(2):
-            (knowledge / f'note-{index:04}.json').write_bytes(expected_record(index, 200))
-        if not corpus_is_expected(workspace, 2, 200):
-            raise AssertionError('complete corpus was rejected')
-        (knowledge / 'note-0001.json').unlink()
-        if corpus_is_expected(workspace, 2, 200):
-            raise AssertionError('missing record was accepted')
-        (knowledge / 'note-0001.json').write_bytes(expected_record(1, 200).replace(b'tail-needle', b'changed-text'))
-        if corpus_is_expected(workspace, 2, 200):
-            raise AssertionError('changed record was accepted')
-        (knowledge / 'note-0001.json').write_bytes(expected_record(1, 200))
-        (knowledge / 'note-0002.json').write_bytes(expected_record(2, 200))
-        if corpus_is_expected(workspace, 2, 200):
-            raise AssertionError('extra record was accepted')
-        (knowledge / 'note-0002.json').unlink()
-        if not corpus_is_expected(workspace, 2, 200):
-            raise AssertionError('restored corpus was rejected')
-        (knowledge / 'note-0001.json').write_bytes(expected_record(1, 200).replace(b'tail-needle', b'changed-text'))
-        before = digest_state(workspace)
-        try:
-            require_reusable_workspace(workspace, 2, 200)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('drifted corpus was accepted for reuse')
-        if digest_state(workspace) != before:
-            raise AssertionError('drifted corpus was changed during rejection')
-        short_workspace = workspace.parent / 'short-workspace'
-        short_knowledge = short_workspace / '.research-run/knowledge'
-        short_knowledge.mkdir(parents=True)
-        short_record = short_knowledge / 'short.json'
-        short_record.write_text(json.dumps({'body': 'short body'}))
-        try:
-            derive_queries(short_workspace, [short_record])
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('short body was accepted for tail measurement')
-        query_workspace = workspace.parent / 'query-workspace'
-        query_knowledge = query_workspace / '.research-run/knowledge'
-        query_knowledge.mkdir(parents=True)
-        direct = query_knowledge / 'direct.json'
-        direct.write_text(json.dumps({'body': 'x' * 600 + ' direct-tail'}))
-        nested = query_workspace / '.research-run/nested/knowledge'
-        nested.mkdir(parents=True)
-        nested_record = nested / 'nested.json'
-        nested_record.write_text(json.dumps({'body': 'x' * 600 + ' nested-tail'}))
-        selected = select_knowledge_files(query_workspace, safe_files(query_workspace))
-        if direct not in selected or nested_record in selected:
-            raise AssertionError('nested knowledge file was selected')
-        derive_queries(query_workspace, selected)
-        invalid_workspace = workspace.parent / 'invalid-workspace'
-        invoke(BINARIES['baseline'], workspace.parent, ['init', str(invalid_workspace), '--name', 'Invalid', '--without-review-authority'])
-        invalid_path = invalid_workspace / '.research-run/knowledge/invalid.json'
-        invalid_path.write_text('{}')
-        try:
-            validate_workspace(invalid_workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('invalid canonical record was accepted')
-        (knowledge / 'linked').symlink_to(knowledge / 'note-0000.json')
-        try:
-            safe_files(workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('symlink file was accepted')
-        (knowledge / 'linked').unlink()
-        outside_directory = workspace / 'outside-directory'
-        outside_directory.mkdir()
-        (knowledge / 'linked-directory').symlink_to(outside_directory, target_is_directory=True)
-        try:
-            safe_files(workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('symlink directory was accepted')
-        (knowledge / 'linked-directory').unlink()
-        linked_workspace = workspace.parent / f'linked-workspace-{workspace.name}'
-        if linked_workspace.exists() or linked_workspace.is_symlink():
-            linked_workspace.unlink()
-        linked_workspace.symlink_to(workspace, target_is_directory=True)
-        try:
-            safe_files(linked_workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('symlink workspace was accepted')
-        linked_workspace.unlink()
-        actual_parent = workspace.parent / f'actual-parent-{workspace.name}'
-        actual_workspace = actual_parent / 'nested'
-        (actual_workspace / '.research-run').mkdir(parents=True)
-        linked_parent = workspace.parent / f'linked-parent-{workspace.name}'
-        linked_parent.symlink_to(actual_parent, target_is_directory=True)
-        try:
-            safe_files(linked_parent / 'nested')
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('symlink ancestor was accepted')
-        linked_parent.unlink()
-        (actual_workspace / '.research-run').rmdir()
-        actual_workspace.rmdir()
-        actual_parent.rmdir()
-        linked_state_workspace = workspace.parent / f'linked-state-{workspace.name}'
-        linked_state_workspace.mkdir()
-        (linked_state_workspace / '.research-run').symlink_to(knowledge, target_is_directory=True)
-        try:
-            safe_files(linked_state_workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('symlink research state was accepted')
-        (linked_state_workspace / '.research-run').unlink()
-        linked_state_workspace.rmdir()
-        (knowledge / 'fifo').parent.mkdir(exist_ok=True)
-        import os
-        os.mkfifo(knowledge / 'fifo')
-        try:
-            safe_files(workspace)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('FIFO was accepted')
-    print('measurement helper controls passed')
-
+    from measurement_fixture_controls import run_controls as fixture_controls
+    from measurement_read_controls import run_controls as read_controls
+    read_controls()
+    fixture_controls()
 
 def entry_self_test():
     with tempfile.TemporaryDirectory() as temporary:
@@ -497,23 +292,35 @@ def entry_self_test():
                 )
                 if result.returncode == 0:
                     raise AssertionError('symlink entry path was accepted')
-                if any(path.read_bytes() != content for path, content in evidence.items()):
+                if b'symlink' not in result.stderr:
+                    raise AssertionError('entry failed after the required symlink preflight')
+                after = {path: path.read_bytes() for path in EVIDENCE.glob('latency-*.json')}
+                if after != evidence:
                     raise AssertionError('rejected entry path wrote measurement evidence')
     print('measurement entry controls passed')
 
 
 if __name__ == '__main__':
-    EVIDENCE.mkdir(exist_ok=True)
-    if sys.argv[1] == 'self-test':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', help='self-test, entry-test, integration-test, synthetic, or workspace path')
+    parser.add_argument('--evidence-dir', type=pathlib.Path,
+                        help='fixture/output directory; retained baseline/candidate paths stay unchanged')
+    options = parser.parse_args()
+    if options.evidence_dir is not None:
+        EVIDENCE = options.evidence_dir.absolute()
+    if options.action == 'self-test':
         self_test()
-    elif sys.argv[1] == 'entry-test':
+    elif options.action == 'entry-test':
         entry_self_test()
-    elif sys.argv[1] == 'synthetic':
+    elif options.action == 'integration-test':
+        from measurement_integration import run_controls
+        run_controls()
+    elif options.action == 'synthetic':
         for name, count, size in [('many-short', 1000, 200), ('near-budget', 1000, 65536)]:
             workspace, queries = synthetic(name, count, size)
             measure(name, workspace, queries)
     else:
-        workspace = pathlib.Path(sys.argv[1]).absolute()
+        workspace = pathlib.Path(options.action).absolute()
         files = safe_files(workspace)
         before = digest_state(workspace)
         validate_workspace(workspace)
@@ -523,4 +330,6 @@ if __name__ == '__main__':
         if digest_state(workspace) != before:
             raise RuntimeError('supplied workspace changed during validation and query derivation')
         specification['fingerprint'] = before
+        _reject_symlink_components(EVIDENCE)
+        EVIDENCE.mkdir(parents=True, exist_ok=True)
         measure('current-workspace', workspace, specification)

@@ -18,12 +18,17 @@
     "src/workspace/retrieval_match/tests.rs": "b22b8c38c0e6f695b28f72ffbd84342d53aa7972eead3ca1e4858084709ab23b",
     "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
     "tests/product/retrieval_journey/tail_text_compat.rs": "cb31f072724373110066fea2222f934067ab65e3f55cf2c73d4859b987f6d5d1",
-    "docs/research/tail-text-discovery/README.md": "61e656900c2f5387db44ff4438116d2014e415f382f56c937f2c1c038308d573",
-    "docs/research/tail-text-discovery/measure.py": "e1eafacb9b1c323b2d80bac01ce6344a4786c0b5c65b007b2a2c43c81b357e67",
+    "docs/research/tail-text-discovery/README.md": "487d046f833c94c77de1de9183f3c07952e827d4725cd8fe2fba29028249d134",
+    "docs/research/tail-text-discovery/measure.py": "b46da699f8903fbd2437a0f7fc87909e8a3525defa90bc57ecf30a15aa445070",
     "docs/research/tail-text-discovery/verify.py": "22c83549df4419afc7caf271557d2c8ac22fd5c8f65fe1e7002e4bd04a0b3c90",
     "docs/research/tail-text-discovery/measurement_fs.py": "52efc5a599980ba5e930f165e130e17b7c38c438ee36fbed113837ca4c11684d",
     "docs/research/tail-text-discovery/package-stage.md": "077bef755f3322b66814fe85c87417bd964ae9c3e217b1b6b5438e140e9b8f5a",
-    "docs/research/tail-text-discovery/results.md": "ee9b8aacaee80dac9540870c9c8fe6cc33f39a5aa214f2832f5bdc0369f6416a"
+    "docs/research/tail-text-discovery/results.md": "ee9b8aacaee80dac9540870c9c8fe6cc33f39a5aa214f2832f5bdc0369f6416a",
+    "docs/research/tail-text-discovery/measurement_fixture.py": "fc47ef91db355477e41c985e6176860974e58b87114e08e451c677a679422437",
+    "docs/research/tail-text-discovery/measurement_fixture_controls.py": "f5f917fd31a8a744f30750210202c82b30733e39ccbd9397165b7b6694ca3950",
+    "docs/research/tail-text-discovery/measurement_fresh_controls.py": "46854115fbff11b0d796646cc9fc46f92438e07d800709c83c532a110f82c059",
+    "docs/research/tail-text-discovery/measurement_read_controls.py": "23114191945441dfa6720ced1b738022f7e3e8c1e56658d51abbad7fdbd51ca9",
+    "docs/research/tail-text-discovery/measurement_integration.py": "04f9aed6933a5adab6615634acd7273e0965238102ae9cdfbbd5b4be8d2673ee"
   },
   "artifacts": {
     "doctests-final.log": "b7583c03758fc3fa3e0b6a7abf9e1cc90160cec92973f57d81444baed07c485c",
@@ -65,5 +70,18 @@
       "Human knowledge-body labeling remains source-field semantics for both projected and fallback matches; JSON and handoff shapes are unchanged."
     ],
     "historical_evidence_preserved": true
+  },
+  "current_files_scope": "Current helper/source/document hashes; implementation.patch and measured artifacts retain their named historical source-stage scope.",
+  "fixture_review_corrections": {
+    "comments": [
+      4020942056,
+      4020942065
+    ],
+    "baseline": "61011d4997362492f4cecadaecfa4aa3b6474c52",
+    "changes": [
+      "Complete CLI-generated initialization layout and file hashes bound per synthetic fixture; extra state rejected and preserved.",
+      "Binary-independent self-test and fresh-layout subprocess controls separated from explicitly binary-dependent integration tests."
+    ],
+    "historical_timing_artifacts_unchanged": true
   }
 }
