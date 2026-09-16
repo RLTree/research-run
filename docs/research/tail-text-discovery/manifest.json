@@ -1,0 +1,87 @@
+{
+  "base": "71ad5fd8f0533a7ab34b35ffeb3f86d88a92a2c5",
+  "implementation_patch_sha256": "a0e77cac26611c268b166b90cb4f7696baa996399321ec49224a10307a9bfc73",
+  "patch_scope": "production, tests, root README and architecture; experiment progress/evidence separate",
+  "platform": {
+    "machine": "arm64",
+    "macos": "27.0"
+  },
+  "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-apple-darwin\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+  "files": {
+    "ARCHITECTURE.md": "666a8e3ed4a4794510e36d884318d3a451c317667191dddfeec7da1acef077b3",
+    "README.md": "ada9b85f4bcd1cb54070a7efd1df57abdeb9ea388515792d1a97447db9e76a9a",
+    "src/cli/retrieval_commands.rs": "0aa94e29a49db71363c99067bc1d213e386da32d5e7e0de3a1f3b897f84f73c5",
+    "src/workspace/retrieval.rs": "30a65409d2ba4a627e9ce40301d05d58c2780a4cc276dae72dd0cb745184b08e",
+    "src/workspace/retrieval_context.rs": "34996683fa8571ba455e35631db886d8260c5d4c7a31872660daf7ab1df3b5bc",
+    "tests/product/retrieval_journey.rs": "2c1919613b111443a729b943ce847acd5a409735c40c61dd12ecb8bc0748425c",
+    "src/workspace/retrieval_match.rs": "915fcdd34ce8aec40cef27b411abfa784fa293e4015851043b74f7f534cb922b",
+    "src/workspace/retrieval_match/tests.rs": "b22b8c38c0e6f695b28f72ffbd84342d53aa7972eead3ca1e4858084709ab23b",
+    "tests/product/retrieval_journey/tail_text.rs": "eff394eb574d4fc5ea3c26637f5f313895ba73b66c7da75f59aa471d7b04102f",
+    "tests/product/retrieval_journey/tail_text_compat.rs": "cb31f072724373110066fea2222f934067ab65e3f55cf2c73d4859b987f6d5d1",
+    "docs/research/tail-text-discovery/README.md": "f7efa0097a6a6f0047efb3b7893dc64c15df19f7feb6fa4aae2891c3df1649d5",
+    "docs/research/tail-text-discovery/measure.py": "97493b39ba05e86792953a92e9f2ce3ba7a7d6863e13cebed222a7906760ee8c",
+    "docs/research/tail-text-discovery/verify.py": "22c83549df4419afc7caf271557d2c8ac22fd5c8f65fe1e7002e4bd04a0b3c90",
+    "docs/research/tail-text-discovery/measurement_fs.py": "52efc5a599980ba5e930f165e130e17b7c38c438ee36fbed113837ca4c11684d",
+    "docs/research/tail-text-discovery/package-stage.md": "077bef755f3322b66814fe85c87417bd964ae9c3e217b1b6b5438e140e9b8f5a",
+    "docs/research/tail-text-discovery/results.md": "ee9b8aacaee80dac9540870c9c8fe6cc33f39a5aa214f2832f5bdc0369f6416a",
+    "docs/research/tail-text-discovery/measurement_fixture.py": "fc47ef91db355477e41c985e6176860974e58b87114e08e451c677a679422437",
+    "docs/research/tail-text-discovery/measurement_fixture_controls.py": "bcfbefa40880f71d21176580157b4cefb8255fd851d149e0f22bc2928e5cb1b6",
+    "docs/research/tail-text-discovery/measurement_fresh_controls.py": "46854115fbff11b0d796646cc9fc46f92438e07d800709c83c532a110f82c059",
+    "docs/research/tail-text-discovery/measurement_read_controls.py": "c8103185cce0421c19690d39d8e3b2b31b2cc192d5c0378354617aa8232ea253",
+    "docs/research/tail-text-discovery/measurement_integration.py": "04f9aed6933a5adab6615634acd7273e0965238102ae9cdfbbd5b4be8d2673ee"
+  },
+  "artifacts": {
+    "doctests-final.log": "b7583c03758fc3fa3e0b6a7abf9e1cc90160cec92973f57d81444baed07c485c",
+    "fast.log": "1301bf1ab3ec21c78fb511edb022664fbb3128e3bab7902cec2781fbcc11d615",
+    "initial-latency-many-short.json": "3436855480d359a25fee38b897bd93b0916eed4f4dab9225dfbda7329566fc71",
+    "initial-latency-near-budget.json": "b95dc1d66df516491c783cf51b4ef5ee34878e1025a11d8faf1987ae4dc25844",
+    "clippy-final.log": "961f3f49e05916284d6de2054b57b152d54da915b98eb5ed4428db13f748926b",
+    "changed-coverage.json": "bd3fe2f66d441874cc3a4a564e998010e3dd85d9975136016d0f7c642e71f4d7",
+    "latency-current-workspace.json": "29d87b524913a024b3f17cb7e971f438e959ec3052f570a31631fb2a686165af",
+    "standards-final.log": "6a80f9540f28333d1456f1cb12d0407923b5c5f314705288122302f55972a36c",
+    "compatibility.json": "072bef24cd5dbc4f5f1e5a140b73d14ba1520a2ad40a5ff09bd36e6b4dd10964",
+    "baseline-build.log": "fe668c5ad8469390f174dbcaa32ddd9ad2055c6aed2b6a58d892af57ba957cd6",
+    "check-final.log": "12560410166db72729f2b11eadf0af6ba0159f937c8d90c6f32a17a3ee192d2a",
+    "nextest-final.log": "f2007d9e117fd4af146b0df5449932f80997fe77d2129137bdd30da3f3f23c91",
+    "latency-near-budget.json": "b2b295eeddc60685278dbbcdedfdab5118e7d59b4f2322ac9bbfc1870fb76f00",
+    "release-final.log": "99dfd177e77d11c8b0bc27e53c3edef17983192e14eed72c257fad96424c4bb8",
+    "latency-many-short.json": "ff756890a31a69f4fbb87853d2768619bab029f443c045f0429f0eeb8b770c6d",
+    "baseline-red.json": "e454ee10542bd1b47b74949f5e704eabfef616a0b4aafdff417417d77ea8d6d4",
+    "coverage-final.log": "8711837c2d692c5a32b5f4c33848ede665e5032d616737d88292afc41d146da6"
+  },
+  "artifact_redaction": {
+    "change": "Replace host-specific checkout root with <worktree> in archived logs; command outcomes unchanged",
+    "files": [
+      "clippy-final.log",
+      "baseline-build.log",
+      "check-final.log",
+      "nextest-final.log",
+      "release-final.log",
+      "coverage-final.log"
+    ],
+    "original_manifest_commit": "b16f1cbb708ab8b6d43574b5ea75cd71d135e554"
+  },
+  "review_fix": {
+    "source": "CodeRabbit review 5205779785, comments 4012170771 and 4012170780",
+    "changes": [
+      "Context relationship selection now compares typed kind plus ID pairs.",
+      "Synthetic benchmark reuse validates every expected record and rejects drift before measurement.",
+      "Measurement and compatibility fingerprints reject symlinks and non-regular entries and read regular files through no-follow, nonblocking descriptors.",
+      "Human knowledge-body labeling remains source-field semantics for both projected and fallback matches; JSON and handoff shapes are unchanged."
+    ],
+    "historical_evidence_preserved": true
+  },
+  "current_files_scope": "Current helper/source/document hashes; implementation.patch and measured artifacts retain their named historical source-stage scope.",
+  "fixture_review_corrections": {
+    "comments": [
+      4020942056,
+      4020942065
+    ],
+    "baseline": "61011d4997362492f4cecadaecfa4aa3b6474c52",
+    "changes": [
+      "Complete CLI-generated initialization layout and file hashes bound per synthetic fixture; extra state rejected and preserved.",
+      "Binary-independent self-test and fresh-layout subprocess controls separated from explicitly binary-dependent integration tests."
+    ],
+    "historical_timing_artifacts_unchanged": true
+  }
+}

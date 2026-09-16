@@ -1,0 +1,416 @@
+{
+  "workload": "many-short",
+  "knowledge_records": 1000,
+  "canonical_bytes": 409854,
+  "qualifications": {
+    "search": {
+      "prefix": {
+        "status": "qualified",
+        "reason": "target present in both binaries",
+        "baseline_matches": 1000,
+        "candidate_matches": 1000
+      },
+      "tail": {
+        "status": "not_applicable",
+        "reason": "baseline result set saturated; absence is unknown",
+        "baseline_matches": 1000,
+        "candidate_matches": 1000
+      },
+      "absent": {
+        "status": "qualified",
+        "reason": "both binaries returned zero matches",
+        "baseline_matches": 0,
+        "candidate_matches": 0
+      },
+      "common": {
+        "status": "qualified",
+        "reason": "both binaries returned nonzero matches",
+        "baseline_matches": 1000,
+        "candidate_matches": 1000
+      }
+    },
+    "context": {
+      "prefix": {
+        "status": "qualified",
+        "reason": "target present in both binaries",
+        "baseline_matches": 256,
+        "candidate_matches": 256
+      },
+      "tail": {
+        "status": "not_applicable",
+        "reason": "baseline result set saturated; absence is unknown",
+        "baseline_matches": 256,
+        "candidate_matches": 256
+      },
+      "absent": {
+        "status": "qualified",
+        "reason": "both binaries returned zero matches",
+        "baseline_matches": 0,
+        "candidate_matches": 0
+      },
+      "common": {
+        "status": "qualified",
+        "reason": "both binaries returned nonzero matches",
+        "baseline_matches": 256,
+        "candidate_matches": 256
+      }
+    }
+  },
+  "cases": [
+    {
+      "command": "search",
+      "query_class": "prefix",
+      "observations": {
+        "baseline": {
+          "first_ms": 51.58,
+          "output_bytes": 29230,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            50.194625,
+            51.212042,
+            51.753666,
+            51.769375,
+            51.6365,
+            51.43925,
+            50.381333,
+            51.060709,
+            50.337375,
+            50.861167,
+            50.527334,
+            51.044583,
+            50.575667,
+            50.764708,
+            50.018625
+          ],
+          "median_ms": 50.861167,
+          "p95_ms": 51.769375,
+          "peak_rss_bytes": 5816320
+        },
+        "candidate": {
+          "first_ms": 50.295208,
+          "output_bytes": 29230,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            51.184792,
+            49.665458,
+            50.45725,
+            50.052125,
+            52.044417,
+            50.499083,
+            50.595625,
+            49.986041,
+            51.542583,
+            50.325666,
+            51.103417,
+            50.552584,
+            50.742583,
+            52.912792,
+            50.519042
+          ],
+          "median_ms": 50.552584,
+          "p95_ms": 52.912792,
+          "peak_rss_bytes": 5865472
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "search",
+      "query_class": "absent",
+      "observations": {
+        "baseline": {
+          "first_ms": 50.118541,
+          "output_bytes": 75,
+          "returned": 0,
+          "total_matches": 0,
+          "warm_ms": [
+            50.582667,
+            49.831875,
+            50.444083,
+            50.039,
+            49.659916,
+            50.98425,
+            49.717125,
+            49.942334,
+            50.928791,
+            53.20825,
+            50.289167,
+            50.515334,
+            49.6965,
+            49.672666,
+            49.639958
+          ],
+          "median_ms": 50.039,
+          "p95_ms": 53.20825,
+          "peak_rss_bytes": 5570560
+        },
+        "candidate": {
+          "first_ms": 50.044375,
+          "output_bytes": 75,
+          "returned": 0,
+          "total_matches": 0,
+          "warm_ms": [
+            51.791167,
+            50.484708,
+            50.142167,
+            50.33825,
+            51.196209,
+            49.913833,
+            51.227833,
+            51.5175,
+            50.54225,
+            52.063959,
+            51.516959,
+            50.421833,
+            49.833458,
+            49.453792,
+            50.253
+          ],
+          "median_ms": 50.484708,
+          "p95_ms": 52.063959,
+          "peak_rss_bytes": 5685248
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "search",
+      "query_class": "common",
+      "observations": {
+        "baseline": {
+          "first_ms": 50.999875,
+          "output_bytes": 29230,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            50.034375,
+            49.86225,
+            49.159958,
+            49.747625,
+            49.72675,
+            50.678375,
+            49.780208,
+            55.925917,
+            56.11025,
+            49.862834,
+            50.060542,
+            50.070417,
+            50.901917,
+            51.083959,
+            49.152958
+          ],
+          "median_ms": 50.034375,
+          "p95_ms": 56.11025,
+          "peak_rss_bytes": 5750784
+        },
+        "candidate": {
+          "first_ms": 50.238375,
+          "output_bytes": 29230,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            50.069,
+            50.601791,
+            49.448333,
+            51.786041,
+            51.018083,
+            50.037625,
+            49.96775,
+            55.007333,
+            56.886667,
+            52.309042,
+            50.94725,
+            49.862209,
+            50.520958,
+            49.778708,
+            50.674833
+          ],
+          "median_ms": 50.601791,
+          "p95_ms": 56.886667,
+          "peak_rss_bytes": 5816320
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "context",
+      "query_class": "prefix",
+      "observations": {
+        "baseline": {
+          "first_ms": 50.194208,
+          "output_bytes": 30299,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            51.305083,
+            51.339875,
+            49.886875,
+            51.221083,
+            50.5395,
+            50.983208,
+            53.343583,
+            53.377292,
+            55.859333,
+            52.185375,
+            49.344375,
+            51.266292,
+            50.783584,
+            50.768375,
+            50.09875
+          ],
+          "median_ms": 51.221083,
+          "p95_ms": 55.859333,
+          "peak_rss_bytes": 6455296
+        },
+        "candidate": {
+          "first_ms": 51.019417,
+          "output_bytes": 30299,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            51.1005,
+            50.643958,
+            50.421333,
+            49.489917,
+            50.61675,
+            51.202417,
+            56.306667,
+            57.531375,
+            58.17475,
+            49.474459,
+            58.417666,
+            52.566959,
+            51.219708,
+            50.337917,
+            49.717542
+          ],
+          "median_ms": 51.1005,
+          "p95_ms": 58.417666,
+          "peak_rss_bytes": 6520832
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "context",
+      "query_class": "absent",
+      "observations": {
+        "baseline": {
+          "first_ms": 50.076458,
+          "output_bytes": 1147,
+          "returned": 0,
+          "total_matches": null,
+          "warm_ms": [
+            50.687625,
+            50.706083,
+            50.689042,
+            51.199708,
+            51.465584,
+            53.078042,
+            51.864708,
+            50.081708,
+            49.524792,
+            50.695708,
+            49.09375,
+            49.612417,
+            49.697666,
+            49.510292,
+            51.106416
+          ],
+          "median_ms": 50.689042,
+          "p95_ms": 53.078042,
+          "peak_rss_bytes": 6242304
+        },
+        "candidate": {
+          "first_ms": 51.311042,
+          "output_bytes": 1147,
+          "returned": 0,
+          "total_matches": null,
+          "warm_ms": [
+            49.726833,
+            49.93775,
+            52.191125,
+            50.730875,
+            51.3945,
+            50.92975,
+            50.8895,
+            51.220875,
+            50.010334,
+            50.287792,
+            49.478,
+            50.256541,
+            51.669542,
+            53.179459,
+            49.479
+          ],
+          "median_ms": 50.730875,
+          "p95_ms": 53.179459,
+          "peak_rss_bytes": 6356992
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "context",
+      "query_class": "common",
+      "observations": {
+        "baseline": {
+          "first_ms": 50.151084,
+          "output_bytes": 30299,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            49.059209,
+            49.589791,
+            49.722458,
+            49.919916,
+            49.86925,
+            50.252042,
+            49.447208,
+            49.648708,
+            49.907917,
+            49.690875,
+            49.74975,
+            50.002292,
+            50.043459,
+            50.080917,
+            50.002458
+          ],
+          "median_ms": 49.86925,
+          "p95_ms": 50.252042,
+          "peak_rss_bytes": 6422528
+        },
+        "candidate": {
+          "first_ms": 49.883958,
+          "output_bytes": 30299,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            49.850167,
+            49.000791,
+            49.891042,
+            49.921041,
+            50.068666,
+            49.724709,
+            50.474375,
+            50.484083,
+            49.9805,
+            49.799917,
+            50.185792,
+            50.173333,
+            50.596042,
+            50.494667,
+            50.316333
+          ],
+          "median_ms": 50.068666,
+          "p95_ms": 50.596042,
+          "peak_rss_bytes": 6504448
+        }
+      },
+      "review_trigger": false
+    }
+  ],
+  "canonical_unchanged": true
+}

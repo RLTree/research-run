@@ -1,0 +1,42 @@
+{
+  "src/workspace/retrieval_match.rs": {
+    "regions_total": 130,
+    "regions_missed": [],
+    "changed_regions_missed": [],
+    "lines_total": 58,
+    "lines_missed": [],
+    "changed_lines_missed": [],
+    "functions_total": 5,
+    "functions_missed": []
+  },
+  "src/workspace/retrieval.rs": {
+    "regions_total": 343,
+    "regions_missed": [],
+    "changed_regions_missed": [],
+    "lines_total": 148,
+    "lines_missed": [],
+    "changed_lines_missed": [],
+    "functions_total": 32,
+    "functions_missed": []
+  },
+  "src/workspace/retrieval_context.rs": {
+    "regions_total": 238,
+    "regions_missed": [],
+    "changed_regions_missed": [],
+    "lines_total": 111,
+    "lines_missed": [],
+    "changed_lines_missed": [],
+    "functions_total": 25,
+    "functions_missed": []
+  },
+  "src/cli/retrieval_commands.rs": {
+    "regions_total": 316,
+    "regions_missed": [],
+    "changed_regions_missed": [],
+    "lines_total": 151,
+    "lines_missed": [],
+    "changed_lines_missed": [],
+    "functions_total": 16,
+    "functions_missed": []
+  }
+}

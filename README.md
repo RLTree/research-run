@@ -334,6 +334,18 @@ research-run next
 research-run context --query "binding assay" --limit 20
 ```
 
+Search and queried context match a trimmed, 1–256-byte query using whole-string
+Unicode lowercase and substring comparison. Knowledge discovery includes the
+complete validated body. Existing projection matches keep their prefix summary
+and reasons; otherwise a body match supplies a literal, query-centered excerpt
+of at most 512 Unicode scalars including omission ellipses. JSON retains the
+`summary` match label; human output calls every knowledge-body match,
+including ordinary projected-summary matches and fallback excerpts,
+`summary (knowledge body)`.
+Match reasons describe the source field: contextual Unicode casing can differ
+when the excerpt is lowercased alone. List, show, recent, and unqueried context
+keep their existing projections. Handoff v1/v2 wire shapes are unchanged.
+
 Search explains which fields matched. Results identify canonical authority and
 keep stale or invalidated records visible instead of silently preferring newer
 prose. Context bundles include the requested matches, unresolved material,

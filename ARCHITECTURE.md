@@ -163,3 +163,12 @@ The repository has no network runtime, service, database, async executor,
 telemetry backend, user interface, Python product code, or release machinery.
 Those absences are architectural constraints until a measured product need and
 new authority contract justify them.
+
+### Knowledge discovery
+
+`retrieval_match` owns shared search/queried-context selection. It first preserves
+existing projection matches, then joins otherwise unmatched knowledge IDs to
+borrowed bodies in the same validated snapshot. Full-body lowercase substring
+truth precedes literal source-span excerpt construction; no canonical reread or
+index is involved. Knowledge excerpts retain the wire reason `summary`, so
+existing handoff readers and final-context digest binding remain unchanged.

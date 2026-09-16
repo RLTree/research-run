@@ -1,0 +1,20 @@
+{
+  "baseline": {
+    "search": 0,
+    "context": 0,
+    "v2_accepted_by_other_reader": true,
+    "v1_accepted_by_other_reader": true
+  },
+  "candidate": {
+    "search": 1,
+    "context": 1,
+    "v2_accepted_by_other_reader": true,
+    "v1_accepted_by_other_reader": true
+  },
+  "unchanged_projections_and_prefix": true,
+  "canonical_unchanged": true,
+  "binary_sha256": {
+    "baseline": "342d2d08ec811300f41b4173f5badf523acb7eec9c6fb1d6a077b900d85eee3f",
+    "candidate": "52faf6e23d76fe5399583e860e526a7d9b452184dc845279176b16e9a2074f7c"
+  }
+}

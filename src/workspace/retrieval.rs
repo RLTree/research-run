@@ -4,6 +4,9 @@ use crate::domain::{KnowledgeKind, KnowledgeState, MAX_LIST_ITEMS};
 use crate::{Error, Result};
 
 use super::Workspace;
+
+#[path = "retrieval_match.rs"]
+mod matching;
 use super::retrieval_canonical::relationship_items;
 use super::retrieval_context::{
     claim_blockers, claim_next_actions, context_from_snapshot, sort_and_truncate,
@@ -12,6 +15,7 @@ use super::retrieval_items::projection_items;
 use super::retrieval_types::{
     ContextBundle, ProjectionItem, ProjectionResult, RelationshipProjection,
 };
+pub(super) use matching::matching_items;
 
 impl Workspace {
     pub fn list(&self, kind: Option<&str>, limit: usize) -> Result<ProjectionResult> {
@@ -44,13 +48,7 @@ impl Workspace {
         let limit = validate_limit(limit)?;
         let query = validate_query(query)?;
         let snapshot = self.load_snapshot()?;
-        let items = projection_items(self, &snapshot)?
-            .into_iter()
-            .filter_map(|mut item| {
-                item.matched_by = match_reasons(&item, &query);
-                (!item.matched_by.is_empty()).then_some(item)
-            })
-            .collect();
+        let items = matching_items(projection_items(self, &snapshot)?, &snapshot, &query);
         Ok(result("search", items, limit))
     }
 

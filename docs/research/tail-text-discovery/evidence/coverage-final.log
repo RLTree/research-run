@@ -1,0 +1,938 @@
+info: cargo-llvm-cov currently setting cfg(coverage); you can opt-out it by passing --no-cfg-coverage
+   Compiling research-run v0.1.0 (<worktree>)
+    Finished `test` profile [unoptimized] target(s) in 12.76s
+     Running unittests src/lib.rs (target/llvm-cov-target/debug/deps/research_run-d7ba51d762eca543)
+
+running 282 tests
+test cli::bootstrap_tests::lifecycle_and_inventory_bootstrap_reject_unreachable_cli_shapes ... ok
+test cli::bootstrap_tests::review_authority_bootstrap_rejects_partial_invalid_and_non_utf8_inputs ... ok
+test cli::expanded_lifecycle_tests::handoff_wrapper_covers_success_and_failure ... {
+  "schema_version": 2,
+  "kind": "handoff",
+  "id": "handoff-one",
+  "generated_at": "2026-07-18T20:01:00Z",
+  "context": {
+    "kind": "context",
+    "project_id": "handoff-wrapper",
+    "workspace_id": "2e9000d3bb32a4e75f85992faad3de2d926aa0b80bd29a737421a892af81b948",
+    "project_name": "Handoff wrapper",
+    "claim_ceiling": "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.",
+    "scope": "recent workspace state",
+    "contribution_protocol": {
+      "schema_version": 1,
+      "kind": "contribution-protocol",
+      "id": "agent-contribution",
+      "sequence": [
+        "retrieve-bounded-context",
+        "classify-new-material",
+        "append-typed-records",
+        "validate-workspace",
+        "answer-or-handoff"
+      ],
+      "triggers": [
+        "human-observation",
+        "human-correction",
+        "human-decision",
+        "negative-result",
+        "ambiguous-result",
+        "blocker",
+        "next-action"
+      ],
+      "human_input_authorship": "human",
+      "agent_analysis_authorship": "ai",
+      "no_new_material_effect": "no-write",
+      "identical_retry_effect": "no-op",
+      "claim_promotion": "signed-human-review-only"
+    },
+    "matches": [],
+    "unresolved": [],
+    "blockers": [],
+    "next_actions": [],
+    "relationships": []
+  },
+  "validation": {
+    "result": {
+      "schema_version": 2,
+      "authority": {
+        "project_id": "handoff-wrapper",
+        "workspace_id": "2e9000d3bb32a4e75f85992faad3de2d926aa0b80bd29a737421a892af81b948",
+        "manifest_sha256": "73445c2134dc7f16ca6c9cc48c4ee9c4d5e7ae0896f19bec38d27a861c116f56",
+        "protocol_sha256": "0fac1aae2f9c03118baa5716059ab6ae69cd116672f236179eb78fe8fdefdd1e",
+        "instruction_sha256": null
+      },
+      "valid": true,
+      "errors": [],
+      "counts": {
+        "claim": 0,
+        "contribution-protocol": 1,
+        "evidence": 0,
+        "experiment": 0,
+        "inventory": 0,
+        "knowledge": 0,
+        "migration": 0,
+        "relationship": 0,
+        "review": 0,
+        "review-authority": 0,
+        "source": 0
+      },
+      "agent_integration": {
+        "protocol_installed": true,
+        "instruction_contract_installed": false,
+        "agent_integration_ready": false,
+        "ready_scope": "new-agent-run",
+        "instruction_path": "AGENTS.md",
+        "current_session_loaded": "unverified",
+        "fresh_session_required": false,
+        "diagnostic": "The active project instruction file is missing; run 'research-run agent-integration plan' and apply the reviewed plan."
+      }
+    },
+    "result_sha256": "0fdf430dd6a21f69ea2f4c0d078b28f98480da8cc293cca4cbafea7a7d316e61",
+    "context_sha256": "9ffa8529d11d3c3436dd20ee2d4635dbb87d8a92761d14512d2a986cf46984b5"
+  }
+}
+ok
+test cli::expanded_lifecycle_tests::migration_wrapper_covers_success_and_failure ... {
+  "schema_version": 1,
+  "kind": "migration-plan",
+  "id": "migration-cli",
+  "project_id": "migration-wrapper",
+  "from_format": "research-run-v0.1",
+  "to_format": "research-run-v0.1-extended",
+  "migrated_at": "2026-07-18T20:02:00Z",
+  "authority_files": 2,
+  "authority_bytes": 868,
+  "authority_sha256": "9ef031f406fc74f02414a6d4f5edbac6e74f3cedddee6af1deab06928a0d6344"
+}
+Added migration migration-one
+Agent integration ready: false
+Next: plan and apply project instruction integration, then start a fresh agent run/session.
+ok
+test cli::expanded_lifecycle_tests::structured_wrappers_cover_success_and_failure ... Added knowledge knowledge-one
+Added knowledge knowledge-two
+Added relationship relationship-knowledge-two
+ok
+test cli::expanded_tests::bounded_structured_reader_reports_budget_and_io_failures ... ok
+test cli::expanded_tests::expanded_cli_routes_execute_against_an_injected_workspace ... Added knowledge knowledge-one
+{
+  "kind": "list",
+  "limit": 50,
+  "total_matches": 1,
+  "items": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ]
+}
+{
+  "kind": "knowledge",
+  "id": "knowledge-one",
+  "subtype": "blocker",
+  "title": "Blocker",
+  "summary": "Body",
+  "occurred_at": "2026-07-18T20:00:00Z",
+  "state": "open",
+  "authority_path": ".research-run/knowledge/knowledge-one.json",
+  "matched_by": [],
+  "stale": false,
+  "invalidated": false
+}
+{
+  "kind": "search",
+  "limit": 50,
+  "total_matches": 1,
+  "items": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [
+        "type",
+        "title"
+      ],
+      "stale": false,
+      "invalidated": false
+    }
+  ]
+}
+{
+  "kind": "recent",
+  "limit": 50,
+  "total_matches": 1,
+  "items": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ]
+}
+{
+  "kind": "timeline",
+  "limit": 50,
+  "total_matches": 1,
+  "items": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ]
+}
+{
+  "kind": "unresolved",
+  "limit": 50,
+  "total_matches": 1,
+  "items": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ]
+}
+{
+  "kind": "blockers",
+  "limit": 50,
+  "total_matches": 1,
+  "items": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ]
+}
+{
+  "kind": "next-actions",
+  "limit": 50,
+  "total_matches": 0,
+  "items": []
+}
+[]
+{
+  "kind": "context",
+  "project_id": "expanded-cli",
+  "workspace_id": "bf95b60b76eb98c0f137fe7326a9b389b463703b0eed9bb065b551a6bb628c57",
+  "project_name": "Expanded CLI",
+  "claim_ceiling": "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.",
+  "scope": "recent workspace state",
+  "contribution_protocol": {
+    "schema_version": 1,
+    "kind": "contribution-protocol",
+    "id": "agent-contribution",
+    "sequence": [
+      "retrieve-bounded-context",
+      "classify-new-material",
+      "append-typed-records",
+      "validate-workspace",
+      "answer-or-handoff"
+    ],
+    "triggers": [
+      "human-observation",
+      "human-correction",
+      "human-decision",
+      "negative-result",
+      "ambiguous-result",
+      "blocker",
+      "next-action"
+    ],
+    "human_input_authorship": "human",
+    "agent_analysis_authorship": "ai",
+    "no_new_material_effect": "no-write",
+    "identical_retry_effect": "no-op",
+    "claim_promotion": "signed-human-review-only"
+  },
+  "matches": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ],
+  "unresolved": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ],
+  "blockers": [
+    {
+      "kind": "knowledge",
+      "id": "knowledge-one",
+      "subtype": "blocker",
+      "title": "Blocker",
+      "summary": "Body",
+      "occurred_at": "2026-07-18T20:00:00Z",
+      "state": "open",
+      "authority_path": ".research-run/knowledge/knowledge-one.json",
+      "matched_by": [],
+      "stale": false,
+      "invalidated": false
+    }
+  ],
+  "next_actions": [],
+  "relationships": []
+}
+{
+  "schema_version": 2,
+  "kind": "handoff",
+  "id": "handoff-one",
+  "generated_at": "2026-07-18T20:01:00Z",
+  "context": {
+    "kind": "context",
+    "project_id": "expanded-cli",
+    "workspace_id": "bf95b60b76eb98c0f137fe7326a9b389b463703b0eed9bb065b551a6bb628c57",
+    "project_name": "Expanded CLI",
+    "claim_ceiling": "Assessments describe reviewed support within this workspace; they do not establish scientific truth or real-world validity.",
+    "scope": "recent workspace state",
+    "contribution_protocol": {
+      "schema_version": 1,
+      "kind": "contribution-protocol",
+      "id": "agent-contribution",
+      "sequence": [
+        "retrieve-bounded-context",
+        "classify-new-material",
+        "append-typed-records",
+        "validate-workspace",
+        "answer-or-handoff"
+      ],
+      "triggers": [
+        "human-observation",
+        "human-correction",
+        "human-decision",
+        "negative-result",
+        "ambiguous-result",
+        "blocker",
+        "next-action"
+      ],
+      "human_input_authorship": "human",
+      "agent_analysis_authorship": "ai",
+      "no_new_material_effect": "no-write",
+      "identical_retry_effect": "no-op",
+      "claim_promotion": "signed-human-review-only"
+    },
+    "matches": [
+      {
+        "kind": "knowledge",
+        "id": "knowledge-one",
+        "subtype": "blocker",
+        "title": "Blocker",
+        "summary": "Body",
+        "occurred_at": "2026-07-18T20:00:00Z",
+        "state": "open",
+        "authority_path": ".research-run/knowledge/knowledge-one.json",
+        "matched_by": [],
+        "stale": false,
+        "invalidated": false
+      }
+    ],
+    "unresolved": [
+      {
+        "kind": "knowledge",
+        "id": "knowledge-one",
+        "subtype": "blocker",
+        "title": "Blocker",
+        "summary": "Body",
+        "occurred_at": "2026-07-18T20:00:00Z",
+        "state": "open",
+        "authority_path": ".research-run/knowledge/knowledge-one.json",
+        "matched_by": [],
+        "stale": false,
+        "invalidated": false
+      }
+    ],
+    "blockers": [
+      {
+        "kind": "knowledge",
+        "id": "knowledge-one",
+        "subtype": "blocker",
+        "title": "Blocker",
+        "summary": "Body",
+        "occurred_at": "2026-07-18T20:00:00Z",
+        "state": "open",
+        "authority_path": ".research-run/knowledge/knowledge-one.json",
+        "matched_by": [],
+        "stale": false,
+        "invalidated": false
+      }
+    ],
+    "next_actions": [],
+    "relationships": []
+  },
+  "validation": {
+    "result": {
+      "schema_version": 2,
+      "authority": {
+        "project_id": "expanded-cli",
+        "workspace_id": "bf95b60b76eb98c0f137fe7326a9b389b463703b0eed9bb065b551a6bb628c57",
+        "manifest_sha256": "613b99045c10470688def026a86297ac1596597042b53190ec2dc11a698d0469",
+        "protocol_sha256": "0fac1aae2f9c03118baa5716059ab6ae69cd116672f236179eb78fe8fdefdd1e",
+        "instruction_sha256": null
+      },
+      "valid": true,
+      "errors": [],
+      "counts": {
+        "claim": 0,
+        "contribution-protocol": 1,
+        "evidence": 0,
+        "experiment": 0,
+        "inventory": 0,
+        "knowledge": 1,
+        "migration": 0,
+        "relationship": 0,
+        "review": 0,
+        "review-authority": 0,
+        "source": 0
+      },
+      "agent_integration": {
+        "protocol_installed": true,
+        "instruction_contract_installed": false,
+        "agent_integration_ready": false,
+        "ready_scope": "new-agent-run",
+        "instruction_path": "AGENTS.md",
+        "current_session_loaded": "unverified",
+        "fresh_session_required": false,
+        "diagnostic": "The active project instruction file is missing; run 'research-run agent-integration plan' and apply the reviewed plan."
+      }
+    },
+    "result_sha256": "c0ee42aab71a31464b78f9837b3f1cf7f057bb394707cdc69a484a4d7551d385",
+    "context_sha256": "6a90301e7d55ea9f73d5ee1a4ab5970f5d9d744bcaebd45fb8d4382873beb990"
+  }
+}
+ok
+test cli::expanded_tests::structured_input_file_size_accepts_the_limit_and_rejects_the_next_byte ... ok
+test cli::expanded_tests::structured_input_rejects_a_post_open_symlink_swap ... ok
+test cli::expanded_tests::structured_input_rejects_identity_changes_during_open_and_read ... ok
+test cli::expanded_tests::structured_input_reports_non_not_found_metadata_and_open_failures ... ok
+test cli::expanded_tests::structured_input_symlink_chain_distinguishes_absence_errors_and_links ... ok
+test cli::tests::artifact_parser_and_value_arguments_cover_every_semantic_variant ... ok
+test cli::tests::empty_human_projection_and_current_directory_failure_are_explicit ... ok
+test cli::tests::every_current_workspace_command_propagates_discovery_failure ... ok
+test cli::tests::external_artifact_locator_may_contain_colons ... ok
+test cli::tests::review_tests::review_add_propagates_signature_input_and_post_input_discovery_failures ... ok
+test domain::agent_integration_tests::agent_integration_plan_rejects_inconsistent_and_modified_content ... ok
+test domain::agent_integration_tests::agent_integration_plan_validates_each_digest_and_operation_boundary ... ok
+test domain::calendar_tests::timestamps_obey_gregorian_calendar_dates ... ok
+test domain::expanded_tests::knowledge_and_relationship_validation_cover_failure_classes ... ok
+test domain::expanded_tests::migration_and_timestamp_validation_cover_every_boundary ... ok
+test domain::inventory_tests::inventory_policy_is_versioned_typed_and_fail_closed ... ok
+test domain::inventory_tests::inventory_validation_covers_every_bounded_shape ... ok
+test domain::review_tests::review_authority_and_authorization_validate_each_owned_field ... ok
+test domain::review_tests::review_request_and_nested_authorization_fail_at_each_boundary ... ok
+test domain::tests::domain_validators_reject_each_illegal_state_class ... ok
+test domain::tests::identifiers_and_paths_fail_closed ... ok
+test domain::tests::manifest_identity_is_deterministic ... ok
+test error::tests::typed_errors_have_stable_meaningful_exit_codes ... ok
+test error::tests::typed_errors_render_without_record_bodies ... ok
+test workspace::agent_integration_publication::coverage_tests::artifact_name_and_optional_target_parsers_cover_rejected_shapes ... ok
+test workspace::agent_integration_publication::coverage_tests::create_post_effect_failures_and_pending_discovery_are_explicit ... ok
+test workspace::agent_integration_publication::coverage_tests::legacy_pending_recovery_covers_append_and_conflicting_target_states ... ok
+test workspace::agent_integration_publication::pending::tests::non_utf8_transaction_artifact_names_are_not_claimed ... ok
+test workspace::agent_integration_publication::pending::tests::pending_instruction_scan_has_a_deterministic_entry_budget ... ok
+test workspace::agent_integration_publication::pending::tests::pending_scan_accepts_the_boundary_and_rejects_the_next_root_entry ... ok
+test workspace::agent_integration_publication::pending::tests::pending_scan_budget_propagates_truthfully_through_plan_apply_and_status ... ok
+test workspace::agent_integration_publication::pending::tests::root_entry_budget_follows_the_latest_accepted_inventory_policy ... ok
+test workspace::agent_integration_publication::pending::tests::root_entry_budget_uses_the_default_floor_allowance_and_checked_growth ... ok
+test workspace::agent_integration_publication::pending::tests::third_recognized_artifact_fails_closed_without_removing_evidence ... ok
+test workspace::agent_integration_transaction::atomic_exchange::coverage_tests::actual_exchange_failure_has_no_non_atomic_fallback ... ok
+test workspace::agent_integration_transaction::atomic_exchange::coverage_tests::exchange_rejects_invalid_leaves_and_replaced_directory_anchors ... ok
+test workspace::agent_integration_transaction::atomic_exchange::tests::exchange_and_durability_faults_retain_exact_retryable_states_without_fallback ... ok
+test workspace::agent_integration_transaction::atomic_exchange::tests::exchange_rejects_a_rebound_project_root_before_mutation ... ok
+test workspace::agent_integration_transaction::atomic_exchange::tests::post_exchange_canonical_mutation_is_retained_as_an_impossible_state ... ok
+test workspace::agent_integration_transaction::atomic_exchange::tests::post_mkdir_handle_failure_retains_empty_transaction_evidence ... ok
+test workspace::agent_integration_transaction::atomic_exchange::tests::recovery_rejects_incomplete_unknown_aliased_and_mode_drift_states ... ok
+test workspace::agent_integration_transaction::atomic_exchange::tests::staged_file_and_pre_exchange_sync_failures_leave_the_original_canonical ... ok
+test workspace::agent_integration_transaction::cleanup::enumeration_tests::completion_name_validation_rejects_non_utf8_bytes ... ok
+test workspace::agent_integration_transaction::cleanup::enumeration_tests::completion_scan_rejects_an_unexpected_child_below_budget ... ok
+test workspace::agent_integration_transaction::cleanup::enumeration_tests::completion_scan_rejects_children_outside_its_closed_set ... ok
+test workspace::agent_integration_transaction::cleanup::recovery_tests::malformed_terminal_receipt_never_authorizes_transaction_cleanup ... ok
+test workspace::agent_integration_transaction::cleanup::recovery_tests::post_exchange_recovery_open_failure_is_ambiguous_and_retryable ... ok
+test workspace::agent_integration_transaction::cleanup::recovery_tests::previous_full_transaction_version_remains_recoverable ... ok
+test workspace::agent_integration_transaction::cleanup::recovery_tests::staged_receipt_recovery_repairs_only_an_exact_post_exchange_state ... ok
+test workspace::agent_integration_transaction::cleanup::security_tests::committed_cleanup_rejects_hardlinks_symlinks_extras_and_identity_conflicts ... ok
+test workspace::agent_integration_transaction::cleanup::security_tests::receipt_only_cleanup_rejects_an_unexpected_hard_link ... ok
+test workspace::agent_integration_transaction::cleanup::special_file_tests::completion_recovery_rejects_fifo_survivor_without_blocking ... 
+running 1 test
+test workspace::agent_integration_transaction::cleanup::special_file_tests::completion_recovery_rejects_fifo_survivor_without_blocking ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 281 filtered out; finished in 0.12s
+
+ok
+test workspace::agent_integration_transaction::cleanup::tests::every_post_exchange_cleanup_fault_retains_retry_authority ... ok
+test workspace::agent_integration_transaction::cleanup::tests::recovery_redurabilizes_the_receipt_before_deleting_any_witness ... ok
+test workspace::agent_integration_transaction::coverage_tests::transaction_collision_and_malformed_cleanup_remain_explicit ... ok
+test workspace::agent_integration_transaction::witnesses::coverage_tests::witness_staging_rejects_non_files_and_mode_persistence_failure ... ok
+test workspace::agent_integration_transaction::witnesses::coverage_tests::witness_verification_rejects_a_missing_canonical_target ... ok
+test workspace::agent_integration_transaction_recovery::coverage_tests::coverage_recovery_error_types_and_legacy_classifier_are_explicit ... ok
+test workspace::agent_integration_transaction_recovery::coverage_tests::coverage_recovery_inspection_faults_and_invalid_shapes_fail_closed ... ok
+test workspace::agent_integration_transaction_recovery::coverage_tests::coverage_recovery_rejects_mismatched_version_plan_and_target_shapes ... ok
+test workspace::agent_integration_transaction_recovery::coverage_tests::coverage_recovery_rejects_non_utf8_and_symlink_children ... ok
+test workspace::agent_integration_transaction_recovery::coverage_tests::coverage_recovery_rejects_post_exchange_mode_drift ... ok
+test workspace::agent_integration_transaction_recovery::coverage_tests::coverage_recovery_retains_oversized_witnesses ... ok
+test workspace::retrieval::matching::tests::boundaries_and_maximum_query_fit ... ok
+test workspace::retrieval::matching::tests::full_body_context_remains_authoritative ... ok
+test workspace::retrieval::matching::tests::literal_windows_preserve_unicode_and_first_match ... ok
+test workspace::tests::agent_integration::agent_status_and_apply_propagate_owned_boundary_failures ... ok
+test workspace::tests::agent_integration::concurrent_agent_integration_applies_share_one_workspace_authority ... ok
+test workspace::tests::agent_integration::instruction_content_covers_empty_markers_newlines_and_legacy_identity ... ok
+test workspace::tests::agent_integration::public_agent_integration_status_validator_rejects_cross_field_drift ... ok
+test workspace::tests::agent_integration_publication::append_identity::append_rejects_a_multiply_linked_source_before_any_effect ... ok
+test workspace::tests::agent_integration_publication::append_publication_preserves_concurrently_observed_instruction_bytes ... ok
+test workspace::tests::agent_integration_publication::instruction_publication_covers_noop_races_and_atomic_failures ... ok
+test workspace::tests::agent_integration_publication::post_publication_cleanup_failures_are_ambiguous_effects ... ok
+test workspace::tests::agent_integration_recovery::completed_create_alias_and_append_rename_reach_identical_retry ... ok
+test workspace::tests::agent_integration_recovery::installed_retry_rejects_resealed_transition_tamper ... ok
+test workspace::tests::agent_integration_recovery::instruction_size_budget_accepts_the_boundary_and_rejects_one_byte_over ... ok
+test workspace::tests::agent_integration_recovery::pending_instruction_mismatch_multiplicity_and_symlink_fail_closed ... ok
+test workspace::tests::agent_integration_recovery::pending_instruction_recovery_is_plan_bound_and_retryable ... ok
+test workspace::tests::agent_integration_staging_cleanup::staging_cleanup_cannot_follow_a_replaced_transaction_directory ... ok
+test workspace::tests::agent_integration_staging_cleanup::staging_cleanup_rejects_a_fifo_before_any_deletion_without_blocking ... 
+running 1 test
+test workspace::tests::agent_integration_staging_cleanup::staging_cleanup_rejects_a_fifo_before_any_deletion_without_blocking ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 281 filtered out; finished in 0.00s
+
+ok
+test workspace::tests::agent_integration_transaction::append_publication_keeps_the_canonical_instruction_path_bound ... ok
+test workspace::tests::agent_integration_transaction::append_transaction_symlink_content_fails_closed_without_path_escape ... ok
+test workspace::tests::agent_integration_transaction::planned_only_missing_target_is_ambiguous_and_preserves_recovery_bytes ... ok
+test workspace::tests::agent_integration_transaction::recovery_stops_at_the_closed_transaction_child_budget ... ok
+test workspace::tests::agent_integration_transaction::versioned_append_recovery_completes_exact_states_and_retains_unknown_bytes ... ok
+test workspace::tests::agent_integration_transaction_permissions::creation::transaction_creation_fails_before_effect_when_parent_cannot_be_observed ... ok
+test workspace::tests::agent_integration_transaction_permissions::creation::transaction_creation_retains_ambiguous_post_mkdir_effects ... ok
+test workspace::tests::agent_integration_transaction_permissions::creation::transaction_directory_permission_predicate_is_strict ... ok
+test workspace::tests::agent_integration_transaction_permissions::private_agent_integration_staging_respects_permission_ceilings ... 
+running 1 test
+test workspace::tests::agent_integration_transaction_permissions::private_agent_integration_staging_respects_permission_ceilings ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 281 filtered out; finished in 0.06s
+
+
+running 1 test
+test workspace::tests::agent_integration_transaction_permissions::private_agent_integration_staging_respects_permission_ceilings ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 281 filtered out; finished in 0.04s
+
+ok
+test workspace::tests::coverage_edges::authority_initialization_retry_restores_the_exact_anchored_record ... ok
+test workspace::tests::coverage_edges::history_traversal_enqueues_each_newly_ready_record ... ok
+test workspace::tests::coverage_edges::initialization_propagates_pre_manifest_authority_snapshot_failure ... ok
+test workspace::tests::coverage_edges::ordinary_mutation_rejects_a_missing_review_trust_anchor ... ok
+test workspace::tests::coverage_edges::review_projection_rejects_invalid_duplicate_and_ambiguous_authorities ... ok
+test workspace::tests::coverage_edges::unanchored_ai_claim_reports_the_irreversible_promotion_boundary ... ok
+test workspace::tests::coverage_edges::unanchored_initialization_retry_rejects_a_rogue_authority ... ok
+test workspace::tests::handoff_expanded::handoff_validation_rejects_every_identity_boundary ... ok
+test workspace::tests::handoff_expanded::handoff_validation_rejects_nested_forgery_and_budget_bypass ... ok
+test workspace::tests::handoff_validation::projection_validation_covers_nested_kinds_and_budgets ... ok
+test workspace::tests::handoff_validation::relationship_validation_covers_nested_identity_and_budgets ... ok
+test workspace::tests::handoff_validation_receipt::handoff_deserialization_rejects_unknown_nested_validation_fields ... ok
+test workspace::tests::handoff_validation_receipt::handoff_receipt_diagnostic_uses_the_validation_schema_character_boundaries ... ok
+test workspace::tests::handoff_validation_receipt::handoff_receipt_errors_use_the_validation_schema_character_boundaries ... ok
+test workspace::tests::handoff_validation_receipt::handoff_receipt_rejects_invalid_error_text ... ok
+test workspace::tests::handoff_validation_receipt::handoff_rejects_mismatched_protocol_authority_with_recomputed_result_digest ... ok
+test workspace::tests::handoff_validation_receipt::handoff_rejects_new_agent_status_without_installed_protocol ... ok
+test workspace::tests::handoff_validation_receipt::handoff_v2_rejects_empty_workspace_identity_even_with_recomputed_receipt ... ok
+test workspace::tests::handoff_validation_receipt::handoff_validation_receipt_binds_result_context_and_project ... ok
+test workspace::tests::handoff_validation_receipt::handoff_validation_rejects_output_larger_than_the_inspection_budget ... ok
+test workspace::tests::handoff_validation_receipt::legacy_handoff_rejects_an_unverified_validation_receipt ... ok
+test workspace::tests::initialization_rejects_conflicting_existing_identity ... ok
+test workspace::tests::inventory_authority_coverage::empty_bootstrap_scaffold_is_retryable_after_pre_marker_failures ... ok
+test workspace::tests::inventory_authority_coverage::existing_workspace_reconciliation_does_not_require_randomness ... ok
+test workspace::tests::inventory_authority_coverage::identical_inventory_read_failure_propagates_from_apply ... ok
+test workspace::tests::inventory_authority_coverage::inventory_apply_rejects_a_malformed_plan_authority_before_effects ... ok
+test workspace::tests::inventory_authority_coverage::inventory_authority_helpers_reject_invalid_and_unreachable_shapes ... ok
+test workspace::tests::inventory_authority_coverage::inventory_initialization_rejects_invalid_key_and_workspace_identity ... ok
+test workspace::tests::inventory_authority_coverage::inventory_planning_propagates_each_authority_stage ... ok
+test workspace::tests::inventory_authority_coverage::legacy_unanchored_plan_is_verified_only_against_unanchored_state ... ok
+test workspace::tests::inventory_bootstrap_coverage::appeared_partial_workspace_is_rejected_before_initialization_effects ... ok
+test workspace::tests::inventory_bootstrap_coverage::inventory_application_requires_explicit_bootstrap_and_propagates_anchored_init_failure ... ok
+test workspace::tests::inventory_bootstrap_coverage::inventory_apply_rejects_a_workspace_that_appeared_after_planning ... ok
+test workspace::tests::inventory_bootstrap_coverage::inventory_apply_rejects_authority_mode_and_key_changes_after_planning ... ok
+test workspace::tests::inventory_bootstrap_coverage::inventory_apply_rejects_missing_or_corrupt_anchored_authority ... ok
+test workspace::tests::inventory_bootstrap_coverage::reconciliation_rejects_an_authority_replaced_after_planning ... ok
+test workspace::tests::inventory_bootstrap_faults::bootstrap_creation_and_cleanup_faults_are_explicit ... ok
+test workspace::tests::inventory_bootstrap_faults::bootstrap_marker_identity_requires_every_canonical_field ... ok
+test workspace::tests::inventory_bootstrap_faults::bootstrap_missing_workspace_and_corrupt_marker_fail_closed ... ok
+test workspace::tests::inventory_bootstrap_faults::bootstrap_post_initialization_lock_failure_is_retryable ... ok
+test workspace::tests::inventory_bootstrap_faults::bootstrap_rejects_a_symlinked_state_boundary ... ok
+test workspace::tests::inventory_bootstrap_faults::bootstrap_scaffold_faults_preserve_a_retryable_boundary ... ok
+test workspace::tests::inventory_bootstrap_faults::bootstrap_scaffold_rejects_symlinked_state_entries ... ok
+test workspace::tests::inventory_bootstrap_faults::new_bootstrap_rejects_an_injected_unexpected_effect ... ok
+test workspace::tests::inventory_bootstrap_faults::normal_workspace_handoff_never_republishes_a_losing_plan_marker ... ok
+test workspace::tests::inventory_bootstrap_faults::partial_bootstrap_scaffolds_reject_unexpected_shapes ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::canonical_bootstrap_marker_rejects_unknown_fields_before_effects ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::canonical_marker_conflict_preserves_requested_plan_pending_evidence ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::conflicting_pending_bootstrap_markers_fail_closed ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::exact_pending_bootstrap_marker_is_recovered_after_pre_link_crash ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::linked_bootstrap_marker_cleans_only_exact_pending_state ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::linked_bootstrap_pending_inspection_faults_fail_closed ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::pending_bootstrap_marker_cannot_coexist_with_other_state ... ok
+test workspace::tests::inventory_bootstrap_pending_faults::pending_bootstrap_marker_symlinks_fail_before_reading ... ok
+test workspace::tests::inventory_budgets::inventory_count_and_byte_budgets_accept_the_limit_and_reject_the_next_unit ... ok
+test workspace::tests::inventory_expanded::inventory_lifecycle_rejects_identity_conflicts_and_stale_authority ... ok
+test workspace::tests::inventory_expanded::material_classification_covers_each_declared_class ... ok
+test workspace::tests::inventory_expanded::material_scan_propagates_storage_failures_and_budgets ... ok
+test workspace::tests::inventory_expanded::material_scan_rejects_unsupported_entries ... ok
+test workspace::tests::inventory_expanded::reconciliation_classifies_every_change_without_inference ... ok
+test workspace::tests::inventory_expanded::reconciliation_distinguishes_each_fingerprint_and_consumes_only_exact_moves ... ok
+test workspace::tests::inventory_failure_expanded::inventory_application_propagates_each_post_scan_authority_failure ... ok
+test workspace::tests::inventory_failure_expanded::inventory_application_propagates_exact_root_record_and_latest_failures ... ok
+test workspace::tests::inventory_failure_expanded::inventory_application_propagates_owned_storage_failures ... ok
+test workspace::tests::inventory_failure_expanded::inventory_planning_propagates_manifest_and_prior_inventory_failures ... ok
+test workspace::tests::inventory_failure_expanded::inventory_planning_propagates_validation_and_storage_failures ... ok
+test workspace::tests::inventory_failure_expanded::inventory_read_and_latest_snapshot_failures_are_explicit ... ok
+test workspace::tests::inventory_failure_expanded::material_scan_enforces_file_count_budget ... ok
+test workspace::tests::inventory_failure_expanded::material_scan_propagates_each_symlink_recheck_boundary ... ok
+test workspace::tests::inventory_failure_expanded::material_scan_propagates_relative_root_discovery_failure ... ok
+test workspace::tests::inventory_failure_expanded::material_scan_rejects_a_symlinked_root ... ok
+test workspace::tests::inventory_policy::child_workspace_records_only_canonical_identity ... ok
+test workspace::tests::inventory_policy::declarations_fail_closed_when_missing_overlapping_or_symlinked ... ok
+test workspace::tests::inventory_policy::legacy_policy_is_inherited_until_explicit_migration ... ok
+test workspace::tests::inventory_policy::reference_only_root_is_visible_without_descendant_inspection ... ok
+test workspace::tests::inventory_policy::undeclared_nested_workspace_and_malformed_identity_fail_closed ... ok
+test workspace::tests::inventory_policy_child_identity::child_workspace_identity_cannot_collide_with_its_parent ... ok
+test workspace::tests::inventory_policy_failures::configured_file_aggregate_and_entry_exhaustion_fail_closed ... ok
+test workspace::tests::inventory_policy_failures::inventory_publication_failure_leaves_no_partial_canonical_record ... ok
+test workspace::tests::inventory_policy_failures::malformed_and_missing_policy_inputs_fail_before_scanning ... ok
+test workspace::tests::inventory_policy_failures::repeated_plans_are_byte_deterministic ... ok
+test workspace::tests::inventory_policy_failures::twenty_thousand_entry_inventory_uses_the_bounded_atomic_record_path ... ok
+test workspace::tests::inventory_policy_limits::policy_supports_explicit_totals_above_sixty_four_gibibytes ... ok
+test workspace::tests::inventory_protocol_coverage::inventory_retry_propagates_both_snapshot_and_identity_reads ... ok
+test workspace::tests::inventory_tamper::inventory_apply_propagates_locked_rescan_failure ... ok
+test workspace::tests::inventory_tamper::inventory_apply_recomputes_semantic_changes_under_lock ... ok
+test workspace::tests::inventory_tamper::inventory_apply_rejects_an_under_lock_change ... ok
+test workspace::tests::inventory_tamper::inventory_apply_rejects_genuine_ambiguous_moves ... ok
+test workspace::tests::inventory_tamper::inventory_apply_rejects_material_changes_after_planning ... ok
+test workspace::tests::knowledge_expanded::knowledge_and_relationship_identical_record_reads_propagate ... ok
+test workspace::tests::knowledge_expanded::knowledge_mutations_propagate_validation_reference_lock_and_identity_failures ... ok
+test workspace::tests::knowledge_expanded::knowledge_relations_resolve_every_entity_kind_and_remain_idempotent ... ok
+test workspace::tests::knowledge_expanded::knowledge_writers_propagate_snapshot_identity_capacity_and_publication_failures ... ok
+test workspace::tests::lifecycle_publication::authority_publication_failure_never_exposes_a_manifest ... ok
+test workspace::tests::lifecycle_publication::authority_state_read_failures_preserve_the_discovery_boundary ... ok
+test workspace::tests::lifecycle_publication::conflicting_retry_cannot_expose_a_staged_authority ... ok
+test workspace::tests::lifecycle_publication::contribution_protocol_publication_failures_propagate_on_init_and_retry ... ok
+test workspace::tests::lifecycle_publication::existing_invalid_workspace_is_not_activated_before_validation ... ok
+test workspace::tests::lifecycle_publication::existing_legacy_workspace_requires_typed_migration_for_activation ... ok
+test workspace::tests::lifecycle_publication::fresh_activation_interruption_leaves_one_recoverable_batch ... ok
+test workspace::tests::lifecycle_publication::malformed_protocol_blocks_authority_recovery_before_publication ... ok
+test workspace::tests::migration_expanded::migration_authority_propagates_storage_and_path_failures ... ok
+test workspace::tests::migration_expanded::migration_planning_and_application_fail_closed_at_authority_boundaries ... ok
+test workspace::tests::migration_expanded::migration_retry_reports_protocol_repair_as_an_effect ... ok
+test workspace::tests::migration_expanded::optional_recovery_accepts_legacy_absence_and_current_empty_directories ... ok
+test workspace::tests::migration_expanded::optional_recovery_propagates_each_collection_and_record_failure ... ok
+test workspace::tests::migration_failure_expanded::migration_application_propagates_record_snapshot_and_publication_failures ... ok
+test workspace::tests::migration_failure_expanded::migration_application_propagates_validation_root_and_directory_failures ... ok
+test workspace::tests::migration_failure_expanded::migration_interruption_never_publishes_a_protocol_only_state ... ok
+test workspace::tests::migration_failure_expanded::migration_manifest_fingerprint_and_identical_record_failures_propagate ... ok
+test workspace::tests::migration_failure_expanded::migration_plan_reader_and_authority_recursion_propagate_failures ... ok
+test workspace::tests::migration_failure_expanded::migration_planning_propagates_root_manifest_authority_and_validation_failures ... ok
+test workspace::tests::migration_failure_expanded::migration_propagates_contribution_protocol_publication_failure ... ok
+test workspace::tests::migration_failure_expanded::migration_recovery_publishes_protocol_before_record ... ok
+test workspace::tests::migration_failure_expanded::migration_validates_activation_directory_before_publication ... ok
+test workspace::tests::migration_protocol_retry::identical_migration_repair_validates_references_before_activation ... ok
+test workspace::tests::migration_protocol_retry::identical_migration_retry_recovers_its_pending_protocol ... ok
+test workspace::tests::migration_protocol_retry::migration_detects_protocol_deletion_after_planning ... ok
+test workspace::tests::non_history_relationship_may_close_a_history_path ... ok
+test workspace::tests::records::corrupted_references_block_status_validation_and_recovery ... ok
+test workspace::tests::records::direct_workspace_journey_exercises_every_record_authority ... ok
+test workspace::tests::records::discovery_stops_at_the_nearest_state_boundary ... ok
+test workspace::tests::records::reference_validation_reports_every_invalid_relationship ... ok
+test workspace::tests::records::semantic_reference_failures_leave_no_effect ... ok
+test workspace::tests::recovery::injected_recovery_faults_preserve_pending_effects ... ok
+test workspace::tests::recovery::pending_filename_recovers_exact_target ... ok
+test workspace::tests::recovery::pending_review_rejects_a_stale_subject_digest ... ok
+test workspace::tests::recovery::post_mutation_recovery_sync_failures_are_ambiguous ... ok
+test workspace::tests::recovery::recovery_cannot_bootstrap_an_unanchored_review_authority ... ok
+test workspace::tests::recovery::recovery_rejects_an_anchored_manifest_without_its_authority ... ok
+test workspace::tests::recovery::valid_pending_records_recover_in_dependency_order ... ok
+test workspace::tests::recovery_coverage_edges::migration_recovery_rejects_other_new_effects ... ok
+test workspace::tests::recovery_coverage_edges::recovered_inventory_rechecks_prior_authority_and_missing_candidates ... ok
+test workspace::tests::recovery_coverage_edges::recovery_rejects_batches_with_multiple_new_semantic_authorities ... ok
+test workspace::tests::recovery_coverage_edges::recovery_target_ids_reject_non_utf8_names ... ok
+test workspace::tests::recovery_semantic_coverage::migration_target_ids_and_missing_candidates_fail_closed ... ok
+test workspace::tests::recovery_semantic_coverage::optional_preflight_and_identical_discard_propagate_owned_reads ... ok
+test workspace::tests::recovery_semantic_coverage::recovered_semantics_propagate_scan_and_migration_authority_failures ... ok
+test workspace::tests::recovery_semantic_coverage::recovery_batch_propagates_optional_collection_failure ... ok
+test workspace::tests::recovery_semantic_coverage::recovery_does_not_activate_an_idle_legacy_workspace ... ok
+test workspace::tests::recovery_semantic_coverage::recovery_requires_one_valid_contribution_protocol ... ok
+test workspace::tests::retrieval_boundaries::derived_work_views_propagate_invalid_reference_status ... ok
+test workspace::tests::retrieval_boundaries::projection_sort_deduplicates_and_truncates ... ok
+test workspace::tests::retrieval_expanded::retrieval_projects_every_canonical_reference_and_history_state ... ok
+test workspace::tests::retrieval_failure_expanded::every_retrieval_route_propagates_limits_and_snapshot_failures ... ok
+test workspace::tests::retrieval_failure_expanded::handoff_propagates_bundle_validation_failure ... ok
+test workspace::tests::review_authority_coverage::review_authority_construction_and_preparation_propagate_owned_validation ... ok
+test workspace::tests::review_authority_coverage::review_authorization_propagates_request_snapshot_key_and_nested_validation ... ok
+test workspace::tests::review_authority_coverage::review_preparation_rejects_tampered_key_and_manifest_anchor ... ok
+test workspace::tests::review_authority_coverage::review_publication_propagates_record_inspection_and_signature_failures ... ok
+test workspace::tests::review_binding_expanded::legacy_and_missing_experiment_bindings_are_stale ... ok
+test workspace::tests::review_binding_expanded::review_binding_covers_experiment_artifact_and_stale_authority ... ok
+test workspace::tests::review_binding_expanded::review_binding_propagates_snapshot_load_failure ... ok
+test workspace::tests::review_binding_expanded::review_graph_validation_uses_one_canonical_binding ... ok
+test workspace::tests::review_binding_expanded::review_writes_require_exact_current_subject_and_known_claim ... ok
+test workspace::tests::review_binding_policy::review_binding_uses_the_current_inventory_file_limit ... ok
+test workspace::tests::review_signing::review_authorization_rejects_missing_and_mismatched_authority_metadata ... ok
+test workspace::tests::security_findings::decoy_manifests_cannot_create_bootstrap_effects ... ok
+test workspace::tests::security_findings::invalid_new_workspace_plan_leaves_no_bootstrap_authority ... ok
+test workspace::tests::security_findings::manifest_inspection_races_fail_before_bootstrap_effects ... ok
+test workspace::tests::security_findings::precreated_bootstrap_scaffold_cannot_bypass_authority_validation ... ok
+test workspace::tests::security_findings::review_binding_rejects_a_fifo_swap_during_open ... ok
+test workspace::tests::security_findings::review_binding_rejects_fifo_artifacts_before_opening ... ok
+test workspace::tests::security_findings::symlinked_manifest_cannot_create_bootstrap_effects ... ok
+test workspace::tests::snapshot_expanded::expanded_optional_snapshot_loads_propagate_owned_failures ... ok
+test workspace::tests::sshsig::openssh_key_parser_rejects_each_malformed_boundary ... ok
+test workspace::tests::sshsig::openssh_key_parser_rejects_weak_ed25519_authorities ... ok
+test workspace::tests::sshsig::sshsig_verifier_rejects_malformed_envelopes_and_accepts_sha256 ... ok
+test workspace::tests::staging_cleanup_failures_are_ambiguous_at_each_durability_boundary ... ok
+test workspace::tests::staging_cleanup_rejects_unexpected_or_linked_witnesses_before_deletion ... ok
+test workspace::tests::staging_cleanup_removes_the_closed_witness_set_through_held_descriptors ... ok
+test workspace::tests::staging_cleanup_unlink_failure_cannot_partially_delete_witnesses ... ok
+test workspace::tests::status_authority::mixed_review_authority_identity_fails_closed_in_status ... ok
+test workspace::tests::storage::bounded_record_read_rejects_fifo_swap_without_blocking ... ok
+test workspace::tests::storage::bounded_storage_and_directory_shapes_fail_closed ... ok
+test workspace::tests::storage::injected_storage_faults_prove_ambiguous_and_racing_effect_contracts ... ok
+test workspace::tests::storage::pending_cleanup_reports_removal_and_directory_sync_failures ... ok
+test workspace::tests::storage::standard_macos_temporary_alias_is_allowed_only_at_its_known_target ... ok
+test workspace::tests::storage::symlinked_paths_are_rejected_at_each_storage_boundary ... ok
+test workspace::tests::storage::symlinked_state_directory_is_rejected ... ok
+test workspace::tests::storage::write_lock_contention_fails_before_a_second_transaction ... ok
+test workspace::tests::storage::write_lock_rejects_a_symlinked_lock_path ... ok
+test workspace::tests::validation_limits::validation_reports_a_deterministic_error_budget_overflow ... ok
+test workspace::tests::witness_sync_cannot_follow_a_replaced_transaction_symlink_to_fifo ... 
+running 1 test
+test workspace::tests::witness_sync_cannot_follow_a_replaced_transaction_symlink_to_fifo ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 281 filtered out; finished in 0.01s
+
+ok
+test workspace::tests::witness_sync_rejects_a_replaced_transaction_directory ... ok
+
+test result: ok. 282 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.31s
+
+     Running unittests src/main.rs (target/llvm-cov-target/debug/deps/research_run-93f039d69e83240e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/product.rs (target/llvm-cov-target/debug/deps/product-14c3ad5139c91d4e)
+
+running 138 tests
+test agent_integration_activation_defense::direct_managed_block_write_cannot_satisfy_agent_readiness ... ok
+test agent_integration_activation_defense::invalid_reference_paths_abort_before_a_portable_handoff_exists ... ok
+test agent_integration_activation_defense::pending_recovery_paths_stay_out_of_portable_receipts ... ok
+test agent_integration_defense::conflicting_managed_content_and_symlinks_fail_closed ... ok
+test agent_integration_defense::direct_canonical_mutation_cannot_satisfy_agent_readiness ... ok
+test agent_integration_defense::empty_instruction_file_remains_an_append_target ... ok
+test agent_integration_defense::existing_instructions_are_preserved_and_drift_conflicts ... ok
+test agent_integration_defense::override_is_active_and_plan_input_is_not_linkable ... ok
+test agent_integration_defense::tampered_plan_cannot_escape_the_project_instruction_surface ... ok
+test agent_integration_hardlink::multiply_linked_append_source_is_rejected_before_effect_and_retryable ... ok
+test agent_integration_journey::human_integration_output_preserves_the_new_run_boundary ... ok
+test agent_integration_journey::material_human_decision_uses_supported_agent_ready_journey ... ok
+test agent_integration_quickstart::source_checkout_quickstart_keeps_the_reviewed_plan_outside_the_workspace ... ok
+test contribution_protocol_journey::activated_project_confronts_agent_with_retrieve_capture_validate_contract ... ok
+test contribution_protocol_journey::activation_policy_fails_closed_and_cannot_promote_agent_claims ... ok
+test data_contracts::checked_in_synthetic_example_is_valid_and_reports_limited_claim ... ok
+test data_contracts::every_v2_schema_is_well_formed_json ... ok
+test data_contracts::every_versioned_schema_is_well_formed_json ... ok
+test data_contracts::instruction_inspection_failure_does_not_invalidate_the_canonical_ledger ... ok
+test data_contracts::projection_timestamps_use_the_shared_utc_contract ... ok
+test data_contracts_agent_integration::agent_integration_plan_schema_enforces_operation_identity_invariants ... ok
+test data_contracts_agent_integration::agent_integration_plan_workspace_identity_preserves_legacy_shape ... ok
+test data_contracts_handoff_schema::handoff_schema_enforces_versioned_identity_and_receipts ... ok
+test data_contracts_validation_schema::validation_projection_versions_have_distinct_immutable_authority ... ok
+test data_contracts_validation_schema::validation_v2_receipt_text_schema_uses_character_boundaries ... ok
+test data_contracts_validation_schema::validation_v2_schema_rejects_contradictory_readiness_receipt ... ok
+test domain_boundaries::domain_validators_reject_each_illegal_state_class ... ok
+test domain_boundaries::manifest_identity_is_deterministic ... ok
+test domain_boundaries::record_fields::each_evidence_reference_fails_independently ... ok
+test domain_boundaries::record_fields::each_experiment_field_fails_independently ... ok
+test domain_boundaries::record_fields::each_record_field_fails_independently ... ok
+test handoff_defense::handoff_inspection_rejects_unknown_versions_and_forged_ceiling ... ok
+test handoff_human::human_inspection_preserves_failed_validation_and_unavailable_integration ... ok
+test handoff_human::legacy_v1_handoff_without_activation_protocol_remains_inspectable ... ok
+test handoff_journey::fresh_process_consumes_handoff_without_source_workspace ... ok
+test identifier_validation::identifiers_and_paths_fail_closed ... ok
+test knowledge_history::every_knowledge_class_is_typed_and_history_is_append_only ... ok
+test knowledge_history::relationship_references_and_history_cycles_fail_before_effect ... ok
+test knowledge_history::structured_file_input_rejects_missing_directory_oversized_and_symlink_paths ... ok
+test knowledge_history::structured_stdin_is_supported_without_promoting_claims ... ok
+test migration_journey::accepted_v01_workspace_migrates_without_rewriting_authority ... ok
+test migration_journey::migration_rejects_stale_authority_before_effect ... ok
+test repository_authority::active_execplan_scopes_the_pr12_merge_exception_without_waiving_coverage ... ok
+test repository_authority::policy_preserves_review_and_proof_claim_ceilings ... ok
+test repository_authority::release_version_reader_uses_the_package_table ... ok
+test repository_authority::repository_check_entrypoints_are_executable ... ok
+test repository_authority::router_reaches_every_current_authority_surface ... ok
+test researcher_journey::clean_clone_journey_preserves_negative_results_and_claim_ceiling ... ok
+test researcher_journey::value_variants::human_commands_cover_every_public_value_variant ... ok
+test resilience::capacity::each_write_boundary_rejects_the_first_record_beyond_capacity ... ok
+test resilience::cli_boundaries::installed_cli_covers_empty_projection_artifacts_and_command_effect_failures ... ok
+test resilience::cli_boundaries::publication_failures::installed_cli_rejects_corrupt_manifest_and_record_shapes ... ok
+test resilience::cli_boundaries::publication_failures::installed_cli_rejects_lifecycle_and_publication_failures ... ok
+test resilience::coverage_completion::installed_retrofit_covers_scan_ordering_and_optional_legacy_state ... ok
+test resilience::coverage_completion::installed_retrofit_inspects_the_empty_bootstrap_scaffold_under_lock ... ok
+test resilience::coverage_completion::installed_retrofit_reports_exact_plan_recovery_after_publication_lock_fault ... ok
+test resilience::coverage_completion::installed_structured_commands_cover_parse_history_and_output_boundaries ... error: cannot write standard output stdout: Broken pipe (os error 32)
+ok
+test resilience::diagnostics::expanded_command_wrappers_propagate_owned_failures ... ok
+test resilience::diagnostics::installed_output_propagates_closed_stdout_and_stderr ... ok
+test resilience::diagnostics::public_errors_render_without_exposing_hidden_state ... ok
+test resilience::diagnostics::structured_input_read_failures_propagate_from_file_and_stdin ... ok
+test resilience::expanded_diagnostics::installed_inventory_reader_rejects_semantically_invalid_plan ... ok
+test resilience::expanded_diagnostics::installed_retrofit_scan_propagates_both_file_symlink_rechecks ... ok
+test resilience::filesystem_lifecycle::every_write_command_propagates_lock_path_failure ... ok
+test resilience::filesystem_lifecycle::installed_process_exercises_each_lifecycle_storage_boundary ... ok
+test resilience::filesystem_lifecycle::snapshot_failures::expanded_snapshot_directories_propagate_malformed_records ... ok
+test resilience::filesystem_lifecycle::snapshot_failures::publication_and_pending_inspection_propagate_storage_failures ... ok
+test resilience::filesystem_lifecycle::snapshot_failures::snapshot_reader_propagates_each_typed_record_failure_boundary ... ok
+test resilience::record_integrity::mutation_authority::identical_record_reads_propagate_storage_failures_for_every_writer ... ok
+test resilience::record_integrity::mutation_authority::manifest_and_record_directory_errors_propagate_at_their_owner ... ok
+test resilience::record_integrity::mutation_authority::maximum_record_budget_remains_idempotent ... ok
+test resilience::record_integrity::mutation_authority::mutations_reject_damaged_authority_and_unbound_reviews ... ok
+test resilience::record_integrity::workspace_add_methods_propagate_each_record_validation_failure ... ok
+test resilience::record_integrity::workspace_add_methods_propagate_snapshot_and_artifact_failures ... ok
+test resilience::recovery::identical_records::compact_reordered_pending_json_publishes_canonical_state ... ok
+test resilience::recovery::identical_records::identical_pending_claim_experiment_and_evidence_are_durable_cleanup ... ok
+test resilience::recovery::installed_process_exercises_artifact_and_recovery_reference_variants ... ok
+test resilience::recovery::installed_process_exercises_recovery_commit_faults ... ok
+test resilience::recovery::installed_process_exercises_recovery_preflight_faults ... ok
+test resilience::recovery::reference_publication::installed_process_recovers_each_typed_reference_and_rejects_existing_review ... ok
+test resilience::recovery::reference_publication::installed_recovery_covers_each_typed_record_boundary ... ok
+test resilience::recovery::reference_publication::recovery_rejects_preexisting_reference_damage_before_publication ... ok
+test resilience::recovery_transitions::manifest_validation::compact_pending_manifests_compare_as_canonical_state ... ok
+test resilience::recovery_transitions::manifest_validation::recovery_batch_rejects_manifest_parse_validation_and_directory_failures ... ok
+test resilience::recovery_transitions::manifest_validation::recovery_rejects_a_record_published_under_another_identity ... ok
+test resilience::recovery_transitions::pending_manifest_experiment_evidence_and_review_fail_closed ... ok
+test resilience::recovery_transitions::recover_propagates_lock_and_final_snapshot_failures ... ok
+test resilience::recovery_transitions::recovery_batch_propagates_collection_manifest_and_pending_budget_failures ... ok
+test resilience::recovery_transitions::review_binding::single_pending_review_recovers_without_false_duplicate ... ok
+test resilience::recovery_transitions::review_publication::recovery_plan_propagates_each_storage_transition ... ok
+test resilience::reference_integrity::command_references::installed_commands_reject_missing_references_and_duplicate_reviews ... ok
+test resilience::reference_integrity::command_references::installed_reader_rejects_filename_type_and_snapshot_budgets ... ok
+test resilience::reference_integrity::installed_validation_reports_each_cross_record_reference_failure ... ok
+test resilience::storage::directory_discovery::every_installed_current_workspace_command_propagates_discovery_failure ... ok
+test resilience::storage::directory_discovery::installed_process_exercises_directory_race_and_current_directory_faults ... ok
+test resilience::storage::directory_discovery::installed_process_rejects_symlink_ancestors_and_non_utf8_entries ... ok
+test resilience::storage::installed_process_exercises_atomic_publication_fault_boundaries ... ok
+test resilience::storage::installed_process_exercises_read_and_lock_fault_boundaries ... ok
+test resilience::storage::installed_process_rejects_publication_and_read_identity_races ... ok
+test retrieval_journey::bounded_retrieval_commands_explain_matches_and_preserve_history ... ok
+test retrieval_journey::defense::retrieval_rejects_empty_queries_and_invalid_limits ... ok
+test retrieval_journey::tail_text::compatibility::tail_text_query_byte_budget_and_search_limit_fail_closed ... ok
+test retrieval_journey::tail_text::compatibility::tail_text_typed_identity_and_existing_matches_preserve_projections ... ok
+test retrieval_journey::tail_text::tail_text_order_limits_and_history_remain_visible ... ok
+test retrieval_journey::tail_text::tail_text_search_context_and_handoff_preserve_canonical_bytes ... ok
+test retrieval_journey::tail_text::tail_text_unicode_literal_excerpts_and_terminal_escaping ... ok
+test retrofit_journey::retrofit_fails_closed_on_stale_plan_and_symlink ... ok
+test retrofit_journey::retrofit_preserves_bytes_and_reconcile_records_a_move ... ok
+test retry_behavior::identical_retry_is_idempotent_and_conflicting_identity_fails_closed ... ok
+test review_authority::each_review_authority_field_fails_independently ... ok
+test review_authority::signature_flow::a_signed_request_cannot_replay_into_a_same_name_workspace ... ok
+test review_authority::signature_flow::only_an_exact_signature_from_the_enrolled_authority_promotes ... ok
+test review_authority::signature_flow::post_initialization_caller_cannot_enroll_a_self_selected_authority ... ok
+test workspace_defense::claims::ai_drafts_evidence_and_retry_cannot_promote_a_claim ... ok
+test workspace_defense::claims::unknown_reference_and_path_escape_fail_before_effect ... ok
+test workspace_defense::locking::concurrent_review_commands_leave_one_authoritative_decision ... error: cannot acquire workspace write lock /private/var/folders/6n/9_g0pjg51lg2s6hnlnf1q8hh0000gn/T/research-run-adversarial-concurrent-review-30978-2/.research-run/write.lock: operation would block
+Added review review-one
+ok
+test workspace_defense::projection::human_output_neutralizes_record_and_filename_controls ... ok
+test workspace_defense::projection::status_projection_is_byte_deterministic ... ok
+test workspace_defense::recovery::conflict_cleanup::explicit_recovery_completes_init_interrupted_before_manifest_publication ... ok
+test workspace_defense::recovery::conflict_cleanup::identical_pending_review_is_cleanup_not_a_semantic_conflict ... ok
+test workspace_defense::recovery::conflict_cleanup::recovery_preflights_conflicting_pending_content_before_any_publication ... ok
+test workspace_defense::recovery::conflict_cleanup::recovery_rejects_legacy_pending_effect_without_typed_migration ... ok
+test workspace_defense::recovery::conflict_cleanup::symlinked_record_fails_closed_and_does_not_leak_target_content ... ok
+test workspace_defense::recovery::interrupted_publication_requires_explicit_validated_recovery ... ok
+test workspace_defense::recovery::malformed_input_is_rejected_without_echoing_record_content ... ok
+test workspace_defense::recovery::recovery_rejects_pending_records_with_unknown_references ... ok
+test workspace_defense::recovery::recovery_validates_later_directories_before_any_publication ... ok
+test workspace_defense::recovery::security_semantics::invalid_existing_manifest_blocks_every_recovery_effect ... ok
+test workspace_defense::recovery::security_semantics::recovery_accepts_a_migration_bound_to_current_authority ... ok
+test workspace_defense::recovery::security_semantics::recovery_accepts_initial_inventory_bound_to_current_materials ... ok
+test workspace_defense::recovery::security_semantics::recovery_rejects_forged_inventory_authority ... ok
+test workspace_defense::recovery::security_semantics::recovery_rejects_forged_inventory_content_with_valid_identity ... ok
+test workspace_defense::recovery::security_semantics::recovery_rejects_forged_migration_authority ... ok
+test workspace_defense::recovery::security_semantics::recovery_rejects_forged_migration_digest_with_valid_identity ... ok
+test workspace_defense::recovery::security_semantics::recovery_rejects_history_cycles_before_publication ... ok
+test workspace_defense::recovery::size_budget::recovery_rejects_canonical_expansion_before_publication ... ok
+test workspace_defense::review_binding::direct_projection_rejects_duplicate_current_review_authority ... ok
+test workspace_defense::review_binding::review_binding_stales_on_same_id_subject_mutation ... ok
+
+test result: ok. 138 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 163.80s
+
+     Running tests/standards_syntax.rs (target/llvm-cov-target/debug/deps/standards_syntax-4716854575bce07b)
+
+running 2 tests
+test every_rust_declaration_and_span_obeys_semantic_tree_law ... ok
+test parser_fixture_covers_raw_comments_aliases_unions_and_macros ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+
+
+    Finished report saved to <worktree>/target/llvm-cov-target/source-coverage.json
+authoritative production-source coverage failed: {"regions":{"total":14597,"missed":511},"lines":{"total":7577,"missed":156},"functions":{"total":955,"missed":48}}

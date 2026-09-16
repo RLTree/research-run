@@ -1,0 +1,496 @@
+{
+  "workload": "near-budget",
+  "knowledge_records": 1000,
+  "canonical_bytes": 65745856,
+  "cases": [
+    {
+      "command": "search",
+      "query_class": "prefix",
+      "observations": {
+        "baseline": {
+          "first_ms": 69.815167,
+          "output_bytes": 44830,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            70.059292,
+            68.280459,
+            71.808875,
+            69.34975,
+            68.386709,
+            72.126167,
+            70.036291,
+            74.182542,
+            68.504458,
+            73.442667,
+            76.831125,
+            72.744042,
+            73.639917,
+            72.317709,
+            90.816416
+          ],
+          "median_ms": 72.126167,
+          "p95_ms": 90.816416,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 70.182333,
+          "output_bytes": 44830,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            73.154917,
+            72.925291,
+            69.60625,
+            67.837458,
+            68.907416,
+            69.345625,
+            76.949333,
+            73.264625,
+            69.045375,
+            73.821,
+            73.933625,
+            72.84575,
+            71.954917,
+            72.821375,
+            74.0095
+          ],
+          "median_ms": 72.84575,
+          "p95_ms": 76.949333,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "search",
+      "query_class": "tail",
+      "observations": {
+        "baseline": {
+          "first_ms": 71.963416,
+          "output_bytes": 75,
+          "returned": 0,
+          "total_matches": 0,
+          "warm_ms": [
+            83.478125,
+            92.02825,
+            96.186416,
+            72.770083,
+            77.4085,
+            70.372208,
+            68.122,
+            71.513125,
+            74.347375,
+            73.266833,
+            68.738042,
+            74.267083,
+            73.7155,
+            70.691625,
+            77.478375
+          ],
+          "median_ms": 73.7155,
+          "p95_ms": 96.186416,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 210.05475,
+          "output_bytes": 44880,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            204.873,
+            231.922625,
+            227.588458,
+            220.566208,
+            199.99,
+            199.062875,
+            196.197834,
+            195.032375,
+            200.741958,
+            207.7315,
+            194.95475,
+            199.100042,
+            204.47,
+            198.549958,
+            198.382625
+          ],
+          "median_ms": 199.99,
+          "p95_ms": 231.922625,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": true
+    },
+    {
+      "command": "search",
+      "query_class": "absent",
+      "observations": {
+        "baseline": {
+          "first_ms": 71.029917,
+          "output_bytes": 75,
+          "returned": 0,
+          "total_matches": 0,
+          "warm_ms": [
+            69.130334,
+            69.044375,
+            67.653834,
+            72.20375,
+            74.394875,
+            68.007084,
+            72.047542,
+            71.532166,
+            71.571792,
+            73.4175,
+            72.781,
+            67.491584,
+            74.817792,
+            67.063833,
+            67.474792
+          ],
+          "median_ms": 71.532166,
+          "p95_ms": 74.817792,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 75.671541,
+          "output_bytes": 75,
+          "returned": 0,
+          "total_matches": 0,
+          "warm_ms": [
+            73.232583,
+            75.270625,
+            72.418792,
+            74.645833,
+            74.466334,
+            71.2995,
+            76.674833,
+            75.321917,
+            83.318792,
+            74.873084,
+            74.328458,
+            75.884208,
+            76.271208,
+            76.532208,
+            74.23375
+          ],
+          "median_ms": 74.873084,
+          "p95_ms": 83.318792,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "search",
+      "query_class": "common",
+      "observations": {
+        "baseline": {
+          "first_ms": 68.8015,
+          "output_bytes": 44830,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            70.805375,
+            72.073333,
+            72.330875,
+            69.956667,
+            70.838167,
+            70.041584,
+            77.910166,
+            74.880209,
+            69.93375,
+            72.881917,
+            68.839417,
+            77.661083,
+            73.533167,
+            70.865167,
+            71.145
+          ],
+          "median_ms": 71.145,
+          "p95_ms": 77.910166,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 73.018292,
+          "output_bytes": 44830,
+          "returned": 50,
+          "total_matches": 1000,
+          "warm_ms": [
+            72.647583,
+            72.687709,
+            76.958208,
+            68.446958,
+            70.726333,
+            69.505584,
+            74.969959,
+            74.770834,
+            72.677,
+            68.392833,
+            70.182083,
+            78.659125,
+            70.021833,
+            73.168375,
+            70.635625
+          ],
+          "median_ms": 72.647583,
+          "p95_ms": 78.659125,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "context",
+      "query_class": "prefix",
+      "observations": {
+        "baseline": {
+          "first_ms": 71.379667,
+          "output_bytes": 45901,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            70.760417,
+            71.906292,
+            70.211709,
+            67.449875,
+            69.544583,
+            76.613542,
+            72.385834,
+            76.288834,
+            75.886834,
+            77.938208,
+            76.928375,
+            72.170709,
+            77.701084,
+            69.742167,
+            69.483625
+          ],
+          "median_ms": 72.170709,
+          "p95_ms": 77.938208,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 70.183084,
+          "output_bytes": 45901,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            73.924875,
+            79.8155,
+            79.406208,
+            78.318916,
+            68.598167,
+            75.850416,
+            75.418584,
+            70.7335,
+            74.740708,
+            70.580042,
+            74.353709,
+            72.143959,
+            70.744667,
+            69.285375,
+            77.624833
+          ],
+          "median_ms": 74.353709,
+          "p95_ms": 79.8155,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "context",
+      "query_class": "tail",
+      "observations": {
+        "baseline": {
+          "first_ms": 71.071583,
+          "output_bytes": 1147,
+          "returned": 0,
+          "total_matches": null,
+          "warm_ms": [
+            71.004041,
+            68.972917,
+            69.430791,
+            76.531916,
+            68.458083,
+            71.293041,
+            67.912959,
+            76.588625,
+            74.510875,
+            78.791541,
+            76.169375,
+            72.444458,
+            70.092833,
+            67.712917,
+            68.851167
+          ],
+          "median_ms": 71.004041,
+          "p95_ms": 78.791541,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 204.955125,
+          "output_bytes": 45949,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            196.798416,
+            207.896209,
+            193.268,
+            203.06575,
+            190.894084,
+            201.158583,
+            200.331542,
+            218.587125,
+            210.877292,
+            205.31775,
+            208.914667,
+            199.101375,
+            199.747458,
+            194.281125,
+            208.267834
+          ],
+          "median_ms": 201.158583,
+          "p95_ms": 218.587125,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": true
+    },
+    {
+      "command": "context",
+      "query_class": "absent",
+      "observations": {
+        "baseline": {
+          "first_ms": 70.234041,
+          "output_bytes": 1149,
+          "returned": 0,
+          "total_matches": null,
+          "warm_ms": [
+            81.514875,
+            73.299458,
+            75.358167,
+            72.306875,
+            77.820541,
+            69.031583,
+            70.664833,
+            78.187459,
+            74.843,
+            72.730459,
+            71.001958,
+            76.749459,
+            76.019375,
+            71.486,
+            77.208125
+          ],
+          "median_ms": 74.843,
+          "p95_ms": 81.514875,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 84.000041,
+          "output_bytes": 1149,
+          "returned": 0,
+          "total_matches": null,
+          "warm_ms": [
+            82.008833,
+            79.113666,
+            78.86875,
+            75.682125,
+            76.883542,
+            79.624458,
+            82.803917,
+            75.998583,
+            77.867833,
+            75.804917,
+            72.904542,
+            73.271833,
+            75.446709,
+            76.434542,
+            75.451625
+          ],
+          "median_ms": 76.434542,
+          "p95_ms": 82.803917,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": false
+    },
+    {
+      "command": "context",
+      "query_class": "common",
+      "observations": {
+        "baseline": {
+          "first_ms": 70.464666,
+          "output_bytes": 45901,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            71.017166,
+            74.171417,
+            69.050958,
+            76.917125,
+            78.476417,
+            72.310709,
+            78.246333,
+            68.310333,
+            77.744125,
+            72.563833,
+            77.393458,
+            67.344708,
+            69.467917,
+            71.756458,
+            73.399416
+          ],
+          "median_ms": 72.563833,
+          "p95_ms": 78.476417,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        },
+        "candidate": {
+          "first_ms": 69.884417,
+          "output_bytes": 45901,
+          "returned": 50,
+          "total_matches": null,
+          "warm_ms": [
+            74.14275,
+            70.884625,
+            69.492333,
+            69.156,
+            71.923208,
+            72.010583,
+            79.241583,
+            74.787333,
+            70.57425,
+            71.465833,
+            72.554167,
+            70.6,
+            70.813208,
+            72.316,
+            76.82425
+          ],
+          "median_ms": 71.923208,
+          "p95_ms": 79.241583,
+          "rss_tool_exit": 1,
+          "peak_rss_bytes": null
+        }
+      },
+      "review_trigger": false
+    }
+  ],
+  "canonical_unchanged": true
+}

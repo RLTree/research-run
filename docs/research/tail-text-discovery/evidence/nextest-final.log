@@ -1,0 +1,365 @@
+   Compiling research-run v0.1.0 (<worktree>)
+    Finished `test` profile [unoptimized] target(s) in 6.60s
+────────────
+ Nextest run ID f80787c0-b814-4c9c-8f46-433a5f80e3a1 with nextest profile: default
+    Starting 358 tests across 4 binaries
+        PASS [   0.009s] (  1/358) research-run cli::bootstrap_tests::lifecycle_and_inventory_bootstrap_reject_unreachable_cli_shapes
+        PASS [   0.009s] (  2/358) research-run cli::bootstrap_tests::review_authority_bootstrap_rejects_partial_invalid_and_non_utf8_inputs
+        PASS [   0.074s] (  3/358) research-run cli::expanded_lifecycle_tests::handoff_wrapper_covers_success_and_failure
+        PASS [   0.081s] (  4/358) research-run cli::expanded_lifecycle_tests::migration_wrapper_covers_success_and_failure
+        PASS [   0.100s] (  5/358) research-run cli::expanded_lifecycle_tests::structured_wrappers_cover_success_and_failure
+        PASS [   0.010s] (  6/358) research-run cli::expanded_tests::bounded_structured_reader_reports_budget_and_io_failures
+        PASS [   0.081s] (  7/358) research-run cli::expanded_tests::expanded_cli_routes_execute_against_an_injected_workspace
+        PASS [   0.016s] (  8/358) research-run cli::expanded_tests::structured_input_file_size_accepts_the_limit_and_rejects_the_next_byte
+        PASS [   0.008s] (  9/358) research-run cli::expanded_tests::structured_input_rejects_a_post_open_symlink_swap
+        PASS [   0.008s] ( 10/358) research-run cli::expanded_tests::structured_input_rejects_identity_changes_during_open_and_read
+        PASS [   0.008s] ( 11/358) research-run cli::expanded_tests::structured_input_reports_non_not_found_metadata_and_open_failures
+        PASS [   0.008s] ( 12/358) research-run cli::expanded_tests::structured_input_symlink_chain_distinguishes_absence_errors_and_links
+        PASS [   0.007s] ( 13/358) research-run cli::tests::artifact_parser_and_value_arguments_cover_every_semantic_variant
+        PASS [   0.007s] ( 14/358) research-run cli::tests::empty_human_projection_and_current_directory_failure_are_explicit
+        PASS [   0.008s] ( 15/358) research-run cli::tests::every_current_workspace_command_propagates_discovery_failure
+        PASS [   0.008s] ( 16/358) research-run cli::tests::external_artifact_locator_may_contain_colons
+        PASS [   0.008s] ( 17/358) research-run cli::tests::review_tests::review_add_propagates_signature_input_and_post_input_discovery_failures
+        PASS [   0.009s] ( 18/358) research-run domain::agent_integration_tests::agent_integration_plan_rejects_inconsistent_and_modified_content
+        PASS [   0.009s] ( 19/358) research-run domain::agent_integration_tests::agent_integration_plan_validates_each_digest_and_operation_boundary
+        PASS [   0.008s] ( 20/358) research-run domain::calendar_tests::timestamps_obey_gregorian_calendar_dates
+        PASS [   0.008s] ( 21/358) research-run domain::expanded_tests::knowledge_and_relationship_validation_cover_failure_classes
+        PASS [   0.008s] ( 22/358) research-run domain::expanded_tests::migration_and_timestamp_validation_cover_every_boundary
+        PASS [   0.008s] ( 23/358) research-run domain::inventory_tests::inventory_policy_is_versioned_typed_and_fail_closed
+        PASS [   0.009s] ( 24/358) research-run domain::inventory_tests::inventory_validation_covers_every_bounded_shape
+        PASS [   0.008s] ( 25/358) research-run domain::review_tests::review_authority_and_authorization_validate_each_owned_field
+        PASS [   0.008s] ( 26/358) research-run domain::review_tests::review_request_and_nested_authorization_fail_at_each_boundary
+        PASS [   0.008s] ( 27/358) research-run domain::tests::domain_validators_reject_each_illegal_state_class
+        PASS [   0.008s] ( 28/358) research-run domain::tests::identifiers_and_paths_fail_closed
+        PASS [   0.008s] ( 29/358) research-run domain::tests::manifest_identity_is_deterministic
+        PASS [   0.008s] ( 30/358) research-run error::tests::typed_errors_have_stable_meaningful_exit_codes
+        PASS [   0.008s] ( 31/358) research-run error::tests::typed_errors_render_without_record_bodies
+        PASS [   0.008s] ( 32/358) research-run workspace::agent_integration_publication::pending::tests::non_utf8_transaction_artifact_names_are_not_claimed
+        PASS [   0.009s] ( 33/358) research-run workspace::agent_integration_publication::pending::tests::pending_instruction_scan_has_a_deterministic_entry_budget
+        PASS [   0.009s] ( 34/358) research-run workspace::agent_integration_publication::pending::tests::pending_scan_accepts_the_boundary_and_rejects_the_next_root_entry
+        PASS [   0.061s] ( 35/358) research-run workspace::agent_integration_publication::pending::tests::pending_scan_budget_propagates_truthfully_through_plan_apply_and_status
+        PASS [   0.054s] ( 36/358) research-run workspace::agent_integration_publication::pending::tests::root_entry_budget_follows_the_latest_accepted_inventory_policy
+        PASS [   0.008s] ( 37/358) research-run workspace::agent_integration_publication::pending::tests::root_entry_budget_uses_the_default_floor_allowance_and_checked_growth
+        PASS [   0.008s] ( 38/358) research-run workspace::agent_integration_publication::pending::tests::third_recognized_artifact_fails_closed_without_removing_evidence
+        PASS [   0.687s] ( 39/358) research-run workspace::agent_integration_transaction::atomic_exchange::tests::exchange_and_durability_faults_retain_exact_retryable_states_without_fallback
+        PASS [   0.012s] ( 40/358) research-run workspace::agent_integration_transaction::atomic_exchange::tests::exchange_rejects_a_rebound_project_root_before_mutation
+        PASS [   0.100s] ( 41/358) research-run workspace::agent_integration_transaction::atomic_exchange::tests::post_exchange_canonical_mutation_is_retained_as_an_impossible_state
+        PASS [   0.066s] ( 42/358) research-run workspace::agent_integration_transaction::atomic_exchange::tests::post_mkdir_handle_failure_retains_empty_transaction_evidence
+        PASS [   0.420s] ( 43/358) research-run workspace::agent_integration_transaction::atomic_exchange::tests::recovery_rejects_incomplete_unknown_aliased_and_mode_drift_states
+        PASS [   0.659s] ( 44/358) research-run workspace::agent_integration_transaction::atomic_exchange::tests::staged_file_and_pre_exchange_sync_failures_leave_the_original_canonical
+        PASS [   0.008s] ( 45/358) research-run workspace::agent_integration_transaction::cleanup::enumeration_tests::completion_name_validation_rejects_non_utf8_bytes
+        PASS [   0.009s] ( 46/358) research-run workspace::agent_integration_transaction::cleanup::enumeration_tests::completion_scan_rejects_an_unexpected_child_below_budget
+        PASS [   0.010s] ( 47/358) research-run workspace::agent_integration_transaction::cleanup::enumeration_tests::completion_scan_rejects_children_outside_its_closed_set
+        PASS [   0.057s] ( 48/358) research-run workspace::agent_integration_transaction::cleanup::recovery_tests::malformed_terminal_receipt_never_authorizes_transaction_cleanup
+        PASS [   0.095s] ( 49/358) research-run workspace::agent_integration_transaction::cleanup::recovery_tests::post_exchange_recovery_open_failure_is_ambiguous_and_retryable
+        PASS [   0.369s] ( 50/358) research-run workspace::agent_integration_transaction::cleanup::recovery_tests::previous_full_transaction_version_remains_recoverable
+        PASS [   0.197s] ( 51/358) research-run workspace::agent_integration_transaction::cleanup::recovery_tests::staged_receipt_recovery_repairs_only_an_exact_post_exchange_state
+        PASS [   1.017s] ( 52/358) research-run workspace::agent_integration_transaction::cleanup::security_tests::committed_cleanup_rejects_hardlinks_symlinks_extras_and_identity_conflicts
+        PASS [   0.120s] ( 53/358) research-run workspace::agent_integration_transaction::cleanup::security_tests::receipt_only_cleanup_rejects_an_unexpected_hard_link
+        PASS [   0.113s] ( 54/358) research-run workspace::agent_integration_transaction::cleanup::special_file_tests::completion_recovery_rejects_fifo_survivor_without_blocking
+        PASS [   2.568s] ( 55/358) research-run workspace::agent_integration_transaction::cleanup::tests::every_post_exchange_cleanup_fault_retains_retry_authority
+        PASS [   0.551s] ( 56/358) research-run workspace::agent_integration_transaction::cleanup::tests::recovery_redurabilizes_the_receipt_before_deleting_any_witness
+        PASS [   0.008s] ( 57/358) research-run workspace::retrieval::matching::tests::boundaries_and_maximum_query_fit
+        PASS [   0.008s] ( 58/358) research-run workspace::retrieval::matching::tests::full_body_context_remains_authoritative
+        PASS [   0.009s] ( 59/358) research-run workspace::retrieval::matching::tests::literal_windows_preserve_unicode_and_first_match
+        PASS [   0.082s] ( 60/358) research-run workspace::tests::agent_integration::agent_status_and_apply_propagate_owned_boundary_failures
+        PASS [   0.075s] ( 61/358) research-run workspace::tests::agent_integration::concurrent_agent_integration_applies_share_one_workspace_authority
+        PASS [   0.076s] ( 62/358) research-run workspace::tests::agent_integration::instruction_content_covers_empty_markers_newlines_and_legacy_identity
+        PASS [   0.014s] ( 63/358) research-run workspace::tests::agent_integration::public_agent_integration_status_validator_rejects_cross_field_drift
+        PASS [   0.010s] ( 64/358) research-run workspace::tests::agent_integration_publication::append_identity::append_rejects_a_multiply_linked_source_before_any_effect
+        PASS [   0.161s] ( 65/358) research-run workspace::tests::agent_integration_publication::append_publication_preserves_concurrently_observed_instruction_bytes
+        PASS [   0.389s] ( 66/358) research-run workspace::tests::agent_integration_publication::instruction_publication_covers_noop_races_and_atomic_failures
+        PASS [   0.176s] ( 67/358) research-run workspace::tests::agent_integration_publication::post_publication_cleanup_failures_are_ambiguous_effects
+        PASS [   0.139s] ( 68/358) research-run workspace::tests::agent_integration_recovery::completed_create_alias_and_append_rename_reach_identical_retry
+        PASS [   0.232s] ( 69/358) research-run workspace::tests::agent_integration_recovery::installed_retry_rejects_resealed_transition_tamper
+        PASS [   0.876s] ( 70/358) research-run workspace::tests::agent_integration_recovery::instruction_size_budget_accepts_the_boundary_and_rejects_one_byte_over
+        PASS [   0.071s] ( 71/358) research-run workspace::tests::agent_integration_recovery::pending_instruction_mismatch_multiplicity_and_symlink_fail_closed
+        PASS [   0.080s] ( 72/358) research-run workspace::tests::agent_integration_recovery::pending_instruction_recovery_is_plan_bound_and_retryable
+        PASS [   0.012s] ( 73/358) research-run workspace::tests::agent_integration_staging_cleanup::staging_cleanup_cannot_follow_a_replaced_transaction_directory
+        PASS [   0.022s] ( 74/358) research-run workspace::tests::agent_integration_staging_cleanup::staging_cleanup_rejects_a_fifo_before_any_deletion_without_blocking
+        PASS [   0.071s] ( 75/358) research-run workspace::tests::agent_integration_transaction::append_publication_keeps_the_canonical_instruction_path_bound
+        PASS [   0.057s] ( 76/358) research-run workspace::tests::agent_integration_transaction::append_transaction_symlink_content_fails_closed_without_path_escape
+        PASS [   0.059s] ( 77/358) research-run workspace::tests::agent_integration_transaction::planned_only_missing_target_is_ambiguous_and_preserves_recovery_bytes
+        PASS [   0.059s] ( 78/358) research-run workspace::tests::agent_integration_transaction::recovery_stops_at_the_closed_transaction_child_budget
+        PASS [   0.121s] ( 79/358) research-run workspace::tests::agent_integration_transaction::versioned_append_recovery_completes_exact_states_and_retains_unknown_bytes
+        PASS [   0.009s] ( 80/358) research-run workspace::tests::agent_integration_transaction_permissions::creation::transaction_creation_fails_before_effect_when_parent_cannot_be_observed
+        PASS [   0.015s] ( 81/358) research-run workspace::tests::agent_integration_transaction_permissions::creation::transaction_creation_retains_ambiguous_post_mkdir_effects
+        PASS [   0.008s] ( 82/358) research-run workspace::tests::agent_integration_transaction_permissions::creation::transaction_directory_permission_predicate_is_strict
+        PASS [   0.120s] ( 83/358) research-run workspace::tests::agent_integration_transaction_permissions::private_agent_integration_staging_respects_permission_ceilings
+        PASS [   0.249s] ( 84/358) research-run workspace::tests::coverage_edges::authority_initialization_retry_restores_the_exact_anchored_record
+        PASS [   0.179s] ( 85/358) research-run workspace::tests::coverage_edges::history_traversal_enqueues_each_newly_ready_record
+        PASS [   0.073s] ( 86/358) research-run workspace::tests::coverage_edges::initialization_propagates_pre_manifest_authority_snapshot_failure
+        PASS [   0.068s] ( 87/358) research-run workspace::tests::coverage_edges::ordinary_mutation_rejects_a_missing_review_trust_anchor
+        PASS [   0.089s] ( 88/358) research-run workspace::tests::coverage_edges::review_projection_rejects_invalid_duplicate_and_ambiguous_authorities
+        PASS [   0.088s] ( 89/358) research-run workspace::tests::coverage_edges::unanchored_ai_claim_reports_the_irreversible_promotion_boundary
+        PASS [   0.067s] ( 90/358) research-run workspace::tests::coverage_edges::unanchored_initialization_retry_rejects_a_rogue_authority
+        PASS [   0.069s] ( 91/358) research-run workspace::tests::handoff_expanded::handoff_validation_rejects_every_identity_boundary
+        PASS [   0.071s] ( 92/358) research-run workspace::tests::handoff_expanded::handoff_validation_rejects_nested_forgery_and_budget_bypass
+        PASS [   0.627s] ( 93/358) research-run workspace::tests::handoff_validation::projection_validation_covers_nested_kinds_and_budgets
+        PASS [   0.669s] ( 94/358) research-run workspace::tests::handoff_validation::relationship_validation_covers_nested_identity_and_budgets
+        PASS [   0.064s] ( 95/358) research-run workspace::tests::handoff_validation_receipt::handoff_deserialization_rejects_unknown_nested_validation_fields
+        PASS [   0.145s] ( 96/358) research-run workspace::tests::handoff_validation_receipt::handoff_receipt_diagnostic_uses_the_validation_schema_character_boundaries
+        PASS [   0.141s] ( 97/358) research-run workspace::tests::handoff_validation_receipt::handoff_receipt_errors_use_the_validation_schema_character_boundaries
+        PASS [   0.069s] ( 98/358) research-run workspace::tests::handoff_validation_receipt::handoff_receipt_rejects_invalid_error_text
+        PASS [   0.057s] ( 99/358) research-run workspace::tests::handoff_validation_receipt::handoff_rejects_mismatched_protocol_authority_with_recomputed_result_digest
+        PASS [   0.055s] (100/358) research-run workspace::tests::handoff_validation_receipt::handoff_rejects_new_agent_status_without_installed_protocol
+        PASS [   0.058s] (101/358) research-run workspace::tests::handoff_validation_receipt::handoff_v2_rejects_empty_workspace_identity_even_with_recomputed_receipt
+        PASS [   0.129s] (102/358) research-run workspace::tests::handoff_validation_receipt::handoff_validation_receipt_binds_result_context_and_project
+        PASS [   0.186s] (103/358) research-run workspace::tests::handoff_validation_receipt::handoff_validation_rejects_output_larger_than_the_inspection_budget
+        PASS [   0.065s] (104/358) research-run workspace::tests::handoff_validation_receipt::legacy_handoff_rejects_an_unverified_validation_receipt
+        PASS [   0.062s] (105/358) research-run workspace::tests::initialization_rejects_conflicting_existing_identity
+        PASS [   0.169s] (106/358) research-run workspace::tests::inventory_authority_coverage::empty_bootstrap_scaffold_is_retryable_after_pre_marker_failures
+        PASS [   0.108s] (107/358) research-run workspace::tests::inventory_authority_coverage::existing_workspace_reconciliation_does_not_require_randomness
+        PASS [   0.088s] (108/358) research-run workspace::tests::inventory_authority_coverage::identical_inventory_read_failure_propagates_from_apply
+        PASS [   0.010s] (109/358) research-run workspace::tests::inventory_authority_coverage::inventory_apply_rejects_a_malformed_plan_authority_before_effects
+        PASS [   0.071s] (110/358) research-run workspace::tests::inventory_authority_coverage::inventory_authority_helpers_reject_invalid_and_unreachable_shapes
+        PASS [   0.008s] (111/358) research-run workspace::tests::inventory_authority_coverage::inventory_initialization_rejects_invalid_key_and_workspace_identity
+        PASS [   0.055s] (112/358) research-run workspace::tests::inventory_authority_coverage::inventory_planning_propagates_each_authority_stage
+        PASS [   0.055s] (113/358) research-run workspace::tests::inventory_authority_coverage::legacy_unanchored_plan_is_verified_only_against_unanchored_state
+        PASS [   0.011s] (114/358) research-run workspace::tests::inventory_bootstrap_coverage::appeared_partial_workspace_is_rejected_before_initialization_effects
+        PASS [   0.105s] (115/358) research-run workspace::tests::inventory_bootstrap_coverage::inventory_application_requires_explicit_bootstrap_and_propagates_anchored_init_failure
+        PASS [   0.056s] (116/358) research-run workspace::tests::inventory_bootstrap_coverage::inventory_apply_rejects_a_workspace_that_appeared_after_planning
+        PASS [   0.115s] (117/358) research-run workspace::tests::inventory_bootstrap_coverage::inventory_apply_rejects_authority_mode_and_key_changes_after_planning
+        PASS [   0.134s] (118/358) research-run workspace::tests::inventory_bootstrap_coverage::inventory_apply_rejects_missing_or_corrupt_anchored_authority
+        PASS [   0.099s] (119/358) research-run workspace::tests::inventory_bootstrap_coverage::reconciliation_rejects_an_authority_replaced_after_planning
+        PASS [   0.164s] (120/358) research-run workspace::tests::inventory_bootstrap_faults::bootstrap_creation_and_cleanup_faults_are_explicit
+        PASS [   0.010s] (121/358) research-run workspace::tests::inventory_bootstrap_faults::bootstrap_marker_identity_requires_every_canonical_field
+        PASS [   0.069s] (122/358) research-run workspace::tests::inventory_bootstrap_faults::bootstrap_missing_workspace_and_corrupt_marker_fail_closed
+        PASS [   0.086s] (123/358) research-run workspace::tests::inventory_bootstrap_faults::bootstrap_post_initialization_lock_failure_is_retryable
+        PASS [   0.009s] (124/358) research-run workspace::tests::inventory_bootstrap_faults::bootstrap_rejects_a_symlinked_state_boundary
+        PASS [   0.403s] (125/358) research-run workspace::tests::inventory_bootstrap_faults::bootstrap_scaffold_faults_preserve_a_retryable_boundary
+        PASS [   0.009s] (126/358) research-run workspace::tests::inventory_bootstrap_faults::bootstrap_scaffold_rejects_symlinked_state_entries
+        PASS [   0.084s] (127/358) research-run workspace::tests::inventory_bootstrap_faults::new_bootstrap_rejects_an_injected_unexpected_effect
+        PASS [   0.104s] (128/358) research-run workspace::tests::inventory_bootstrap_faults::normal_workspace_handoff_never_republishes_a_losing_plan_marker
+        PASS [   0.010s] (129/358) research-run workspace::tests::inventory_bootstrap_faults::partial_bootstrap_scaffolds_reject_unexpected_shapes
+        PASS [   0.010s] (130/358) research-run workspace::tests::inventory_bootstrap_pending_faults::canonical_bootstrap_marker_rejects_unknown_fields_before_effects
+        PASS [   0.010s] (131/358) research-run workspace::tests::inventory_bootstrap_pending_faults::canonical_marker_conflict_preserves_requested_plan_pending_evidence
+        PASS [   0.011s] (132/358) research-run workspace::tests::inventory_bootstrap_pending_faults::conflicting_pending_bootstrap_markers_fail_closed
+        PASS [   0.201s] (133/358) research-run workspace::tests::inventory_bootstrap_pending_faults::exact_pending_bootstrap_marker_is_recovered_after_pre_link_crash
+        PASS [   0.079s] (134/358) research-run workspace::tests::inventory_bootstrap_pending_faults::linked_bootstrap_marker_cleans_only_exact_pending_state
+        PASS [   0.015s] (135/358) research-run workspace::tests::inventory_bootstrap_pending_faults::linked_bootstrap_pending_inspection_faults_fail_closed
+        PASS [   0.010s] (136/358) research-run workspace::tests::inventory_bootstrap_pending_faults::pending_bootstrap_marker_cannot_coexist_with_other_state
+        PASS [   0.011s] (137/358) research-run workspace::tests::inventory_bootstrap_pending_faults::pending_bootstrap_marker_symlinks_fail_before_reading
+        PASS [   0.008s] (138/358) research-run workspace::tests::inventory_budgets::inventory_count_and_byte_budgets_accept_the_limit_and_reject_the_next_unit
+        PASS [   0.110s] (139/358) research-run workspace::tests::inventory_expanded::inventory_lifecycle_rejects_identity_conflicts_and_stale_authority
+        PASS [   0.007s] (140/358) research-run workspace::tests::inventory_expanded::material_classification_covers_each_declared_class
+        PASS [   0.010s] (141/358) research-run workspace::tests::inventory_expanded::material_scan_propagates_storage_failures_and_budgets
+        PASS [   0.010s] (142/358) research-run workspace::tests::inventory_expanded::material_scan_rejects_unsupported_entries
+        PASS [   0.008s] (143/358) research-run workspace::tests::inventory_expanded::reconciliation_classifies_every_change_without_inference
+        PASS [   0.009s] (144/358) research-run workspace::tests::inventory_expanded::reconciliation_distinguishes_each_fingerprint_and_consumes_only_exact_moves
+        PASS [   0.299s] (145/358) research-run workspace::tests::inventory_failure_expanded::inventory_application_propagates_each_post_scan_authority_failure
+        PASS [   0.166s] (146/358) research-run workspace::tests::inventory_failure_expanded::inventory_application_propagates_exact_root_record_and_latest_failures
+        PASS [   0.033s] (147/358) research-run workspace::tests::inventory_failure_expanded::inventory_application_propagates_owned_storage_failures
+        PASS [   0.061s] (148/358) research-run workspace::tests::inventory_failure_expanded::inventory_planning_propagates_manifest_and_prior_inventory_failures
+        PASS [   0.062s] (149/358) research-run workspace::tests::inventory_failure_expanded::inventory_planning_propagates_validation_and_storage_failures
+        PASS [   0.061s] (150/358) research-run workspace::tests::inventory_failure_expanded::inventory_read_and_latest_snapshot_failures_are_explicit
+        PASS [   0.237s] (151/358) research-run workspace::tests::inventory_failure_expanded::material_scan_enforces_file_count_budget
+        PASS [   0.009s] (152/358) research-run workspace::tests::inventory_failure_expanded::material_scan_propagates_each_symlink_recheck_boundary
+        PASS [   0.007s] (153/358) research-run workspace::tests::inventory_failure_expanded::material_scan_propagates_relative_root_discovery_failure
+        PASS [   0.007s] (154/358) research-run workspace::tests::inventory_failure_expanded::material_scan_rejects_a_symlinked_root
+        PASS [   0.072s] (155/358) research-run workspace::tests::inventory_policy::child_workspace_records_only_canonical_identity
+        PASS [   0.009s] (156/358) research-run workspace::tests::inventory_policy::declarations_fail_closed_when_missing_overlapping_or_symlinked
+        PASS [   0.066s] (157/358) research-run workspace::tests::inventory_policy::legacy_policy_is_inherited_until_explicit_migration
+        PASS [   0.008s] (158/358) research-run workspace::tests::inventory_policy::reference_only_root_is_visible_without_descendant_inspection
+        PASS [   0.055s] (159/358) research-run workspace::tests::inventory_policy::undeclared_nested_workspace_and_malformed_identity_fail_closed
+        PASS [   0.055s] (160/358) research-run workspace::tests::inventory_policy_child_identity::child_workspace_identity_cannot_collide_with_its_parent
+        PASS [   0.010s] (161/358) research-run workspace::tests::inventory_policy_failures::configured_file_aggregate_and_entry_exhaustion_fail_closed
+        PASS [   0.065s] (162/358) research-run workspace::tests::inventory_policy_failures::inventory_publication_failure_leaves_no_partial_canonical_record
+        PASS [   0.009s] (163/358) research-run workspace::tests::inventory_policy_failures::malformed_and_missing_policy_inputs_fail_before_scanning
+        PASS [   0.057s] (164/358) research-run workspace::tests::inventory_policy_failures::repeated_plans_are_byte_deterministic
+        PASS [   0.283s] (165/358) research-run workspace::tests::inventory_policy_failures::twenty_thousand_entry_inventory_uses_the_bounded_atomic_record_path
+        PASS [   0.008s] (166/358) research-run workspace::tests::inventory_policy_limits::policy_supports_explicit_totals_above_sixty_four_gibibytes
+        PASS [   0.088s] (167/358) research-run workspace::tests::inventory_protocol_coverage::inventory_retry_propagates_both_snapshot_and_identity_reads
+        PASS [   0.067s] (168/358) research-run workspace::tests::inventory_tamper::inventory_apply_propagates_locked_rescan_failure
+        PASS [   0.088s] (169/358) research-run workspace::tests::inventory_tamper::inventory_apply_recomputes_semantic_changes_under_lock
+        PASS [   0.087s] (170/358) research-run workspace::tests::inventory_tamper::inventory_apply_rejects_an_under_lock_change
+        PASS [   0.087s] (171/358) research-run workspace::tests::inventory_tamper::inventory_apply_rejects_genuine_ambiguous_moves
+        PASS [   0.009s] (172/358) research-run workspace::tests::inventory_tamper::inventory_apply_rejects_material_changes_after_planning
+        PASS [   0.099s] (173/358) research-run workspace::tests::knowledge_expanded::knowledge_and_relationship_identical_record_reads_propagate
+        PASS [   0.105s] (174/358) research-run workspace::tests::knowledge_expanded::knowledge_mutations_propagate_validation_reference_lock_and_identity_failures
+        PASS [   0.302s] (175/358) research-run workspace::tests::knowledge_expanded::knowledge_relations_resolve_every_entity_kind_and_remain_idempotent
+        PASS [   0.662s] (176/358) research-run workspace::tests::knowledge_expanded::knowledge_writers_propagate_snapshot_identity_capacity_and_publication_failures
+        PASS [   0.023s] (177/358) research-run workspace::tests::lifecycle_publication::authority_publication_failure_never_exposes_a_manifest
+        PASS [   0.102s] (178/358) research-run workspace::tests::lifecycle_publication::authority_state_read_failures_preserve_the_discovery_boundary
+        PASS [   0.035s] (179/358) research-run workspace::tests::lifecycle_publication::conflicting_retry_cannot_expose_a_staged_authority
+        PASS [   0.062s] (180/358) research-run workspace::tests::lifecycle_publication::contribution_protocol_publication_failures_propagate_on_init_and_retry
+        PASS [   0.056s] (181/358) research-run workspace::tests::lifecycle_publication::existing_invalid_workspace_is_not_activated_before_validation
+        PASS [   0.059s] (182/358) research-run workspace::tests::lifecycle_publication::existing_legacy_workspace_requires_typed_migration_for_activation
+        PASS [   0.054s] (183/358) research-run workspace::tests::lifecycle_publication::fresh_activation_interruption_leaves_one_recoverable_batch
+        PASS [   0.074s] (184/358) research-run workspace::tests::lifecycle_publication::malformed_protocol_blocks_authority_recovery_before_publication
+        PASS [   0.059s] (185/358) research-run workspace::tests::migration_expanded::migration_authority_propagates_storage_and_path_failures
+        PASS [   0.083s] (186/358) research-run workspace::tests::migration_expanded::migration_planning_and_application_fail_closed_at_authority_boundaries
+        PASS [   0.139s] (187/358) research-run workspace::tests::migration_expanded::migration_retry_reports_protocol_repair_as_an_effect
+        PASS [   0.104s] (188/358) research-run workspace::tests::migration_expanded::optional_recovery_accepts_legacy_absence_and_current_empty_directories
+        PASS [   0.400s] (189/358) research-run workspace::tests::migration_expanded::optional_recovery_propagates_each_collection_and_record_failure
+        PASS [   0.181s] (190/358) research-run workspace::tests::migration_failure_expanded::migration_application_propagates_record_snapshot_and_publication_failures
+        PASS [   0.058s] (191/358) research-run workspace::tests::migration_failure_expanded::migration_application_propagates_validation_root_and_directory_failures
+        PASS [   0.103s] (192/358) research-run workspace::tests::migration_failure_expanded::migration_interruption_never_publishes_a_protocol_only_state
+        PASS [   0.266s] (193/358) research-run workspace::tests::migration_failure_expanded::migration_manifest_fingerprint_and_identical_record_failures_propagate
+        PASS [   0.059s] (194/358) research-run workspace::tests::migration_failure_expanded::migration_plan_reader_and_authority_recursion_propagate_failures
+        PASS [   0.065s] (195/358) research-run workspace::tests::migration_failure_expanded::migration_planning_propagates_root_manifest_authority_and_validation_failures
+        PASS [   0.065s] (196/358) research-run workspace::tests::migration_failure_expanded::migration_propagates_contribution_protocol_publication_failure
+        PASS [   0.104s] (197/358) research-run workspace::tests::migration_failure_expanded::migration_recovery_publishes_protocol_before_record
+        PASS [   0.057s] (198/358) research-run workspace::tests::migration_failure_expanded::migration_validates_activation_directory_before_publication
+        PASS [   0.067s] (199/358) research-run workspace::tests::migration_protocol_retry::identical_migration_repair_validates_references_before_activation
+        PASS [   0.107s] (200/358) research-run workspace::tests::migration_protocol_retry::identical_migration_retry_recovers_its_pending_protocol
+        PASS [   0.059s] (201/358) research-run workspace::tests::migration_protocol_retry::migration_detects_protocol_deletion_after_planning
+        PASS [   0.114s] (202/358) research-run workspace::tests::non_history_relationship_may_close_a_history_path
+        PASS [   0.073s] (203/358) research-run workspace::tests::records::corrupted_references_block_status_validation_and_recovery
+        PASS [   0.149s] (204/358) research-run workspace::tests::records::direct_workspace_journey_exercises_every_record_authority
+        PASS [   0.057s] (205/358) research-run workspace::tests::records::discovery_stops_at_the_nearest_state_boundary
+        PASS [   0.057s] (206/358) research-run workspace::tests::records::reference_validation_reports_every_invalid_relationship
+        PASS [   0.099s] (207/358) research-run workspace::tests::records::semantic_reference_failures_leave_no_effect
+        PASS [   0.244s] (208/358) research-run workspace::tests::recovery::injected_recovery_faults_preserve_pending_effects
+        PASS [   0.008s] (209/358) research-run workspace::tests::recovery::pending_filename_recovers_exact_target
+        PASS [   0.072s] (210/358) research-run workspace::tests::recovery::pending_review_rejects_a_stale_subject_digest
+        PASS [   0.140s] (211/358) research-run workspace::tests::recovery::post_mutation_recovery_sync_failures_are_ambiguous
+        PASS [   0.057s] (212/358) research-run workspace::tests::recovery::recovery_cannot_bootstrap_an_unanchored_review_authority
+        PASS [   0.074s] (213/358) research-run workspace::tests::recovery::recovery_rejects_an_anchored_manifest_without_its_authority
+        PASS [   0.168s] (214/358) research-run workspace::tests::recovery::valid_pending_records_recover_in_dependency_order
+        PASS [   0.057s] (215/358) research-run workspace::tests::recovery_coverage_edges::migration_recovery_rejects_other_new_effects
+        PASS [   0.106s] (216/358) research-run workspace::tests::recovery_coverage_edges::recovered_inventory_rechecks_prior_authority_and_missing_candidates
+        PASS [   0.062s] (217/358) research-run workspace::tests::recovery_coverage_edges::recovery_rejects_batches_with_multiple_new_semantic_authorities
+        PASS [   0.059s] (218/358) research-run workspace::tests::recovery_coverage_edges::recovery_target_ids_reject_non_utf8_names
+        PASS [   0.054s] (219/358) research-run workspace::tests::recovery_semantic_coverage::migration_target_ids_and_missing_candidates_fail_closed
+        PASS [   0.054s] (220/358) research-run workspace::tests::recovery_semantic_coverage::optional_preflight_and_identical_discard_propagate_owned_reads
+        PASS [   0.056s] (221/358) research-run workspace::tests::recovery_semantic_coverage::recovered_semantics_propagate_scan_and_migration_authority_failures
+        PASS [   0.053s] (222/358) research-run workspace::tests::recovery_semantic_coverage::recovery_batch_propagates_optional_collection_failure
+        PASS [   0.059s] (223/358) research-run workspace::tests::recovery_semantic_coverage::recovery_does_not_activate_an_idle_legacy_workspace
+        PASS [   0.055s] (224/358) research-run workspace::tests::recovery_semantic_coverage::recovery_requires_one_valid_contribution_protocol
+        PASS [   0.055s] (225/358) research-run workspace::tests::retrieval_boundaries::derived_work_views_propagate_invalid_reference_status
+        PASS [   0.007s] (226/358) research-run workspace::tests::retrieval_boundaries::projection_sort_deduplicates_and_truncates
+        PASS [   0.357s] (227/358) research-run workspace::tests::retrieval_expanded::retrieval_projects_every_canonical_reference_and_history_state
+        PASS [   0.055s] (228/358) research-run workspace::tests::retrieval_failure_expanded::every_retrieval_route_propagates_limits_and_snapshot_failures
+        PASS [   0.056s] (229/358) research-run workspace::tests::retrieval_failure_expanded::handoff_propagates_bundle_validation_failure
+        PASS [   0.139s] (230/358) research-run workspace::tests::review_authority_coverage::review_authority_construction_and_preparation_propagate_owned_validation
+        PASS [   0.082s] (231/358) research-run workspace::tests::review_authority_coverage::review_authorization_propagates_request_snapshot_key_and_nested_validation
+        PASS [   0.155s] (232/358) research-run workspace::tests::review_authority_coverage::review_preparation_rejects_tampered_key_and_manifest_anchor
+        PASS [   0.098s] (233/358) research-run workspace::tests::review_authority_coverage::review_publication_propagates_record_inspection_and_signature_failures
+        PASS [   0.055s] (234/358) research-run workspace::tests::review_binding_expanded::legacy_and_missing_experiment_bindings_are_stale
+        PASS [   0.151s] (235/358) research-run workspace::tests::review_binding_expanded::review_binding_covers_experiment_artifact_and_stale_authority
+        PASS [   0.055s] (236/358) research-run workspace::tests::review_binding_expanded::review_binding_propagates_snapshot_load_failure
+        PASS [   0.055s] (237/358) research-run workspace::tests::review_binding_expanded::review_graph_validation_uses_one_canonical_binding
+        PASS [   0.070s] (238/358) research-run workspace::tests::review_binding_expanded::review_writes_require_exact_current_subject_and_known_claim
+        PASS [   2.054s] (239/358) research-run workspace::tests::review_binding_policy::review_binding_uses_the_current_inventory_file_limit
+        PASS [   0.133s] (240/358) research-run workspace::tests::review_signing::review_authorization_rejects_missing_and_mismatched_authority_metadata
+        PASS [   0.010s] (241/358) research-run workspace::tests::security_findings::decoy_manifests_cannot_create_bootstrap_effects
+        PASS [   0.084s] (242/358) research-run workspace::tests::security_findings::invalid_new_workspace_plan_leaves_no_bootstrap_authority
+        PASS [   0.011s] (243/358) research-run workspace::tests::security_findings::manifest_inspection_races_fail_before_bootstrap_effects
+        PASS [   0.092s] (244/358) research-run workspace::tests::security_findings::precreated_bootstrap_scaffold_cannot_bypass_authority_validation
+        PASS [   0.095s] (245/358) research-run workspace::tests::security_findings::review_binding_rejects_a_fifo_swap_during_open
+        PASS [   0.090s] (246/358) research-run workspace::tests::security_findings::review_binding_rejects_fifo_artifacts_before_opening
+        PASS [   0.011s] (247/358) research-run workspace::tests::security_findings::symlinked_manifest_cannot_create_bootstrap_effects
+        PASS [   0.155s] (248/358) research-run workspace::tests::snapshot_expanded::expanded_optional_snapshot_loads_propagate_owned_failures
+        PASS [   0.009s] (249/358) research-run workspace::tests::sshsig::openssh_key_parser_rejects_each_malformed_boundary
+        PASS [   0.008s] (250/358) research-run workspace::tests::sshsig::openssh_key_parser_rejects_weak_ed25519_authorities
+        PASS [   0.010s] (251/358) research-run workspace::tests::sshsig::sshsig_verifier_rejects_malformed_envelopes_and_accepts_sha256
+        PASS [   0.021s] (252/358) research-run workspace::tests::staging_cleanup_failures_are_ambiguous_at_each_durability_boundary
+        PASS [   0.011s] (253/358) research-run workspace::tests::staging_cleanup_rejects_unexpected_or_linked_witnesses_before_deletion
+        PASS [   0.018s] (254/358) research-run workspace::tests::staging_cleanup_removes_the_closed_witness_set_through_held_descriptors
+        PASS [   0.010s] (255/358) research-run workspace::tests::staging_cleanup_unlink_failure_cannot_partially_delete_witnesses
+        PASS [   0.057s] (256/358) research-run workspace::tests::status_authority::mixed_review_authority_identity_fails_closed_in_status
+        PASS [   0.011s] (257/358) research-run workspace::tests::storage::bounded_record_read_rejects_fifo_swap_without_blocking
+        PASS [   0.070s] (258/358) research-run workspace::tests::storage::bounded_storage_and_directory_shapes_fail_closed
+        PASS [   0.101s] (259/358) research-run workspace::tests::storage::injected_storage_faults_prove_ambiguous_and_racing_effect_contracts
+        PASS [   0.018s] (260/358) research-run workspace::tests::storage::pending_cleanup_reports_removal_and_directory_sync_failures
+        PASS [   0.009s] (261/358) research-run workspace::tests::storage::standard_macos_temporary_alias_is_allowed_only_at_its_known_target
+        PASS [   0.009s] (262/358) research-run workspace::tests::storage::symlinked_paths_are_rejected_at_each_storage_boundary
+        PASS [   0.009s] (263/358) research-run workspace::tests::storage::symlinked_state_directory_is_rejected
+        PASS [   0.059s] (264/358) research-run workspace::tests::storage::write_lock_contention_fails_before_a_second_transaction
+        PASS [   0.058s] (265/358) research-run workspace::tests::storage::write_lock_rejects_a_symlinked_lock_path
+        PASS [   0.060s] (266/358) research-run workspace::tests::validation_limits::validation_reports_a_deterministic_error_budget_overflow
+        PASS [   0.022s] (267/358) research-run workspace::tests::witness_sync_cannot_follow_a_replaced_transaction_symlink_to_fifo
+        PASS [   0.015s] (268/358) research-run workspace::tests::witness_sync_rejects_a_replaced_transaction_directory
+        PASS [   0.139s] (269/358) research-run::product agent_integration_activation_defense::direct_managed_block_write_cannot_satisfy_agent_readiness
+        PASS [   0.090s] (270/358) research-run::product agent_integration_activation_defense::invalid_reference_paths_abort_before_a_portable_handoff_exists
+        PASS [   0.102s] (271/358) research-run::product agent_integration_activation_defense::pending_recovery_paths_stay_out_of_portable_receipts
+        PASS [   0.104s] (272/358) research-run::product agent_integration_defense::conflicting_managed_content_and_symlinks_fail_closed
+        PASS [   0.098s] (273/358) research-run::product agent_integration_defense::direct_canonical_mutation_cannot_satisfy_agent_readiness
+        PASS [   0.181s] (274/358) research-run::product agent_integration_defense::empty_instruction_file_remains_an_append_target
+        PASS [   0.149s] (275/358) research-run::product agent_integration_defense::existing_instructions_are_preserved_and_drift_conflicts
+        PASS [   0.218s] (276/358) research-run::product agent_integration_defense::override_is_active_and_plan_input_is_not_linkable
+        PASS [   0.070s] (277/358) research-run::product agent_integration_defense::tampered_plan_cannot_escape_the_project_instruction_surface
+        PASS [   0.148s] (278/358) research-run::product agent_integration_hardlink::multiply_linked_append_source_is_rejected_before_effect_and_retryable
+        PASS [   0.093s] (279/358) research-run::product agent_integration_journey::human_integration_output_preserves_the_new_run_boundary
+        PASS [   0.172s] (280/358) research-run::product agent_integration_journey::material_human_decision_uses_supported_agent_ready_journey
+        PASS [   0.113s] (281/358) research-run::product agent_integration_quickstart::source_checkout_quickstart_keeps_the_reviewed_plan_outside_the_workspace
+        PASS [   0.105s] (282/358) research-run::product contribution_protocol_journey::activated_project_confronts_agent_with_retrieve_capture_validate_contract
+        PASS [   0.214s] (283/358) research-run::product contribution_protocol_journey::activation_policy_fails_closed_and_cannot_promote_agent_claims
+        PASS [   0.020s] (284/358) research-run::product data_contracts::checked_in_synthetic_example_is_valid_and_reports_limited_claim
+        PASS [   0.011s] (285/358) research-run::product data_contracts::every_v2_schema_is_well_formed_json
+        PASS [   0.012s] (286/358) research-run::product data_contracts::every_versioned_schema_is_well_formed_json
+        PASS [   0.087s] (287/358) research-run::product data_contracts::instruction_inspection_failure_does_not_invalidate_the_canonical_ledger
+        PASS [   0.008s] (288/358) research-run::product data_contracts::projection_timestamps_use_the_shared_utc_contract
+        PASS [   0.094s] (289/358) research-run::product data_contracts_agent_integration::agent_integration_plan_schema_enforces_operation_identity_invariants
+        PASS [   0.008s] (290/358) research-run::product data_contracts_agent_integration::agent_integration_plan_workspace_identity_preserves_legacy_shape
+        PASS [   0.177s] (291/358) research-run::product data_contracts_handoff_schema::handoff_schema_enforces_versioned_identity_and_receipts
+        PASS [   0.010s] (292/358) research-run::product data_contracts_validation_schema::validation_projection_versions_have_distinct_immutable_authority
+        PASS [   0.195s] (293/358) research-run::product data_contracts_validation_schema::validation_v2_receipt_text_schema_uses_character_boundaries
+        PASS [   0.196s] (294/358) research-run::product data_contracts_validation_schema::validation_v2_schema_rejects_contradictory_readiness_receipt
+        PASS [   0.008s] (295/358) research-run::product domain_boundaries::domain_validators_reject_each_illegal_state_class
+        PASS [   0.009s] (296/358) research-run::product domain_boundaries::manifest_identity_is_deterministic
+        PASS [   0.008s] (297/358) research-run::product domain_boundaries::record_fields::each_evidence_reference_fails_independently
+        PASS [   0.008s] (298/358) research-run::product domain_boundaries::record_fields::each_experiment_field_fails_independently
+        PASS [   0.008s] (299/358) research-run::product domain_boundaries::record_fields::each_record_field_fails_independently
+        PASS [   0.274s] (300/358) research-run::product handoff_defense::handoff_inspection_rejects_unknown_versions_and_forged_ceiling
+        PASS [   0.264s] (301/358) research-run::product handoff_human::human_inspection_preserves_failed_validation_and_unavailable_integration
+        PASS [   0.258s] (302/358) research-run::product handoff_human::legacy_v1_handoff_without_activation_protocol_remains_inspectable
+        PASS [   0.269s] (303/358) research-run::product handoff_journey::fresh_process_consumes_handoff_without_source_workspace
+        PASS [   0.008s] (304/358) research-run::product identifier_validation::identifiers_and_paths_fail_closed
+        PASS [   0.454s] (305/358) research-run::product knowledge_history::every_knowledge_class_is_typed_and_history_is_append_only
+        PASS [   0.134s] (306/358) research-run::product knowledge_history::relationship_references_and_history_cycles_fail_before_effect
+        PASS [   0.089s] (307/358) research-run::product knowledge_history::structured_file_input_rejects_missing_directory_oversized_and_symlink_paths
+        PASS [   0.082s] (308/358) research-run::product knowledge_history::structured_stdin_is_supported_without_promoting_claims
+        PASS [   0.217s] (309/358) research-run::product migration_journey::accepted_v01_workspace_migrates_without_rewriting_authority
+        PASS [   0.103s] (310/358) research-run::product migration_journey::migration_rejects_stale_authority_before_effect
+        PASS [   0.009s] (311/358) research-run::product repository_authority::active_execplan_scopes_the_pr12_merge_exception_without_waiving_coverage
+        PASS [   0.008s] (312/358) research-run::product repository_authority::policy_preserves_review_and_proof_claim_ceilings
+        PASS [   0.239s] (313/358) research-run::product repository_authority::release_version_reader_uses_the_package_table
+        PASS [   0.011s] (314/358) research-run::product repository_authority::repository_check_entrypoints_are_executable
+        PASS [   0.008s] (315/358) research-run::product repository_authority::router_reaches_every_current_authority_surface
+        PASS [   0.220s] (316/358) research-run::product researcher_journey::clean_clone_journey_preserves_negative_results_and_claim_ceiling
+        PASS [   0.695s] (317/358) research-run::product researcher_journey::value_variants::human_commands_cover_every_public_value_variant
+        PASS [   0.293s] (318/358) research-run::product retrieval_journey::bounded_retrieval_commands_explain_matches_and_preserve_history
+        PASS [   0.269s] (319/358) research-run::product retrieval_journey::defense::retrieval_rejects_empty_queries_and_invalid_limits
+        PASS [   0.363s] (320/358) research-run::product retrieval_journey::tail_text::compatibility::tail_text_query_byte_budget_and_search_limit_fail_closed
+        PASS [   0.264s] (321/358) research-run::product retrieval_journey::tail_text::compatibility::tail_text_typed_identity_and_existing_matches_preserve_projections
+        PASS [   0.290s] (322/358) research-run::product retrieval_journey::tail_text::tail_text_order_limits_and_history_remain_visible
+        PASS [   0.231s] (323/358) research-run::product retrieval_journey::tail_text::tail_text_search_context_and_handoff_preserve_canonical_bytes
+        PASS [   0.331s] (324/358) research-run::product retrieval_journey::tail_text::tail_text_unicode_literal_excerpts_and_terminal_escaping
+        PASS [   0.018s] (325/358) research-run::product retrofit_journey::retrofit_fails_closed_on_stale_plan_and_symlink
+        PASS [   0.159s] (326/358) research-run::product retrofit_journey::retrofit_preserves_bytes_and_reconcile_records_a_move
+        PASS [   0.165s] (327/358) research-run::product retry_behavior::identical_retry_is_idempotent_and_conflicting_identity_fails_closed
+        PASS [   0.008s] (328/358) research-run::product review_authority::each_review_authority_field_fails_independently
+        PASS [   0.191s] (329/358) research-run::product review_authority::signature_flow::a_signed_request_cannot_replay_into_a_same_name_workspace
+        PASS [   0.169s] (330/358) research-run::product review_authority::signature_flow::only_an_exact_signature_from_the_enrolled_authority_promotes
+        PASS [   0.062s] (331/358) research-run::product review_authority::signature_flow::post_initialization_caller_cannot_enroll_a_self_selected_authority
+        PASS [   0.210s] (332/358) research-run::product workspace_defense::claims::ai_drafts_evidence_and_retry_cannot_promote_a_claim
+        PASS [   0.096s] (333/358) research-run::product workspace_defense::claims::unknown_reference_and_path_escape_fail_before_effect
+        PASS [   0.120s] (334/358) research-run::product workspace_defense::locking::concurrent_review_commands_leave_one_authoritative_decision
+        PASS [   0.096s] (335/358) research-run::product workspace_defense::projection::human_output_neutralizes_record_and_filename_controls
+        PASS [   0.099s] (336/358) research-run::product workspace_defense::projection::status_projection_is_byte_deterministic
+        PASS [   0.050s] (337/358) research-run::product workspace_defense::recovery::conflict_cleanup::explicit_recovery_completes_init_interrupted_before_manifest_publication
+        PASS [   0.129s] (338/358) research-run::product workspace_defense::recovery::conflict_cleanup::identical_pending_review_is_cleanup_not_a_semantic_conflict
+        PASS [   0.085s] (339/358) research-run::product workspace_defense::recovery::conflict_cleanup::recovery_preflights_conflicting_pending_content_before_any_publication
+        PASS [   0.082s] (340/358) research-run::product workspace_defense::recovery::conflict_cleanup::recovery_rejects_legacy_pending_effect_without_typed_migration
+        PASS [   0.075s] (341/358) research-run::product workspace_defense::recovery::conflict_cleanup::symlinked_record_fails_closed_and_does_not_leak_target_content
+        PASS [   0.103s] (342/358) research-run::product workspace_defense::recovery::interrupted_publication_requires_explicit_validated_recovery
+        PASS [   0.077s] (343/358) research-run::product workspace_defense::recovery::malformed_input_is_rejected_without_echoing_record_content
+        PASS [   0.076s] (344/358) research-run::product workspace_defense::recovery::recovery_rejects_pending_records_with_unknown_references
+        PASS [   0.074s] (345/358) research-run::product workspace_defense::recovery::recovery_validates_later_directories_before_any_publication
+        PASS [   0.075s] (346/358) research-run::product workspace_defense::recovery::security_semantics::invalid_existing_manifest_blocks_every_recovery_effect
+        PASS [   0.100s] (347/358) research-run::product workspace_defense::recovery::security_semantics::recovery_accepts_a_migration_bound_to_current_authority
+        PASS [   0.100s] (348/358) research-run::product workspace_defense::recovery::security_semantics::recovery_accepts_initial_inventory_bound_to_current_materials
+        PASS [   0.078s] (349/358) research-run::product workspace_defense::recovery::security_semantics::recovery_rejects_forged_inventory_authority
+        PASS [   0.082s] (350/358) research-run::product workspace_defense::recovery::security_semantics::recovery_rejects_forged_inventory_content_with_valid_identity
+        PASS [   0.078s] (351/358) research-run::product workspace_defense::recovery::security_semantics::recovery_rejects_forged_migration_authority
+        PASS [   0.081s] (352/358) research-run::product workspace_defense::recovery::security_semantics::recovery_rejects_forged_migration_digest_with_valid_identity
+        PASS [   0.080s] (353/358) research-run::product workspace_defense::recovery::security_semantics::recovery_rejects_history_cycles_before_publication
+        PASS [   0.128s] (354/358) research-run::product workspace_defense::recovery::size_budget::recovery_rejects_canonical_expansion_before_publication
+        PASS [   0.167s] (355/358) research-run::product workspace_defense::review_binding::direct_projection_rejects_duplicate_current_review_authority
+        PASS [   0.228s] (356/358) research-run::product workspace_defense::review_binding::review_binding_stales_on_same_id_subject_mutation
+        PASS [   0.712s] (357/358) research-run::standards_syntax every_rust_declaration_and_span_obeys_semantic_tree_law
+        PASS [   0.009s] (358/358) research-run::standards_syntax parser_fixture_covers_raw_comments_aliases_unions_and_macros
+────────────
+     Summary [  41.190s] 358 tests run: 358 passed, 0 skipped
