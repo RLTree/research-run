@@ -103,6 +103,21 @@ class FixtureControls(unittest.TestCase):
 
 
 class ValidationControls(unittest.TestCase):
+    def test_entry_children_use_the_observed_evidence_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = pathlib.Path(temporary) / 'custom-evidence'
+
+            def reject_link(command, **kwargs):
+                self.assertIn('--evidence-dir', command)
+                self.assertEqual(command[command.index('--evidence-dir') + 1], str(evidence))
+                return subprocess.CompletedProcess(command, 1, stderr=b'symlink rejected')
+
+            with patch.object(measure, 'EVIDENCE', evidence), patch.object(
+                    measure.subprocess, 'run', side_effect=reject_link) as child:
+                measure.entry_self_test()
+            self.assertEqual(child.call_count, 6)
+            self.assertFalse(evidence.exists())
+
     def test_real_execution_requires_zero_exit_and_valid_true(self):
         cases = ((1, b'{"valid":true}'), (0, b'not JSON'),
                  (0, b'{"valid":false}'), (0, b'[]'), (0, b'{}'))

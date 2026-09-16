@@ -66,8 +66,12 @@ preserve any existing experiment evidence and choose another build directory
 when that path is already occupied.
 
 ```console
+(
+set -eu
+set -o pipefail
 export CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_PROFILE_TEST_DEBUG=0
-mkdir -p target/tail-text-evidence/baseline-source
+mkdir -p target/tail-text-evidence
+mkdir target/tail-text-evidence/baseline-source
 git archive 71ad5fd8f0533a7ab34b35ffeb3f86d88a92a2c5 | tar -x -C target/tail-text-evidence/baseline-source
 cargo build --locked --release --manifest-path target/tail-text-evidence/baseline-source/Cargo.toml --target-dir target/tail-text-evidence/baseline-build
 cp target/tail-text-evidence/baseline-build/release/research-run target/tail-text-evidence/baseline
@@ -76,6 +80,7 @@ cp target/release/research-run target/tail-text-evidence/candidate
 python3 -B docs/research/tail-text-discovery/measure.py integration-test
 python3 -B -O docs/research/tail-text-discovery/measure.py integration-test
 python3 -B docs/research/tail-text-discovery/measure.py synthetic --evidence-dir target/tail-text-new-fixtures
+)
 ```
 
 The separately named integration test initializes real disposable fixtures,

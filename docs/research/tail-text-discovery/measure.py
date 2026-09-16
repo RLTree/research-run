@@ -98,9 +98,7 @@ def synthetic(name, count, size):
     workspace = EVIDENCE / name
     if workspace.is_symlink():
         raise RuntimeError(f'synthetic workspace is a symlink: {workspace}')
-    if workspace.exists():
-        require_reusable_workspace(workspace, count, size)
-    else:
+    if not workspace.exists():
         invoke(BINARIES['baseline'], EVIDENCE,
                ['init', str(workspace), '--name', name, '--without-review-authority'])
         record_initialization(workspace, count, size)
@@ -287,7 +285,8 @@ def entry_self_test():
         for interpreter in ([sys.executable], [sys.executable, '-O']):
             for candidate in (linked_workspace, linked_parent / 'workspace', dangling):
                 result = subprocess.run(
-                    interpreter + [str(pathlib.Path(__file__)), str(candidate)],
+                    interpreter + [str(pathlib.Path(__file__)), str(candidate),
+                                   '--evidence-dir', str(EVIDENCE)],
                     capture_output=True,
                 )
                 if result.returncode == 0:

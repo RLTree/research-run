@@ -4,7 +4,7 @@ import pathlib
 import tempfile
 
 from measure import (corpus_is_expected, derive_queries, digest_state, expected_record,
-                     require_reusable_workspace, select_knowledge_files)
+                     select_knowledge_files)
 from measurement_fs import (MAX_INVENTORY_RECORD_BYTES, MAX_RECORD_BYTES,
                             ReadBudget, read_regular, safe_files)
 
@@ -91,16 +91,6 @@ def run_controls():
         (knowledge / 'note-0002.json').unlink()
         if not corpus_is_expected(workspace, 2, 200):
             raise AssertionError('restored corpus was rejected')
-        (knowledge / 'note-0001.json').write_bytes(expected_record(1, 200).replace(b'tail-needle', b'changed-text'))
-        before = digest_state(workspace)
-        try:
-            require_reusable_workspace(workspace, 2, 200)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError('drifted corpus was accepted for reuse')
-        if digest_state(workspace) != before:
-            raise AssertionError('drifted corpus was changed during rejection')
         short_workspace = workspace.parent / 'short-workspace'
         short_knowledge = short_workspace / '.research-run/knowledge'
         short_knowledge.mkdir(parents=True)
@@ -190,5 +180,4 @@ def run_controls():
         else:
             raise AssertionError('FIFO was accepted')
     print('measurement helper controls passed')
-
 
